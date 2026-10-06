@@ -1,0 +1,12 @@
+# FAKE DATA - invented pupils for testing; not a real class
+Forename,Surname,Class,Target
+Ada,Lovelace,10X/Cs1,8
+Alan,Turing,10X/Cs1,9
+Grace,Hopper,10X/Cs1,7
+Tim,Berners-Lee,10X/Cs1,8
+Margaret,Hamilton,10X/Cs1,9
+Edsger,Dijkstra,10X/Cs1,6
+Katherine,Johnson,10X/Cs1,7
+Dennis,Ritchie,10X/Cs1,5
+Barbara,Liskov,10X/Cs1,8
+Mary-Jane,Smith Jones,10X/Cs1,6

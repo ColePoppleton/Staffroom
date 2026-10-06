@@ -1,0 +1,12 @@
+# FAKE DATA - invented marks for a 40-mark paper; Q1..Q6 max marks 4,6,8,6,10,6
+Forename,Surname,Q1,Q2,Q3,Q4,Q5,Q6
+Ada,Lovelace,4,6,7,5,9,6
+Alan,Turing,4,6,8,6,10,6
+Grace,Hopper,3,5,6,4,7,5
+Tim,Berners-Lee,4,4,5,5,8,4
+Margaret,Hamilton,4,6,8,5,9,5
+Edsger,Dijkstra,2,3,4,3,5,3
+Katherine,Johnson,3,5,6,5,8,4
+Dennis,Ritchie,2,2,3,2,4,2
+Barbara,Liskov,4,5,7,6,9,5
+Mary-Jane,Smith Jones,3,4,4,3,6,3

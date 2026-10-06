@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Project
+data/
+!data/.gitkeep
+*.png
+.idea/
+!docs/*.png
+.idea/
+.DS_Store
+
+# Pre-existing tkinter script kept outside the package; decide its fate later.
+Marks Calculator - Student Complexity version/
