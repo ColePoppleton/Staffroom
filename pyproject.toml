@@ -9,6 +9,7 @@ dependencies = [
     "pyside6>=6.7",
     "openpyxl>=3.1",
     "tomli-w>=1.0",
+    "pypdf>=6.19.0",
 ]
 
 [project.scripts]

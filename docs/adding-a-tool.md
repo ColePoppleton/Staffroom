@@ -20,7 +20,7 @@ It shows up straight away:
 
 ```bash
 uv run tt list
-uv run tt my_tool run examples/class_list.csv
+uv run tt my_tool run examples/marks_10x.csv
 ```
 
 ## 2. Write the logic

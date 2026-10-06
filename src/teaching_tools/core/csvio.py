@@ -1,5 +1,13 @@
 """Read and write tables as CSV or XLSX.
 
+No pupil data
+-------------
+Every table read here passes through
+:func:`teaching_tools.core.privacy.drop_identifier_columns`. Columns that could
+identify a pupil are removed before the data reaches a tool, a preview or an
+output; the names of the dropped columns are kept on ``Table.dropped_columns``
+and logged as a warning. There is no way to opt out.
+
 Fake-data marker
 ----------------
 Real pupil data must never be committed. Every example file carries a marker
@@ -20,7 +28,11 @@ from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
+from teaching_tools.core.log import get_logger
+from teaching_tools.core.privacy import drop_identifier_columns
 from teaching_tools.core.table import Row, Table, coerce
+
+log = get_logger(__name__)
 
 FAKE_DATA_MARKER = "# FAKE DATA"
 _MARKER_WORDS = "FAKE DATA"
@@ -34,14 +46,22 @@ def is_marker_line(line: str) -> bool:
 
 
 def read_table(path: Path) -> Table:
-    """Read a CSV or XLSX file, dispatching on suffix."""
+    """Read a CSV or XLSX file, dispatching on suffix. Identifier columns are
+    dropped (see module docstring)."""
     suffix = path.suffix.lower()
     if suffix == ".csv":
-        return read_csv(path)
+        return _privacy_filter(read_csv(path), path)
     if suffix == ".xlsx":
-        return read_xlsx(path)
+        return _privacy_filter(read_xlsx(path), path)
     msg = f"unsupported table file {path.name!r}; expected one of {TABLE_EXTENSIONS}"
     raise ValueError(msg)
+
+
+def _privacy_filter(table: Table, path: Path) -> Table:
+    clean, dropped = drop_identifier_columns(table)
+    if dropped:
+        log.warning("%s: dropped identifier column(s) %s", path.name, ", ".join(dropped))
+    return clean
 
 
 def write_table(table: Table, path: Path) -> Path:

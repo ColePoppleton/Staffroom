@@ -202,6 +202,8 @@ class TablePreviewWidget(QWidget):
             note += f" (showing first {len(shown)})"
         if table.fake_data:
             note += "  ·  fake data"
+        if table.dropped_columns:
+            note += "  ·  dropped identifier columns: " + ", ".join(table.dropped_columns)
         self.caption.setText(note)
 
     def set_error(self, message: str) -> None:

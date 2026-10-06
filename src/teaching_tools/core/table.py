@@ -18,11 +18,14 @@ class Table:
 
     ``fake_data`` records whether the source carried the fake-data marker so
     that anything written back out keeps it (see :mod:`teaching_tools.core.csvio`).
+    ``dropped_columns`` lists identifier columns removed at load time by
+    :mod:`teaching_tools.core.privacy`; it is informational and not compared.
     """
 
     columns: list[str]
     rows: list[Row] = field(default_factory=list)
     fake_data: bool = False
+    dropped_columns: list[str] = field(default_factory=list, compare=False)
 
     def __post_init__(self) -> None:
         width = len(self.columns)

@@ -107,7 +107,7 @@ def test_marks_panel_renders_and_runs(qtbot: QtBot, tmp_path: Path, example_mark
     assert grid.value().columns == ["Grade", "Min mark"]
 
     panel.set_input_path("marks", example_marks)
-    assert panel.previews["preview"].model.columnCount() == 8
+    assert panel.previews["preview"].model.columnCount() == 6
 
     with qtbot.waitSignal(panel.run_finished, timeout=5000) as blocker:
         panel.start_run()

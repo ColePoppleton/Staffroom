@@ -11,13 +11,12 @@ from teaching_tools.core.csvio import (
 from teaching_tools.core.table import Table
 
 
-def test_read_example_strips_marker(example_class_list: Path) -> None:
-    t = read_table(example_class_list)
+def test_read_example_strips_marker(example_marks: Path) -> None:
+    t = read_table(example_marks)
     assert t.fake_data is True
-    assert t.columns == ["Forename", "Surname", "Class", "Target"]
+    assert t.columns == ["q1", "q2", "q3", "q4", "q5", "q6"]
     assert len(t) == 10
-    assert t.rows[0][0] == "Ada"
-    assert t.rows[0][3] == 8  # coerced to int
+    assert t.rows[0] == [4, 6, 7, 5, 9, 6]  # coerced to int
 
 
 def test_csv_round_trip_keeps_marker(tmp_path: Path) -> None:
@@ -36,7 +35,7 @@ def test_csv_without_marker(tmp_path: Path) -> None:
 
 
 def test_xlsx_round_trip(tmp_path: Path) -> None:
-    t = Table(["Forename", "Mark"], [["Ada", 9], ["Alan", 10]], fake_data=True)
+    t = Table(["topic", "mark"], [["loops", 9], ["lists", 10]], fake_data=True)
     out = write_table(t, tmp_path / "out.xlsx")
     back = read_table(out)
     assert back == t

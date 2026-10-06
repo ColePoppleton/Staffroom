@@ -22,11 +22,6 @@ def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[P
 
 
 @pytest.fixture
-def example_class_list() -> Path:
-    return EXAMPLES / "class_list.csv"
-
-
-@pytest.fixture
 def example_marks() -> Path:
     return EXAMPLES / "marks_10x.csv"
 

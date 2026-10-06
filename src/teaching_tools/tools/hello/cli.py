@@ -21,9 +21,10 @@ def register(app: typer.Typer) -> None:
     def run(
         source: SourceArg,
         out: Annotated[Path | None, typer.Option("--out", "-o", help="Output folder")] = None,
-        lowercase: Annotated[bool, typer.Option(help="Keep the case of the names")] = False,
+        prefix: Annotated[str, typer.Option(help="Question column prefix")] = "q",
+        max_marks: Annotated[int, typer.Option(help="Paper total; adds a Percent column")] = 0,
     ) -> None:
-        """Add an Initials column to SOURCE and write <name>_with_initials.<ext>."""
+        """Add a Total column to SOURCE and write <name>_totals.<ext>."""
         from teaching_tools.tools.hello import plugin
 
         config = load_config()
@@ -33,7 +34,7 @@ def register(app: typer.Typer) -> None:
             progress=lambda _f, msg: typer.secho(msg, dim=True, err=True),
             log=lambda msg: typer.echo(msg, err=True),
         )
-        options = Options(uppercase=not lowercase)
+        options = Options(prefix=prefix, max_marks=max_marks)
         try:
             result = plugin.run({"source": source, "options": options}, ctx)
         except ToolError as exc:
@@ -45,6 +46,8 @@ def register(app: typer.Typer) -> None:
     def preview(source: SourceArg, rows: int = 10) -> None:
         """Print the first ROWS rows of SOURCE."""
         table = read_table(source)
+        if table.dropped_columns:
+            typer.secho("dropped identifier columns: " + ", ".join(table.dropped_columns), err=True)
         typer.echo(" | ".join(table.columns))
         for row in table.rows[:rows]:
             typer.echo(" | ".join("" if c is None else str(c) for c in row))

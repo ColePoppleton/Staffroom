@@ -9,35 +9,43 @@ from teaching_tools.core.table import Cell, Table
 
 @dataclass
 class Options:
-    forename_column: str = field(default="Forename", metadata={"label": "Forename column"})
-    surname_column: str = field(default="Surname", metadata={"label": "Surname column"})
-    uppercase: bool = field(default=True, metadata={"label": "Uppercase initials"})
-    separator: str = field(
-        default="", metadata={"label": "Separator", "help": "Put between initials, e.g. '.'"}
+    prefix: str = field(
+        default="q", metadata={"label": "Question column prefix", "help": "e.g. q for q1, q2…"}
+    )
+    max_marks: int = field(
+        default=0,
+        metadata={"label": "Paper total", "help": "If > 0, also add a Percent column", "min": 0},
     )
 
 
-def initials(forename: Cell, surname: Cell, options: Options) -> str:
-    """``("Ada", "Lovelace") -> "AL"``; hyphenated and multi-part names
-    contribute one letter per part, so ``"Mary-Jane"`` gives ``"MJ"``."""
-    parts: list[str] = []
-    for name in (forename, surname):
-        for word in str(name or "").replace("-", " ").split():
-            parts.append(word[0])
-    text = options.separator.join(parts)
-    return text.upper() if options.uppercase else text
+def question_columns(columns: list[str], prefix: str) -> list[str]:
+    """Columns named ``<prefix><digits>``, case-insensitive: ``q1``, ``Q12``."""
+    p = prefix.lower()
+    return [c for c in columns if c.lower().startswith(p) and c[len(p) :].isdigit()]
 
 
-def add_initials(table: Table, options: Options | None = None) -> Table:
-    """Return ``table`` with an ``Initials`` column appended.
+def row_total(row: dict[str, Cell], columns: list[str]) -> int | float:
+    total: int | float = 0
+    for c in columns:
+        value = row[c]
+        if isinstance(value, int | float) and not isinstance(value, bool):
+            total += value
+    return total
 
-    Raises ``KeyError`` naming the missing column if the configured forename or
-    surname column is absent.
+
+def add_total(table: Table, options: Options | None = None) -> Table:
+    """Append ``Total`` (and ``Percent`` when ``max_marks`` is set).
+
+    Raises ``ValueError`` if no question columns match the prefix.
     """
     options = options or Options()
-    table.index_of(options.forename_column)
-    table.index_of(options.surname_column)
-    return table.with_column(
-        "Initials",
-        lambda row: initials(row[options.forename_column], row[options.surname_column], options),
-    )
+    qcols = question_columns(table.columns, options.prefix)
+    if not qcols:
+        msg = f"No question columns starting with {options.prefix!r} in {table.columns}"
+        raise ValueError(msg)
+    result = table.with_column("Total", lambda row: row_total(row, qcols))
+    if options.max_marks > 0:
+        result = result.with_column(
+            "Percent", lambda row: round(100 * row_total(row, qcols) / options.max_marks, 1)
+        )
+    return result

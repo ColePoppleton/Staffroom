@@ -2,7 +2,7 @@
 
 Hidden flags make the launcher scriptable for docs and tests::
 
-    tt-gui --tool hello --open examples/class_list.csv --screenshot docs/launcher.png
+    tt-gui --tool hello --open examples/marks_10x.csv --run --screenshot docs/launcher.png
 """
 
 from __future__ import annotations

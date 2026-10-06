@@ -26,7 +26,7 @@ fix:
     uv run ruff check --fix .
     uv run ruff format .
 
-# Run a CLI command, e.g. `just run hello run examples/class_list.csv`
+# Run a CLI command, e.g. `just run hello run examples/marks_10x.csv`
 run *ARGS:
     uv run tt {{ARGS}}
 
@@ -40,8 +40,8 @@ new NAME:
 
 # Render the launcher (hello panel, example loaded, run) to docs/ in both themes
 screenshots:
-    QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/class_list.csv --run --theme dark --screenshot docs/launcher-dark.png
-    QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/class_list.csv --run --theme light --screenshot docs/launcher-light.png
+    QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/marks_10x.csv --run --theme dark --screenshot docs/launcher-dark.png
+    QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/marks_10x.csv --run --theme light --screenshot docs/launcher-light.png
 
 # Everything CI would do
 check: lint test

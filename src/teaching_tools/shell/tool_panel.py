@@ -137,7 +137,13 @@ class ToolPanel(QWidget):
             preview.set_table(None)
             return
         try:
-            preview.set_table(read_table(path))
+            table = read_table(path)
+            preview.set_table(table)
+            if table.dropped_columns:
+                self.results.append_log(
+                    f"Dropped identifier column(s) from {path.name}: "
+                    + ", ".join(table.dropped_columns)
+                )
         except Exception as exc:
             log.warning("could not preview %s: %s", path, exc)
             preview.set_error(f"Could not read {path.name}: {exc}")

@@ -59,7 +59,7 @@ def new_tool(
         raise typer.Exit(1) from None
     for path in written:
         typer.echo(f"created {path.relative_to(tools_dir.parents[2])}")
-    typer.echo(f"\nNext: edit logic.py, then run  tt {name} run examples/class_list.csv")
+    typer.echo(f"\nNext: edit logic.py, then run  tt {name} run examples/marks_10x.csv")
 
 
 @app.command("version")

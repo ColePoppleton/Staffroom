@@ -190,9 +190,9 @@ from teaching_tools.tools.$name.logic import Options, process
 
 
 def test_process_returns_table() -> None:
-    table = Table(["Forename", "Surname"], [["Ada", "Lovelace"]])
+    table = Table(["q1", "q2"], [[3, 4]])
     result = process(table, Options())
-    assert result.columns[:2] == ["Forename", "Surname"]
+    assert result.columns[:2] == ["q1", "q2"]
     assert len(result) == 1
 """,
 }

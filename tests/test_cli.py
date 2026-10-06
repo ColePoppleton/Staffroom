@@ -11,6 +11,7 @@ def test_list_shows_hello() -> None:
     assert result.exit_code == 0, result.output
     assert result.output.startswith("hello")
     assert "reference tool" in result.output
+    assert "Total" in result.output
 
 
 def test_version() -> None:
