@@ -115,6 +115,8 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
   Widgets opt in with object names and `role` properties; no colours in
   widget code.
 * Keep tools small. `hello` is the reference: read it before writing a tool.
+  `marks` shows presets, charts and aggregate-only saving; `classroom`
+  shows row actions and the Resource Library.
 * Screenshots for docs: `just screenshots` (renders offscreen via `tt-gui
   --screenshot`).
 * Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db).

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
@@ -157,6 +157,12 @@ class ToolPanel(QWidget):
                 grid = EditableTableWidget(spec)
                 card.add(grid)
                 self.grids[spec.key] = grid
+                if spec.preset_action:
+                    grid.preset_saved.connect(
+                        lambda name, table, action=spec.preset_action: self._save_preset(
+                            action, name, table
+                        )
+                    )
             else:  # pragma: no cover - exhaustive over InputWidget
                 msg = f"unknown input widget {spec!r}"
                 raise TypeError(msg)
@@ -265,6 +271,22 @@ class ToolPanel(QWidget):
         )
         self._launch(worker, quiet=name in self.spec.refresh_actions())
 
+    def _save_preset(self, action: str, name: str, table: Any) -> None:
+        """Persist a preset through the plugin, synchronously (it is a config write)."""
+        if not isinstance(self.plugin, SupportsActions):
+            return
+        ctx = RunContext(
+            config=self.config,
+            output_dir=self.output_dir(self.collect_inputs()),
+            resources=self.resources,
+        )
+        try:
+            result = self.plugin.act(action, {"name": name, "table": table}, ctx)
+        except Exception as exc:
+            self.run_bar.set_status(f"Could not save preset: {exc}", "danger")
+            return
+        self.run_bar.set_status(result.summary or f"Saved preset {name}", "success")
+
     def refresh_tables(self) -> None:
         """Run the refresh actions synchronously; they are cheap listings."""
         if not isinstance(self.plugin, SupportsActions):
@@ -330,10 +352,22 @@ class ToolPanel(QWidget):
         ]
         if shown:
             first = shown[0]
-            # Let the layout place the freshly shown card before scrolling to it.
-            QTimer.singleShot(
-                0, lambda: self.scroll_area.verticalScrollBar().setValue(first.y() - 12)
-            )
+            self.content_layout.activate()
+
+            def scroll_to_results() -> None:
+                content = self.scroll_area.widget()
+                if content is None:
+                    return
+                top = first.mapTo(content, QPoint(0, 0)).y()
+                self.scroll_area.verticalScrollBar().setValue(max(top - 12, 0))
+
+            # The cards were just shown; give the layout a tick to place them.
+            # A parented timer dies with the panel, so it can never fire on a
+            # destroyed widget (which pytest-qt reports as an error).
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(scroll_to_results)
+            timer.start(50)
         log.info("%s finished: %s", self.plugin.name, result.summary)
         self._last_ok = True
 

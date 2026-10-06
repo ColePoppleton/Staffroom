@@ -8,8 +8,10 @@ from typing import Any
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPersistentModelIndex, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QPushButton,
     QStackedLayout,
@@ -18,7 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from teaching_tools.core.panel import Column, EditableTable, TablePreview
+from teaching_tools.core.panel import Column, EditableTable, PresetRows, TablePreview
 from teaching_tools.core.table import Cell, Row, Table, coerce
 
 Index = QModelIndex | QPersistentModelIndex
@@ -213,9 +215,10 @@ class TablePreviewWidget(QWidget):
 
 
 class EditableTableWidget(QWidget):
-    """A small editable grid with add/remove row buttons."""
+    """A small editable grid with add/remove row buttons and optional presets."""
 
     changed = Signal()
+    preset_saved = Signal(str, object)  # name, Table
 
     def __init__(self, spec: EditableTable, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -236,6 +239,27 @@ class EditableTableWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+        self.presets: dict[str, PresetRows] = {}
+        if spec.presets:
+            preset_row = QHBoxLayout()
+            preset_row.setSpacing(8)
+            label = QLabel("Preset")
+            label.setProperty("role", "muted")
+            self.preset_combo = QComboBox()
+            for name, preset_rows in spec.presets:
+                self.presets[name] = preset_rows
+                self.preset_combo.addItem(name)
+            self.apply_button = QPushButton("Apply")
+            self.apply_button.clicked.connect(self.apply_preset)
+            self.save_button = QPushButton("Save as preset…")
+            self.save_button.setProperty("role", "ghost")
+            self.save_button.setVisible(spec.preset_action is not None)
+            self.save_button.clicked.connect(self.save_preset)
+            preset_row.addWidget(label)
+            preset_row.addWidget(self.preset_combo, 1)
+            preset_row.addWidget(self.apply_button)
+            preset_row.addWidget(self.save_button)
+            layout.addLayout(preset_row)
         layout.addWidget(self.view)
         if spec.can_add_rows:
             buttons = QHBoxLayout()
@@ -263,3 +287,29 @@ class EditableTableWidget(QWidget):
 
     def value(self) -> Table:
         return self.model.table()
+
+    def set_rows(self, rows: list[Row]) -> None:
+        columns = [c.name for c in self.spec.columns]
+        self.model.set_table(Table(columns, [list(r) for r in rows]))
+        self.view.fit_rows(8)
+        self.changed.emit()
+
+    def apply_preset(self, name: str | None = None) -> None:
+        name = name or self.preset_combo.currentText()
+        rows = self.presets.get(name)
+        if rows is not None:
+            self.set_rows([list(r) for r in rows])
+
+    def add_preset(self, name: str, rows: list[Row]) -> None:
+        self.presets[name] = tuple(tuple(r) for r in rows)
+        if self.preset_combo.findText(name) < 0:
+            self.preset_combo.addItem(name)
+        self.preset_combo.setCurrentText(name)
+
+    def save_preset(self) -> None:
+        name, ok = QInputDialog.getText(self, "Save preset", "Preset name:")
+        name = name.strip()
+        if ok and name:
+            table = self.value()
+            self.add_preset(name, table.rows)
+            self.preset_saved.emit(name, table)

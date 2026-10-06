@@ -1,0 +1,13 @@
+# FAKE DATA - invented raw marks for a 40-mark paper; first row flagged MAX gives the max per question
+row,q1,q2,q3,q4,q5,q6
+MAX,4,6,8,6,10,6
+1,4,6,7,5,9,6
+2,4,6,8,6,10,6
+3,3,5,6,4,7,5
+4,4,4,5,5,8,4
+5,4,6,8,5,9,5
+6,2,3,4,3,5,3
+7,3,5,6,5,8,4
+8,2,2,3,2,4,2
+9,4,5,7,6,9,5
+10,3,4,4,3,6,3

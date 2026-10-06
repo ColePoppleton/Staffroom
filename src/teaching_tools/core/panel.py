@@ -104,9 +104,17 @@ class Column:
     width: int | None = None
 
 
+PresetRows = tuple[tuple[Cell, ...], ...]
+
+
 @dataclass(frozen=True)
 class EditableTable:
-    """A small grid the user can edit, e.g. grade boundaries."""
+    """A small grid the user can edit, e.g. grade boundaries.
+
+    ``presets`` are named row sets the user can apply from a dropdown. If
+    ``preset_action`` is set, "Save as preset" calls
+    ``plugin.act(preset_action, {"name": str, "table": Table}, ctx)`` so the
+    plugin can persist it (usually in ``config.tool(name)``)."""
 
     key: str
     label: str
@@ -114,6 +122,8 @@ class EditableTable:
     rows: tuple[tuple[Cell, ...], ...] = ()
     can_add_rows: bool = True
     help: str = ""
+    presets: tuple[tuple[str, PresetRows], ...] = ()
+    preset_action: str | None = None
 
 
 @dataclass(frozen=True)

@@ -111,6 +111,14 @@ just lint
 The boundary tests fail if the tool imports Qt or if `logic.py` does I/O.
 The pre-commit hook refuses any CSV/XLSX without a `# FAKE DATA` first line.
 
+## Presets for an editable table
+
+`EditableTable(..., presets=(("OCR J277", rows), ...), preset_action="save_preset")`
+shows a preset dropdown with Apply and Save as preset. Saving calls
+`plugin.act("save_preset", {"name": str, "table": Table}, ctx)`; persist it
+in `ctx.config.tool("<tool>")` and build the `presets` tuple from config in
+`panel_spec()` so it is there next launch. `tools/marks` is the reference.
+
 ## Row actions (tables with buttons)
 
 Declare an `ActionTable(key, label, actions=(Action("diff", "Diff"), ...),

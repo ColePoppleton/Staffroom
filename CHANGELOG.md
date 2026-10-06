@@ -1,5 +1,27 @@
 # Changelog
 
+## Phase 2 — marks (2026-10-06)
+
+- `tools/marks`: raw marks per question (q1..qn, one row per script, no
+  identifiers) → per-script grades (view only), grade distribution table
+  and bar chart, facility index and discrimination (top third vs bottom
+  third) per question, worst-N questions to reteach.
+- Max marks from a row flagged `MAX`, from the Max marks option, or (with a
+  warning) the highest mark seen per question.
+- Grade boundaries: editable grid as % of paper or raw marks, with built-in
+  starting points for OCR J277, AQA 8525 and A-level, and "Save as preset"
+  persisted to `config.tool("marks")["presets"]`.
+- Saved outputs are aggregates only: `<stem>_distribution.csv`,
+  `<stem>_questions.csv`, `<stem>_distribution.png`. Nothing per script is
+  written; identifier columns are dropped and logged before analysis.
+- CLI: `tt marks run <file> [--preset] [--unit percent|raw] [--max] [--worst]
+  [--out]`, `tt marks presets`.
+- Widget kit: `EditableTable` gained presets (dropdown, Apply, Save as
+  preset backed by a plugin action). `ImageView` now scales to the card
+  width instead of forcing the panel to the image's size.
+- Colour tokens moved to `core/theme_tokens.py` so charts can use the app
+  palette without a tool touching Qt. matplotlib (Agg) added.
+
 ## Phase 1b — classroom (2026-10-06)
 
 - Library picker rebuilt as a palette after the first version proved
