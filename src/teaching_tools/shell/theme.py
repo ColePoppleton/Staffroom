@@ -34,6 +34,10 @@ class Palette:
     success: str
     selection: str
     scrollbar: str
+    code_string: str
+    code_number: str
+    code_builtin: str
+    code_name: str
 
 
 DARK = Palette(
@@ -55,6 +59,10 @@ DARK = Palette(
     success="#3fcf8e",
     selection="#2a3658",
     scrollbar="#2c3240",
+    code_string="#8fd19e",
+    code_number="#f2b86b",
+    code_builtin="#c99bff",
+    code_name="#7fd6e6",
 )
 
 LIGHT = Palette(
@@ -76,6 +84,10 @@ LIGHT = Palette(
     success="#1f9d6a",
     selection="#dbe3ff",
     scrollbar="#d5d9e2",
+    code_string="#1f7a3a",
+    code_number="#b4530a",
+    code_builtin="#6f3fd6",
+    code_name="#0b7285",
 )
 
 PALETTES: dict[str, Palette] = {"dark": DARK, "light": LIGHT}
@@ -99,6 +111,7 @@ def stylesheet(theme: Theme) -> str:
     p = palette(theme)
     check = asset("check.svg")
     chevron = asset(f"chevron-{'light' if theme == 'light' else 'dark'}.svg")
+    chevron_right = asset(f"chevron-right-{'light' if theme == 'light' else 'dark'}.svg")
     return f"""
 * {{
     font-family: {FONT_FAMILY};
@@ -161,6 +174,45 @@ QPushButton#SidebarButton {{
 }}
 QPushButton#SidebarButton:hover {{ background: {p.surface}; color: {p.text}; }}
 QPushButton#SidebarButton:checked {{ background: {p.accent_soft}; color: {p.accent}; }}
+QWidget#SidebarTabs {{
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+}}
+QPushButton#SidebarTab {{
+    background: transparent; border: none; border-radius: 5px; padding: 5px 10px;
+    color: {p.text_muted}; font-weight: 600;
+}}
+QPushButton#SidebarTab:checked {{ background: {p.surface}; color: {p.text}; }}
+QPushButton#SidebarTab:hover:!checked {{ color: {p.text}; }}
+QTreeView#ResourceTree {{
+    background: transparent; border: none; padding: 2px 0px;
+    show-decoration-selected: 0;
+}}
+QTreeView#ResourceTree::item {{ padding: 4px 4px; border-radius: 5px; }}
+QTreeView#ResourceTree::item:hover {{ background: {p.surface}; }}
+QTreeView#ResourceTree::item:selected {{ background: {p.accent_soft}; color: {p.accent}; }}
+QTreeView#ResourceTree::branch {{ background: transparent; }}
+QTreeView#ResourceTree::branch:has-children:!has-siblings:closed,
+QTreeView#ResourceTree::branch:closed:has-children:has-siblings {{
+    image: url("{chevron_right}");
+}}
+QTreeView#ResourceTree::branch:open:has-children:!has-siblings,
+QTreeView#ResourceTree::branch:open:has-children:has-siblings {{
+    image: url("{chevron}");
+}}
+QListWidget#ResultList {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: {RADIUS}px; padding: 6px;
+}}
+QListWidget#ResultList::item {{ border-radius: {RADIUS_SM}px; margin: 2px 0px; }}
+QListWidget#ResultList::item:hover {{ background: {p.surface_alt}; }}
+QListWidget#ResultList::item:selected {{ background: {p.accent_soft}; }}
+QPlainTextEdit#CodeView {{
+    font-family: {MONO_FAMILY}; font-size: 12.5px; color: {p.text};
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+}}
+QPlainTextEdit#TextView {{
+    font-size: 13px; color: {p.text};
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+}}
 
 /* ---------------------------------------------------------- cards */
 QFrame#Card {{

@@ -7,14 +7,33 @@ stderr. Both also write to a rotating file under the config directory.
 from __future__ import annotations
 
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import TextIO
 
 from teaching_tools.core import paths
 
 ROOT_LOGGER = "teaching_tools"
 FORMAT = "%(asctime)s %(levelname)-7s %(name)s: %(message)s"
 DATEFMT = "%H:%M:%S"
+
+
+class _StderrHandler(logging.StreamHandler):  # type: ignore[type-arg,unused-ignore]
+    """Writes to whatever ``sys.stderr`` is *now*. The plain StreamHandler
+    captures the stream once, which breaks under test runners that swap
+    and close stderr (typer's CliRunner)."""
+
+    def __init__(self) -> None:
+        super().__init__(sys.stderr)
+
+    @property
+    def stream(self) -> TextIO:
+        return sys.stderr
+
+    @stream.setter
+    def stream(self, _value: TextIO) -> None:
+        pass
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -33,7 +52,7 @@ def setup_logging(
         handler.close()
     formatter = logging.Formatter(FORMAT, DATEFMT)
     if stderr:
-        sh = logging.StreamHandler()
+        sh = _StderrHandler()
         sh.setFormatter(formatter)
         logger.addHandler(sh)
     log_file = log_file or paths.log_file()

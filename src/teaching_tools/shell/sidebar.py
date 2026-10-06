@@ -4,16 +4,19 @@ from __future__ import annotations
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from teaching_tools.core.plugin import ToolPlugin
+from teaching_tools.shell.library.sidebar_panel import ResourcesPanel
 
 SIDEBAR_WIDTH = 248
 
@@ -49,6 +52,7 @@ class Sidebar(QWidget):
     settings_requested = Signal()
     log_toggled = Signal(bool)
     theme_toggle_requested = Signal()
+    mode_changed = Signal(str)  # "tools" | "resources"
 
     def __init__(self, plugins: tuple[ToolPlugin, ...], parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -70,10 +74,39 @@ class Sidebar(QWidget):
         brand_layout.addWidget(sub)
         layout.addWidget(brand)
 
+        tabs = QWidget()
+        tabs.setObjectName("SidebarTabs")
+        tabs_layout = QHBoxLayout(tabs)
+        tabs_layout.setContentsMargins(3, 3, 3, 3)
+        tabs_layout.setSpacing(2)
+        self.tools_tab = QPushButton("Tools")
+        self.resources_tab = QPushButton("Resources")
+        self.tab_group = QButtonGroup(self)
+        for i, b in enumerate((self.tools_tab, self.resources_tab)):
+            b.setObjectName("SidebarTab")
+            b.setCheckable(True)
+            b.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.tab_group.addButton(b, i)
+            tabs_layout.addWidget(b, 1)
+        self.tools_tab.setChecked(True)
+        self.tab_group.idClicked.connect(self._on_tab)
+        tabs_wrap = QWidget()
+        wrap_layout = QVBoxLayout(tabs_wrap)
+        wrap_layout.setContentsMargins(12, 0, 12, 8)
+        wrap_layout.addWidget(tabs)
+        layout.addWidget(tabs_wrap)
+
+        self.pages = QStackedWidget()
+        layout.addWidget(self.pages, 1)
+
+        tools_page = QWidget()
+        tools_layout = QVBoxLayout(tools_page)
+        tools_layout.setContentsMargins(0, 0, 0, 0)
+        tools_layout.setSpacing(0)
         section = QLabel("TOOLS")
         section.setProperty("role", "faint")
         section.setContentsMargins(20, 6, 20, 2)
-        layout.addWidget(section)
+        tools_layout.addWidget(section)
 
         self.list = QListWidget()
         self.list.setObjectName("ToolList")
@@ -87,7 +120,11 @@ class Sidebar(QWidget):
             self.list.addItem(item)
             self.list.setItemWidget(item, ToolItem(plugin))
         self.list.currentItemChanged.connect(self._on_current_changed)
-        layout.addWidget(self.list, 1)
+        tools_layout.addWidget(self.list, 1)
+        self.pages.addWidget(tools_page)
+
+        self.resources = ResourcesPanel()
+        self.pages.addWidget(self.resources)
 
         bottom = QWidget()
         bottom_layout = QVBoxLayout(bottom)
@@ -114,6 +151,20 @@ class Sidebar(QWidget):
             if item.data(Qt.ItemDataRole.UserRole) == name:
                 self.list.setCurrentItem(item)
                 return
+
+    def mode(self) -> str:
+        return "resources" if self.resources_tab.isChecked() else "tools"
+
+    def set_mode(self, mode: str) -> None:
+        button = self.resources_tab if mode == "resources" else self.tools_tab
+        if not button.isChecked():
+            button.setChecked(True)
+        self._on_tab(self.tab_group.id(button))
+
+    def _on_tab(self, index: int) -> None:
+        self.pages.setCurrentIndex(index)
+        self.settings_button.setChecked(False)
+        self.mode_changed.emit("resources" if index == 1 else "tools")
 
     def set_theme_label(self, theme: str) -> None:
         self.theme_button.setText("Light theme" if theme == "dark" else "Dark theme")

@@ -18,7 +18,8 @@ from teaching_tools.shell.tool_panel import ToolPanel
 def window(qtbot: QtBot, tmp_path: Path) -> MainWindow:
     config = load_config()
     config.general.output_dir = str(tmp_path / "out")
-    win = MainWindow(config)
+    config.general.resources_root = str(tmp_path / "resources")  # never the real folder
+    win = MainWindow(config, auto_index=False)
     qtbot.addWidget(win)
     win.show()
     return win

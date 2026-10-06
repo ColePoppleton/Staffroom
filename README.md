@@ -8,6 +8,11 @@ sidebar; each tool is a plugin that owns its logic and a declarative panel.
     just test       # run tests
     just gui        # open the launcher
     uv run tt list  # list tools from the CLI
+    uv run tt library index && uv run tt library search while
+
+The launcher has two sidebar roots: **Tools** (plugins) and **Resources**
+(the Resource Library: search, preview and tag the teaching resources
+folder; Office files open externally and are never parsed).
 
 See `CLAUDE.md` for the conventions and `docs/adding-a-tool.md` for how to add
 a tool.

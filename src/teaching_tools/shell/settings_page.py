@@ -23,6 +23,7 @@ from teaching_tools.shell.widgets import Card, PathPickerWidget, make_label
 
 class SettingsPage(QWidget):
     theme_changed = Signal(str)
+    resources_root_changed = Signal(str)
 
     def __init__(self, config: Config, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -66,6 +67,19 @@ class SettingsPage(QWidget):
         output.add(self.output_dir)
         layout.addWidget(output)
 
+        resources = Card(
+            "Resources folder",
+            "The folder the Resource Library indexes. It is only ever read; tags live in a "
+            "sidecar file inside it. Changing it triggers a full re-index.",
+        )
+        self.resources_root = PathPickerWidget(
+            FolderPicker(key="resources_root", label="Resources folder")
+        )
+        self.resources_root.edit.setText(config.general.resources_root)
+        self.resources_root.changed.connect(self._on_resources_root)
+        resources.add(self.resources_root)
+        layout.addWidget(resources)
+
         logging_card = Card("Logging")
         log_form = QFormLayout()
         log_form.setHorizontalSpacing(16)
@@ -102,6 +116,13 @@ class SettingsPage(QWidget):
             self.config.general.theme = theme  # type: ignore[assignment]
             self.config.save()
             self.theme_changed.emit(theme)
+
+    def _on_resources_root(self, path: object) -> None:
+        text = str(path) if path else ""
+        if text and text != self.config.general.resources_root:
+            self.config.general.resources_root = text
+            self.config.save()
+            self.resources_root_changed.emit(text)
 
     def _on_output_dir(self, path: object) -> None:
         self.config.general.output_dir = str(path) if path else ""

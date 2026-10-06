@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWi
 
 from teaching_tools.core.config import Config
 from teaching_tools.core.csvio import read_table
+from teaching_tools.core.library.service import ResourceService
 from teaching_tools.core.log import get_logger
 from teaching_tools.core.panel import (
     EditableTable,
@@ -40,10 +41,18 @@ class ToolPanel(QWidget):
     run_started = Signal()
     run_finished = Signal(bool)  # ok
 
-    def __init__(self, plugin: ToolPlugin, config: Config, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        plugin: ToolPlugin,
+        config: Config,
+        parent: QWidget | None = None,
+        *,
+        resources: ResourceService | None = None,
+    ) -> None:
         super().__init__(parent)
         self.plugin = plugin
         self.config = config
+        self.resources = resources
         self.spec: PanelSpec = plugin.panel_spec()
         self.pickers: dict[str, PathPickerWidget] = {}
         self.forms: dict[str, OptionsFormWidget] = {}
@@ -51,6 +60,7 @@ class ToolPanel(QWidget):
         self.previews: dict[str, TablePreviewWidget] = {}
         self.worker: RunWorker | None = None
         self.last_result: RunResult | None = None
+        self._last_ok = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -190,14 +200,25 @@ class ToolPanel(QWidget):
         self.run_bar.set_running(True)
         self.run_started.emit()
         log.info("running %s", self.plugin.name)
-        worker = RunWorker(self.plugin, inputs, self.config, self.output_dir(inputs))
+        worker = RunWorker(
+            self.plugin, inputs, self.config, self.output_dir(inputs), resources=self.resources
+        )
         worker.progress.connect(self.run_bar.set_progress)
         worker.log.connect(self.results.append_log)
         worker.succeeded.connect(self._on_success)
         worker.failed.connect(self._on_failure)
-        worker.finished.connect(lambda: self.run_bar.set_running(False))
+        worker.finished.connect(self._on_worker_finished)
         self.worker = worker
         worker.start()
+
+    def _on_worker_finished(self) -> None:
+        """Runs on the GUI thread once the worker's run() has returned. Waiting
+        here guarantees the QThread is fully stopped before anyone (tests,
+        window teardown) can destroy it."""
+        if self.worker is not None:
+            self.worker.wait()
+        self.run_bar.set_running(False)
+        self.run_finished.emit(self._last_ok)
 
     def _on_success(self, result: RunResult) -> None:
         self.last_result = result
@@ -216,7 +237,7 @@ class ToolPanel(QWidget):
                 0, lambda: self.scroll_area.verticalScrollBar().setValue(first.y() - 12)
             )
         log.info("%s finished: %s", self.plugin.name, result.summary)
-        self.run_finished.emit(True)
+        self._last_ok = True
 
     def _on_failure(self, message: str, is_bug: bool) -> None:
         self.last_result = None
@@ -224,4 +245,4 @@ class ToolPanel(QWidget):
         self.run_bar.set_status(headline, "danger")
         self.results.append_log(message)
         (log.error if is_bug else log.warning)("%s failed: %s", self.plugin.name, headline)
-        self.run_finished.emit(False)
+        self._last_ok = False

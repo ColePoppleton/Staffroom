@@ -90,6 +90,11 @@ def run(self, inputs, ctx):
 ```
 
 `ctx.output_dir` is the configured output folder, or the input's folder.
+`ctx.resources` is the Resource Library (`None` under a bare CLI run): use
+`ctx.resources.search("while")` or `ctx.resources.pick(".py")` to let the
+teacher choose a file from the indexed resources instead of a raw file
+dialog, and `ctx.resources.open_externally(path)` to hand a file to its
+native app. Never read Office files yourself.
 
 ## 5. CLI
 

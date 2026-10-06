@@ -16,6 +16,7 @@ from teaching_tools.core.config import load_config
 from teaching_tools.core.discovery import discover_plugins
 from teaching_tools.core.log import setup_logging
 from teaching_tools.core.scaffold import scaffold_tool
+from teaching_tools.library_cli import library_app
 
 app = typer.Typer(
     name="tt",
@@ -66,6 +67,9 @@ def new_tool(
 def version() -> None:
     """Print the version."""
     typer.echo(__version__)
+
+
+app.add_typer(library_app, name="library")
 
 
 def _mount_plugins() -> None:

@@ -31,7 +31,10 @@ class QtLogHandler(logging.Handler):
         self.setFormatter(logging.Formatter(FORMAT, DATEFMT))
 
     def emit(self, record: logging.LogRecord) -> None:
-        self.bridge.line.emit(self.format(record))
+        try:
+            self.bridge.line.emit(self.format(record))
+        except RuntimeError:  # the drawer's QObject is already gone
+            logging.getLogger(ROOT_LOGGER).removeHandler(self)
 
 
 class LogDrawer(QDockWidget):
@@ -63,6 +66,8 @@ class LogDrawer(QDockWidget):
         self.handler = QtLogHandler()
         self.handler.bridge.line.connect(self.view.appendPlainText)
         logging.getLogger(ROOT_LOGGER).addHandler(self.handler)
+        handler = self.handler
+        self.destroyed.connect(lambda: logging.getLogger(ROOT_LOGGER).removeHandler(handler))
         self.hide()
 
     def closeEvent(self, event: object) -> None:  # noqa: N802

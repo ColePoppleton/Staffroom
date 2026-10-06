@@ -3,6 +3,7 @@
 Hidden flags make the launcher scriptable for docs and tests::
 
     tt-gui --tool hello --open examples/marks_10x.csv --run --screenshot docs/launcher.png
+    tt-gui --resource "Python/OCR Booklet/9a.py" --screenshot docs/library.png
 """
 
 from __future__ import annotations
@@ -27,6 +28,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="tt-gui", description="Teaching Tools launcher")
     parser.add_argument("--tool", help="tool to open on start")
     parser.add_argument("--open", type=Path, help="file to load into the tool's first file picker")
+    parser.add_argument(
+        "--resource", help="open the Resources view on this path (relative to root)"
+    )
     parser.add_argument("--theme", choices=["dark", "light"], help="override the saved theme")
     parser.add_argument("--run", action="store_true", help="run the tool before --screenshot")
     parser.add_argument("--screenshot", type=Path, help="render, save a PNG, and exit")
@@ -49,6 +53,10 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         key = panel.first_file_key()
         if key:
             panel.set_input_path(key, args.open.resolve())
+    if args.resource is not None:
+        window.sidebar.set_mode("resources")
+        if args.resource:
+            window.sidebar.resources.select(args.resource)
     return window
 
 

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 from teaching_tools.core.config import Config
+from teaching_tools.core.library.service import ResourceService
 from teaching_tools.core.panel import PanelSpec
 from teaching_tools.core.table import Table
 
@@ -43,6 +44,7 @@ class RunContext:
     output_dir: Path
     progress: Callable[[float, str], None] = lambda _f, _m: None
     log: Callable[[str], None] = lambda _m: None
+    resources: ResourceService | None = None  # the Resource Library, when the host has one
 
 
 @runtime_checkable

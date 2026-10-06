@@ -24,6 +24,9 @@ class GeneralSettings:
     output_dir: str = ""  # empty means "next to the input file"
     log_level: str = "INFO"
     last_tool: str = ""
+    resources_root: str = "~/Desktop/Resources"
+    show_hidden: bool = False
+    sidebar_mode: str = "tools"
 
 
 @dataclass
