@@ -111,6 +111,16 @@ just lint
 The boundary tests fail if the tool imports Qt or if `logic.py` does I/O.
 The pre-commit hook refuses any CSV/XLSX without a `# FAKE DATA` first line.
 
+## Row actions (tables with buttons)
+
+Declare an `ActionTable(key, label, actions=(Action("diff", "Diff"), ...),
+refresh_action="refresh")` among the outputs and give the plugin an
+`act(name, row, ctx) -> RunResult` method. The shell calls
+`act("refresh", {}, ctx)` when the panel is shown and after every run or
+action, and `act("diff", row, ctx)` when a row is selected and the button
+pressed. Put the result in `RunResult.texts` for a `TextView`, or return the
+refreshed table under the same key. `tools/classroom` is the reference.
+
 ## If the widget you need does not exist
 
 Do not build it in the tool. Add a dataclass to `core/panel.py`, a widget to

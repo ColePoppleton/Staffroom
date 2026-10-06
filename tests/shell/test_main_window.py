@@ -22,6 +22,7 @@ def window(qtbot: QtBot, tmp_path: Path) -> MainWindow:
     win = MainWindow(config, auto_index=False)
     qtbot.addWidget(win)
     win.show()
+    win.sidebar.select("hello")
     return win
 
 
@@ -48,7 +49,7 @@ def test_run_requires_a_file(window: MainWindow) -> None:
     panel = window.panel_for("hello")
     panel.start_run()
     assert panel.worker is None
-    assert "Choose" in panel.run_bar.status.text()
+    assert "Fill in" in panel.run_bar.status.text()
 
 
 def test_run_hello_end_to_end(

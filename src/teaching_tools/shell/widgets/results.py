@@ -2,19 +2,33 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QAbstractItemView, QLabel, QPlainTextEdit, QVBoxLayout, QWidget
 
-from teaching_tools.core.panel import ImageView, LogArea, OutputWidget, ResultsTable
+from teaching_tools.core.panel import (
+    ActionTable,
+    ImageView,
+    LogArea,
+    OutputWidget,
+    ResultsTable,
+    TextView,
+)
 from teaching_tools.core.plugin import RunResult
+from teaching_tools.shell.widgets.action_table import ActionTableWidget
 from teaching_tools.shell.widgets.card import Card
 from teaching_tools.shell.widgets.image_view import ImageViewWidget
 from teaching_tools.shell.widgets.table_view import TableModel, TableWidget
+from teaching_tools.shell.widgets.text_view import TextViewWidget
 
 
 class ResultsArea(QWidget):
+    action_requested = Signal(str, object)  # from any ActionTable: name, row dict
+
     def __init__(self, outputs: tuple[OutputWidget, ...], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.tables: dict[str, tuple[TableModel, TableWidget, QLabel]] = {}
+        self.action_tables: dict[str, ActionTableWidget] = {}
+        self.text_views: dict[str, TextViewWidget] = {}
         self.images: dict[str, ImageViewWidget] = {}
         self.log_view: QPlainTextEdit | None = None
         self.cards: dict[str, Card] = {}
@@ -35,6 +49,15 @@ class ResultsArea(QWidget):
                 card.add(caption)
                 self.tables[spec.key] = (model, view, caption)
                 card.hide()  # shown once there is a result
+            elif isinstance(spec, ActionTable):
+                widget = ActionTableWidget(spec)
+                widget.action_requested.connect(self.action_requested.emit)
+                card.add(widget)
+                self.action_tables[spec.key] = widget
+            elif isinstance(spec, TextView):
+                text_view = TextViewWidget(spec)
+                card.add(text_view)
+                self.text_views[spec.key] = text_view
             elif isinstance(spec, ImageView):
                 image = ImageViewWidget()
                 card.add(image)
@@ -65,6 +88,14 @@ class ResultsArea(QWidget):
             self.log_view.appendPlainText(line)
 
     def apply(self, result: RunResult) -> None:
+        for key, widget in self.action_tables.items():
+            table = result.tables.get(key)
+            if table is not None:
+                widget.set_table(table)
+        for key, text_view in self.text_views.items():
+            text = result.texts.get(key)
+            if text is not None:
+                text_view.set_text(text)
         for key, (model, view, caption) in self.tables.items():
             table = result.tables.get(key)
             if table is None:

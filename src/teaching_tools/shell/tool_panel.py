@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from teaching_tools.core.config import Config
@@ -18,18 +19,22 @@ from teaching_tools.core.panel import (
     FolderPicker,
     OptionsForm,
     PanelSpec,
+    ResourcePicker,
     TablePreview,
+    TextField,
 )
 from teaching_tools.core.paths import default_output_dir
-from teaching_tools.core.plugin import RunResult, ToolPlugin
+from teaching_tools.core.plugin import RunContext, RunResult, SupportsActions, ToolPlugin
 from teaching_tools.shell.widgets import (
     Card,
     EditableTableWidget,
     OptionsFormWidget,
     PathPickerWidget,
+    ResourcePickerWidget,
     ResultsArea,
     RunBar,
     TablePreviewWidget,
+    TextFieldWidget,
     make_label,
 )
 from teaching_tools.shell.worker import RunWorker
@@ -55,6 +60,10 @@ class ToolPanel(QWidget):
         self.resources = resources
         self.spec: PanelSpec = plugin.panel_spec()
         self.pickers: dict[str, PathPickerWidget] = {}
+        self.resource_pickers: dict[str, ResourcePickerWidget] = {}
+        self.text_fields: dict[str, TextFieldWidget] = {}
+        self._refreshed = False
+        self._quiet = False
         self.forms: dict[str, OptionsFormWidget] = {}
         self.grids: dict[str, EditableTableWidget] = {}
         self.previews: dict[str, TablePreviewWidget] = {}
@@ -81,6 +90,7 @@ class ToolPanel(QWidget):
         self._build_header()
         self._build_inputs()
         self.results = ResultsArea(self.spec.outputs)
+        self.results.action_requested.connect(self.start_action)
         self.content_layout.addWidget(self.results)
         self.content_layout.addStretch(1)
 
@@ -119,6 +129,16 @@ class ToolPanel(QWidget):
                 picker = PathPickerWidget(spec)
                 card.add(picker)
                 self.pickers[spec.key] = picker
+            elif isinstance(spec, ResourcePicker):
+                card = Card(spec.label, spec.help)
+                rpicker = ResourcePickerWidget(spec, self.resources)
+                card.add(rpicker)
+                self.resource_pickers[spec.key] = rpicker
+            elif isinstance(spec, TextField):
+                card = Card(spec.label, spec.help)
+                field = TextFieldWidget(spec)
+                card.add(field)
+                self.text_fields[spec.key] = field
             elif isinstance(spec, TablePreview):
                 card = Card(spec.label)
                 preview = TablePreviewWidget(spec)
@@ -163,6 +183,10 @@ class ToolPanel(QWidget):
         values: dict[str, Any] = {}
         for key, picker in self.pickers.items():
             values[key] = picker.value()
+        for key, rpicker in self.resource_pickers.items():
+            values[key] = rpicker.value()
+        for key, field in self.text_fields.items():
+            values[key] = field.value()
         for key, form in self.forms.items():
             values[key] = form.value()
         for key, grid in self.grids.items():
@@ -170,13 +194,35 @@ class ToolPanel(QWidget):
         return values
 
     def set_input_path(self, key: str, path: Path | None) -> None:
-        self.pickers[key].set_path(path)
+        if key in self.resource_pickers:
+            self.resource_pickers[key].set_path(path)
+        else:
+            self.pickers[key].set_path(path)
+
+    def set_text(self, key: str, text: str) -> None:
+        self.text_fields[key].set_value(text)
+
+    def showEvent(self, event: QShowEvent) -> None:  # noqa: N802
+        super().showEvent(event)
+        if not self._refreshed:
+            self._refreshed = True
+            self.refresh_tables()
 
     def first_file_key(self) -> str | None:
         for spec in self.spec.inputs:
-            if isinstance(spec, FilePicker):
+            if isinstance(spec, FilePicker | ResourcePicker):
                 return spec.key
         return None
+
+    def missing_inputs(self, inputs: dict[str, Any]) -> list[str]:
+        missing: list[str] = []
+        for s in self.spec.inputs:
+            if isinstance(s, FilePicker | FolderPicker | ResourcePicker) and s.required:
+                if inputs.get(s.key) is None:
+                    missing.append(s.label)
+            elif isinstance(s, TextField) and s.required and not inputs.get(s.key):
+                missing.append(s.label)
+        return missing
 
     def output_dir(self, inputs: dict[str, Any]) -> Path:
         first = self.first_file_key()
@@ -188,21 +234,58 @@ class ToolPanel(QWidget):
         if self.worker is not None and self.worker.isRunning():
             return
         inputs = self.collect_inputs()
-        missing = [
-            s.label
-            for s in self.spec.inputs
-            if isinstance(s, FilePicker | FolderPicker) and s.required and inputs.get(s.key) is None
-        ]
+        missing = self.missing_inputs(inputs)
         if missing:
-            self.run_bar.set_status(f"Choose: {', '.join(missing)}", "danger")
+            self.run_bar.set_status(f"Fill in: {', '.join(missing)}", "danger")
             return
         self.results.clear()
-        self.run_bar.set_running(True)
-        self.run_started.emit()
         log.info("running %s", self.plugin.name)
         worker = RunWorker(
             self.plugin, inputs, self.config, self.output_dir(inputs), resources=self.resources
         )
+        self._launch(worker)
+
+    def start_action(self, name: str, row: dict[str, Any]) -> None:
+        """A row action from an ActionTable, run off the GUI thread."""
+        if not isinstance(self.plugin, SupportsActions):
+            self.run_bar.set_status(f"{self.plugin.name} has no actions", "danger")
+            return
+        if self.worker is not None and self.worker.isRunning():
+            return
+        plugin = self.plugin
+        inputs = self.collect_inputs()
+        log.info("%s action %s", plugin.name, name)
+        worker = RunWorker(
+            self.plugin,
+            inputs,
+            self.config,
+            self.output_dir(inputs),
+            resources=self.resources,
+            job=lambda ctx: plugin.act(name, row, ctx),
+        )
+        self._launch(worker, quiet=name in self.spec.refresh_actions())
+
+    def refresh_tables(self) -> None:
+        """Run the refresh actions synchronously; they are cheap listings."""
+        if not isinstance(self.plugin, SupportsActions):
+            return
+        plugin = self.plugin
+        ctx = RunContext(
+            config=self.config,
+            output_dir=self.output_dir(self.collect_inputs()),
+            resources=self.resources,
+        )
+        for name in self.spec.refresh_actions():
+            try:
+                self.results.apply(plugin.act(name, {}, ctx))
+            except Exception as exc:
+                log.warning("%s refresh %s failed: %s", plugin.name, name, exc)
+                self.results.append_log(f"Could not refresh: {exc}")
+
+    def _launch(self, worker: RunWorker, *, quiet: bool = False) -> None:
+        self._quiet = quiet
+        self.run_bar.set_running(True)
+        self.run_started.emit()
         worker.progress.connect(self.run_bar.set_progress)
         worker.log.connect(self.results.append_log)
         worker.succeeded.connect(self._on_success)
@@ -218,7 +301,18 @@ class ToolPanel(QWidget):
         if self.worker is not None:
             self.worker.wait()
         self.run_bar.set_running(False)
+        if self._last_ok and not self._quiet:
+            self._refresh_after_change()
         self.run_finished.emit(self._last_ok)
+
+    def _refresh_after_change(self) -> None:
+        """After a run or action, re-list ActionTables unless the result
+        already carried them."""
+        result = self.last_result
+        keys_present = set(result.tables) if result else set()
+        if all(k in keys_present for k in self.results.action_tables):
+            return
+        self.refresh_tables()
 
     def _on_success(self, result: RunResult) -> None:
         self.last_result = result
@@ -228,7 +322,11 @@ class ToolPanel(QWidget):
         if result.files:
             self.run_bar.set_output_folder(result.files[0].parent)
         shown = [
-            c for k, c in self.results.cards.items() if k in result.tables or k in result.images
+            c
+            for k, c in self.results.cards.items()
+            if (k in result.tables and k not in self.results.action_tables)
+            or k in result.images
+            or k in result.texts
         ]
         if shown:
             first = shown[0]

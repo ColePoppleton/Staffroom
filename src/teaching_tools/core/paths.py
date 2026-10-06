@@ -37,6 +37,15 @@ def examples_dir() -> Path:
     return project_root() / "examples"
 
 
+DEFAULT_SESSIONS_ROOT = "~/TeachingSessions"
+
+
+def sessions_root(configured: str) -> Path:
+    """Where ``classroom`` keeps lesson copies. Local by default; the user may
+    point it anywhere in Settings. Never auto-detected from cloud folders."""
+    return Path(configured or DEFAULT_SESSIONS_ROOT).expanduser()
+
+
 def default_output_dir(input_path: Path | None, configured: str) -> Path:
     """Resolve where a tool should write: the configured folder if set,
     otherwise alongside the input, otherwise the current directory."""

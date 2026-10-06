@@ -1,5 +1,31 @@
 # Changelog
 
+## Phase 1b — classroom (2026-10-06)
+
+- `tools/classroom`: "Open for class" copies a resource to
+  `<sessions_root>/<YYYY-MM-DD>/<label>/<file>`, records the origin in a
+  `.origin.json` sidecar beside the copy, and launches the configured editor
+  on the copy. Opening the same file for the same lesson re-opens the
+  existing copy; edits are never overwritten. The original is only ever read.
+- Session browser: past copies with Diff vs original (unified diff), Re-open,
+  and Promote, which copies the edit back next to the original as
+  `<name>_v2.py` (then `_v3`, never overwriting). The library picks the new
+  file up on re-index.
+- Sessions folder defaults to local `~/TeachingSessions`; a folder picker in
+  Settings covers syncing elsewhere. No cloud-folder detection, by decision:
+  the school does not use OneDrive and every OneDrive on this Mac is personal.
+- Editor: `core/launch.py` turns a `{file}` command template into argv.
+  Presets Thonny (`open -a Thonny {file}`, default), IDLE
+  (`python3 -m idlelib {file}`), System default (`open {file}`), or Custom,
+  all editable in Settings.
+- CLI: `tt classroom open <resource> --label "..."`, `list`, `diff`,
+  `promote`, `reopen`.
+- Widget kit grew four generic pieces for this and future tools:
+  `ResourcePicker` (from the library or a dialog), `TextField`,
+  `ActionTable` (rows with action buttons, refreshable) and `TextView`.
+  `RunResult.texts` and the optional `SupportsActions.act(name, row, ctx)`
+  plugin method back them.
+
 ## Phase 1a — Resource Library (2026-10-06)
 
 - `core/library/`: scanner with kind classification and hidden-cruft rules,

@@ -66,8 +66,9 @@ Scope:
 - "Open for class": copy the selected resource to `<sessions_root>/<YYYY-MM-DD>/<label>/<filename>` and launch
   the configured editor on the copy. Default editor command on macOS: `open -a Thonny {file}`; IDLE and
   "system default" as presets; fully editable in settings.
-- `sessions_root` is configurable and defaults to a OneDrive folder if one is detected (so the copy is reachable
-  from the school PC), else `~/TeachingSessions`. State this choice in the UI.
+- `sessions_root` is configurable and defaults to local `~/TeachingSessions`. Never auto-detect or default to a
+  OneDrive folder: the school does not use OneDrive and every OneDrive on this Mac is personal or a client's.
+  A folder picker in Settings covers syncing elsewhere if ever wanted. State the folder in the UI.
 - Label is free text for the lesson (e.g. "P3 Y9 loops"). Never a class list or pupil names; the field is a single
   short line and the UI says so.
 - Session browser: list of past sessions, each with its files; **Diff vs original** (unified diff in a read-only view);
@@ -78,7 +79,7 @@ Scope:
 Acceptance:
 - Opening a file for class, editing it in Thonny and saving leaves the original byte-identical.
 - Diff shows the edit; Promote creates a new file next to the original and the library picks it up on re-index.
-- Works with no OneDrive present (falls back cleanly).
+- Works with no cloud folder of any kind; the default is plain local.
 
 Out of scope: any built-in code editor. Do not build one.
 

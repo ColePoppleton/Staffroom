@@ -31,6 +31,7 @@ class RunResult:
 
     tables: dict[str, Table] = field(default_factory=dict)
     images: dict[str, Path] = field(default_factory=dict)
+    texts: dict[str, str] = field(default_factory=dict)
     files: list[Path] = field(default_factory=list)
     summary: str = ""
 
@@ -61,3 +62,11 @@ class ToolPlugin(Protocol):
 
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         """Execute with the values gathered from the panel's input widgets."""
+
+
+@runtime_checkable
+class SupportsActions(Protocol):
+    """Optional: a plugin whose panel has ``ActionTable`` widgets."""
+
+    def act(self, name: str, row: Mapping[str, Any], ctx: RunContext) -> RunResult:
+        """Perform ``name`` on ``row`` (empty for a refresh action)."""

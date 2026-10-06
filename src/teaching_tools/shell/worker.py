@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import traceback
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
 from teaching_tools.core.config import Config
 from teaching_tools.core.library.service import ResourceService
-from teaching_tools.core.plugin import Inputs, RunContext, ToolError, ToolPlugin
+from teaching_tools.core.plugin import Inputs, RunContext, RunResult, ToolError, ToolPlugin
+
+Job = Callable[[RunContext], RunResult]
 
 
 class RunWorker(QThread):
@@ -25,6 +28,7 @@ class RunWorker(QThread):
         config: Config,
         output_dir: Path,
         resources: ResourceService | None = None,
+        job: Job | None = None,
     ) -> None:
         super().__init__()
         self.plugin = plugin
@@ -32,6 +36,7 @@ class RunWorker(QThread):
         self.config = config
         self.output_dir = output_dir
         self.resources = resources
+        self.job: Job = job or (lambda ctx: plugin.run(inputs, ctx))
 
     def run(self) -> None:
         ctx = RunContext(
@@ -42,7 +47,7 @@ class RunWorker(QThread):
             resources=self.resources,
         )
         try:
-            result = self.plugin.run(self.inputs, ctx)
+            result = self.job(ctx)
         except ToolError as exc:
             self.failed.emit(str(exc), False)
         except Exception:

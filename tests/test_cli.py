@@ -9,7 +9,7 @@ runner = CliRunner()
 def test_list_shows_hello() -> None:
     result = runner.invoke(app, ["list"])
     assert result.exit_code == 0, result.output
-    assert result.output.startswith("hello")
+    assert any(line.startswith("hello") for line in result.output.splitlines())
     assert "reference tool" in result.output
     assert "Total" in result.output
 

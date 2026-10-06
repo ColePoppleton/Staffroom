@@ -129,6 +129,8 @@ def test_reindex_in_background(window: MainWindow, qtbot: QtBot, resources_root:
 
 
 def test_tools_mode_restores_tool(window: MainWindow) -> None:
+    window.sidebar.select("hello")
     window.sidebar.set_mode("resources")
+    assert window.stack.currentWidget() is window.library_page
     window.sidebar.set_mode("tools")
     assert window.stack.currentWidget() is window.panel_for("hello")

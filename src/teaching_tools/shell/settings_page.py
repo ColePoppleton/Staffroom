@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from teaching_tools.core import paths
 from teaching_tools.core.config import Config
+from teaching_tools.core.launch import EDITOR_PRESETS, preset_for
 from teaching_tools.core.panel import FolderPicker
 from teaching_tools.shell.widgets import Card, PathPickerWidget, make_label
 
@@ -80,6 +82,37 @@ class SettingsPage(QWidget):
         resources.add(self.resources_root)
         layout.addWidget(resources)
 
+        classroom = Card(
+            "Classroom",
+            "Where lesson copies go and which editor opens them. The sessions folder is local "
+            "by default; pick another folder only if you want copies synced somewhere.",
+        )
+        form2 = QFormLayout()
+        form2.setHorizontalSpacing(16)
+        form2.setVerticalSpacing(10)
+        self.sessions_root = PathPickerWidget(
+            FolderPicker(key="sessions_root", label="Sessions folder")
+        )
+        self.sessions_root.edit.setPlaceholderText(
+            str(paths.sessions_root("")) + "  (default, local)"
+        )
+        if config.general.sessions_root:
+            self.sessions_root.edit.setText(config.general.sessions_root)
+        self.sessions_root.changed.connect(self._on_sessions_root)
+        form2.addRow(self._label("Sessions folder"), self.sessions_root)
+        self.editor_preset = QComboBox()
+        self.editor_preset.addItems([*EDITOR_PRESETS, "Custom"])
+        self.editor_preset.setCurrentText(preset_for(config.general.editor_command))
+        self.editor_preset.currentTextChanged.connect(self._on_editor_preset)
+        form2.addRow(self._label("Editor"), self.editor_preset)
+        self.editor_command = QLineEdit(config.general.editor_command)
+        self.editor_command.setPlaceholderText("open -a Thonny {file}")
+        self.editor_command.setToolTip("{file} is replaced by the path of the lesson copy")
+        self.editor_command.editingFinished.connect(self._on_editor_command)
+        form2.addRow(self._label("Command"), self.editor_command)
+        classroom.body.addLayout(form2)
+        layout.addWidget(classroom)
+
         logging_card = Card("Logging")
         log_form = QFormLayout()
         log_form.setHorizontalSpacing(16)
@@ -123,6 +156,26 @@ class SettingsPage(QWidget):
             self.config.general.resources_root = text
             self.config.save()
             self.resources_root_changed.emit(text)
+
+    def _on_sessions_root(self, path: object) -> None:
+        self.config.general.sessions_root = str(path) if path else ""
+        self.config.save()
+
+    def _on_editor_preset(self, name: str) -> None:
+        if name in EDITOR_PRESETS:
+            self.editor_command.setText(EDITOR_PRESETS[name])
+            self._on_editor_command()
+
+    def _on_editor_command(self) -> None:
+        command = self.editor_command.text().strip()
+        if command and command != self.config.general.editor_command:
+            self.config.general.editor_command = command
+            self.config.save()
+            preset = preset_for(command)
+            if self.editor_preset.currentText() != preset:
+                self.editor_preset.blockSignals(True)
+                self.editor_preset.setCurrentText(preset)
+                self.editor_preset.blockSignals(False)
 
     def _on_output_dir(self, path: object) -> None:
         self.config.general.output_dir = str(path) if path else ""

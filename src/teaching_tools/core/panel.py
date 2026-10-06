@@ -14,10 +14,18 @@ Input values by widget type
 =================  =====================================================
 FilePicker         ``pathlib.Path | None``
 FolderPicker       ``pathlib.Path | None``
+ResourcePicker     ``pathlib.Path | None`` (from the Resource Library or a dialog)
+TextField          ``str``
 OptionsForm        an instance of the given dataclass
 EditableTable      :class:`~teaching_tools.core.table.Table`
 TablePreview       (display only; never appears in ``inputs``)
 =================  =====================================================
+
+Output widgets fill from a ``RunResult``: ``ResultsTable`` and
+``ActionTable`` from ``tables[key]``, ``ImageView`` from ``images[key]``,
+``TextView`` from ``texts[key]``. An ``ActionTable`` additionally lets the
+user pick a row and press an action button; the shell then calls
+``plugin.act(action_name, row, ctx)`` and applies the returned RunResult.
 
 If a new tool needs a widget that is not here, add it here and to the shell's
 widget kit. Do not put UI code in a tool.
@@ -50,6 +58,31 @@ class FolderPicker:
     label: str
     help: str = ""
     required: bool = False
+
+
+@dataclass(frozen=True)
+class ResourcePicker:
+    """Pick a file from the Resource Library (or any file via a dialog when
+    the library is unavailable). ``filter_ext`` like ``".py"`` narrows the
+    library list; None allows any kind."""
+
+    key: str
+    label: str
+    filter_ext: str | None = None
+    help: str = ""
+    required: bool = True
+
+
+@dataclass(frozen=True)
+class TextField:
+    """One short line of free text."""
+
+    key: str
+    label: str
+    placeholder: str = ""
+    help: str = ""
+    max_length: int = 80
+    required: bool = True
 
 
 @dataclass(frozen=True)
@@ -93,7 +126,15 @@ class TablePreview:
     max_rows: int = 200
 
 
-InputWidget = FilePicker | FolderPicker | OptionsForm | EditableTable | TablePreview
+InputWidget = (
+    FilePicker
+    | FolderPicker
+    | ResourcePicker
+    | TextField
+    | OptionsForm
+    | EditableTable
+    | TablePreview
+)
 
 
 # ---------------------------------------------------------------- outputs
@@ -112,12 +153,42 @@ class ImageView:
 
 
 @dataclass(frozen=True)
+class TextView:
+    """A read-only block of text (``RunResult.texts[key]``), e.g. a diff."""
+
+    key: str
+    label: str = "Output"
+    monospace: bool = True
+
+
+@dataclass(frozen=True)
+class Action:
+    name: str
+    label: str
+    help: str = ""
+    primary: bool = False
+
+
+@dataclass(frozen=True)
+class ActionTable:
+    """A table whose rows can be acted on. ``refresh_action`` is called with
+    an empty row when the panel is shown and after every run or action, so
+    the table reflects the world (e.g. past sessions on disk)."""
+
+    key: str
+    label: str
+    actions: tuple[Action, ...]
+    refresh_action: str | None = None
+    hidden_columns: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class LogArea:
     key: str = "log"
     label: str = "Log"
 
 
-OutputWidget = ResultsTable | ImageView | LogArea
+OutputWidget = ResultsTable | ActionTable | ImageView | TextView | LogArea
 
 
 # ---------------------------------------------------------------- the panel
@@ -143,3 +214,10 @@ class PanelSpec:
 
     def input_keys(self) -> list[str]:
         return [w.key for w in self.inputs if not isinstance(w, TablePreview)]
+
+    def refresh_actions(self) -> list[str]:
+        return [
+            w.refresh_action
+            for w in self.outputs
+            if isinstance(w, ActionTable) and w.refresh_action is not None
+        ]

@@ -25,6 +25,8 @@ class GeneralSettings:
     log_level: str = "INFO"
     last_tool: str = ""
     resources_root: str = "~/Desktop/Resources"
+    sessions_root: str = ""  # empty means ~/TeachingSessions (local; never a cloud folder)
+    editor_command: str = "open -a Thonny {file}"
     show_hidden: bool = False
     sidebar_mode: str = "tools"
 

@@ -52,8 +52,9 @@ contain no names even invented ones.
 src/teaching_tools/
   cli.py            tt: typer root; mounts each tool's sub-app and shell features
   core/             shared, GUI-free: Table, csvio, privacy, config, paths, log,
-                    plugin (ToolPlugin protocol), panel (UI vocabulary),
-                    discovery (pkgutil), scaffold (tt new), library/ (Phase 1a)
+                    launch (editor command), plugin (ToolPlugin protocol),
+                    panel (UI vocabulary), discovery (pkgutil), scaffold (tt new),
+                    library/ (Resource Library: index, search, tags, service)
   shell/            tt-gui: the PySide6 launcher and its widget kit
   tools/<name>/     one package per tool: __init__ (plugin), cli, logic, panel, tests/
 examples/           small FAKE data files (marker row required, no names)
@@ -86,13 +87,17 @@ A tool package exposes `plugin`, an object with `name`, `description`,
 `run(inputs, ctx) -> RunResult`. `name` must equal the package name.
 
 * `inputs` is a dict keyed by the panel's input widget keys
-  (FilePicker → `Path | None`, OptionsForm → dataclass instance,
-  EditableTable → `Table`).
+  (FilePicker/ResourcePicker → `Path | None`, TextField → `str`,
+  OptionsForm → dataclass instance, EditableTable → `Table`).
+* A panel with `ActionTable` widgets needs the plugin to also implement
+  `act(name, row, ctx) -> RunResult` (`SupportsActions`). The table's
+  `refresh_action` is called with an empty row when the panel is shown and
+  after every run or action.
 * `ctx` (`RunContext`) carries `config`, `output_dir`, `progress(fraction, msg)`
   and `log(msg)`. Use them; never print from a tool.
 * Raise `ToolError("message for the teacher")` for user-facing failures. Any
   other exception is treated as a bug and shown with a traceback.
-* `RunResult.tables` / `.images` are keyed by output widget keys;
+* `RunResult.tables` / `.images` / `.texts` are keyed by output widget keys;
   `.files` lists what was written; `.summary` is one line.
 
 Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
@@ -113,3 +118,6 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
 * Screenshots for docs: `just screenshots` (renders offscreen via `tt-gui
   --screenshot`).
 * Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db).
+* Lesson copies live in `~/TeachingSessions` by default (`sessions_root`).
+  Never default to, or detect, any cloud folder: the school does not use
+  OneDrive and the OneDrives on this Mac are personal.
