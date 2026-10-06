@@ -27,7 +27,7 @@ class ResourcePickerWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         self.edit = QLineEdit()
-        self.edit.setPlaceholderText("Choose a resource…")
+        self.edit.setPlaceholderText("Choose a resource from the library, or a file…")
         self.edit.setClearButtonEnabled(True)
         self.edit.editingFinished.connect(self._emit)
         self.library_button = QPushButton("From library…")
@@ -41,12 +41,29 @@ class ResourcePickerWidget(QWidget):
         layout.addWidget(self.browse_button)
 
     def value(self) -> Path | None:
+        """Absolute path. Text typed or shown relative to the library root is
+        resolved against it."""
         text = self.edit.text().strip()
-        return Path(text).expanduser() if text else None
+        if not text:
+            return None
+        path = Path(text).expanduser()
+        if not path.is_absolute() and self.resources is not None:
+            path = self.resources.root / path
+        return path
 
     def set_path(self, path: Path | None) -> None:
-        self.edit.setText(str(path) if path else "")
+        self.edit.setText(self._display(path) if path else "")
+        self.edit.setToolTip(str(path) if path else "")
         self._emit()
+
+    def _display(self, path: Path) -> str:
+        """Library files show as ``Python/OCR Booklet/9a.py``; others in full."""
+        if self.resources is not None:
+            try:
+                return path.resolve().relative_to(self.resources.root.resolve()).as_posix()
+            except (ValueError, OSError):
+                pass
+        return str(path)
 
     def pick_from_library(self) -> None:
         if self.resources is None:

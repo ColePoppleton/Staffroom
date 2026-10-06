@@ -7,7 +7,6 @@ from datetime import datetime
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QLabel,
     QListWidget,
     QListWidgetItem,
     QProgressBar,
@@ -17,42 +16,16 @@ from PySide6.QtWidgets import (
 )
 
 from teaching_tools.core.config import Config
-from teaching_tools.core.library.model import IndexStats, Kind, SearchHit
+from teaching_tools.core.library.model import IndexStats, Kind
 from teaching_tools.core.library.service import LibraryService
 from teaching_tools.core.log import get_logger
-from teaching_tools.shell.library.preview import KIND_LABEL, PreviewPane
+from teaching_tools.shell.library.preview import PreviewPane
+from teaching_tools.shell.library.result_item import add_result_row, no_matches_row
 from teaching_tools.shell.library.worker import IndexWorker
 from teaching_tools.shell.widgets import make_label
 
 log = get_logger(__name__)
 REL_ROLE = Qt.ItemDataRole.UserRole
-
-
-class ResultItem(QWidget):
-    def __init__(self, hit: SearchHit) -> None:
-        super().__init__()
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(2)
-        top = QHBoxLayout()
-        top.setSpacing(8)
-        name = QLabel(hit.resource.name)
-        name.setObjectName("ToolName")
-        chip = QLabel(KIND_LABEL.get(hit.resource.kind, hit.resource.kind))
-        chip.setProperty("role", "chip")
-        top.addWidget(name)
-        top.addWidget(chip)
-        top.addStretch(1)
-        layout.addLayout(top)
-        folder = hit.resource.rel_path.rpartition("/")[0] or "/"
-        path = QLabel(folder + ("   ☁︎ cloud-only" if hit.resource.cloud_only else ""))
-        path.setObjectName("ToolDesc")
-        layout.addWidget(path)
-        if hit.snippet:
-            snippet = QLabel(hit.snippet)
-            snippet.setProperty("role", "faint")
-            snippet.setWordWrap(True)
-            layout.addWidget(snippet)
 
 
 class LibraryPage(QWidget):
@@ -145,16 +118,9 @@ class LibraryPage(QWidget):
         kinds: list[Kind] | None = None if self.kind == "all" else [self.kind]  # type: ignore[list-item]
         hits = self.service.search(self.query, kinds=kinds, include_hidden=self.show_hidden)
         for hit in hits:
-            item = QListWidgetItem()
-            item.setData(REL_ROLE, hit.resource.rel_path)
-            widget = ResultItem(hit)
-            item.setSizeHint(widget.sizeHint())
-            self.results.addItem(item)
-            self.results.setItemWidget(item, widget)
+            add_result_row(self.results, hit, REL_ROLE)
         if not hits:
-            item = QListWidgetItem("No matches")
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self.results.addItem(item)
+            no_matches_row(self.results)
         self.results.show()
 
     def _on_result(self, current: QListWidgetItem | None) -> None:

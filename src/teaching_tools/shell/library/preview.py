@@ -26,27 +26,12 @@ from teaching_tools.core.library.model import Resource
 from teaching_tools.core.library.service import LibraryService
 from teaching_tools.core.log import get_logger
 from teaching_tools.shell.library.highlighter import PythonHighlighter
+from teaching_tools.shell.library.result_item import KIND_LABEL
 from teaching_tools.shell.theme import Palette, palette
 from teaching_tools.shell.widgets import Card, ImageViewWidget, make_label
 
 log = get_logger(__name__)
 
-KIND_LABEL = {
-    "python": "Python",
-    "text": "Text",
-    "markdown": "Markdown",
-    "csv": "CSV",
-    "pdf": "PDF",
-    "image": "Image",
-    "office": "Office document",
-    "scratch": "Scratch project",
-    "audio": "Audio",
-    "video": "Video",
-    "archive": "Archive",
-    "database": "Database",
-    "diagram": "Diagram",
-    "other": "File",
-}
 OFFICE_APP = {
     ".doc": "Word",
     ".docx": "Word",

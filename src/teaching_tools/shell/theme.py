@@ -187,6 +187,10 @@ QTreeView#ResourceTree {{
     background: transparent; border: none; padding: 2px 0px;
     show-decoration-selected: 0;
 }}
+QDialog#Palette QTreeView#ResourceTree {{
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+    padding: 6px;
+}}
 QTreeView#ResourceTree::item {{ padding: 4px 4px; border-radius: 5px; }}
 QTreeView#ResourceTree::item:hover {{ background: {p.surface}; }}
 QTreeView#ResourceTree::item:selected {{ background: {p.accent_soft}; color: {p.accent}; }}
@@ -283,6 +287,26 @@ QCheckBox::indicator:checked {{
     background: {p.accent}; border-color: {p.accent}; image: url("{check}");
 }}
 QCheckBox::indicator:hover {{ border-color: {p.accent}; }}
+
+/* ---------------------------------------------------------- lists, trees, dialogs */
+QDialog {{ background: {p.window}; }}
+QDialog#Palette {{ background: {p.surface}; }}
+QListView, QTreeView {{
+    background: {p.surface_alt}; color: {p.text};
+    border: 1px solid {p.border}; border-radius: {RADIUS_SM}px; padding: 4px;
+    outline: none;
+}}
+QListView::item, QTreeView::item {{ padding: 5px 6px; border-radius: 5px; }}
+QListView::item:hover, QTreeView::item:hover {{ background: {p.surface}; }}
+QListView::item:selected, QTreeView::item:selected {{
+    background: {p.accent_soft}; color: {p.accent};
+}}
+QLineEdit#PaletteSearch {{
+    font-size: 17px; padding: 10px 14px; border-radius: {RADIUS}px;
+    background: {p.surface_alt}; border: 1px solid {p.border_strong};
+}}
+QLineEdit#PaletteSearch:focus {{ border-color: {p.accent}; }}
+QLabel#PaletteHint {{ padding-left: 4px; }}
 
 /* ---------------------------------------------------------- tables */
 QTableView {{

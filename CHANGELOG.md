@@ -2,6 +2,13 @@
 
 ## Phase 1b — classroom (2026-10-06)
 
+- Library picker rebuilt as a palette after the first version proved
+  unreadable: one big search field, the folder tree while it is empty, rich
+  rows (name, type, folder, snippet) while typing, arrow keys and Enter to
+  choose, name-substring fallback for things FTS misses. The picker field
+  then shows the library-relative path rather than a long absolute one.
+  Generic list, tree and dialog styling added to the theme so nothing falls
+  back to Qt defaults again.
 - `tools/classroom`: "Open for class" copies a resource to
   `<sessions_root>/<YYYY-MM-DD>/<label>/<file>`, records the origin in a
   `.origin.json` sidecar beside the copy, and launches the configured editor
