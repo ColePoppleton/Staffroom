@@ -16,6 +16,7 @@ from teaching_tools.shell.widgets.table_view import (
     TablePreviewWidget,
     TableWidget,
 )
+from teaching_tools.shell.widgets.text_area import TextAreaWidget
 from teaching_tools.shell.widgets.text_field import TextFieldWidget
 from teaching_tools.shell.widgets.text_view import TextViewWidget
 
@@ -33,6 +34,7 @@ __all__ = [
     "TableModel",
     "TablePreviewWidget",
     "TableWidget",
+    "TextAreaWidget",
     "TextFieldWidget",
     "TextViewWidget",
     "make_label",

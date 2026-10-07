@@ -1,5 +1,33 @@
 # Changelog
 
+## Phase 3 — house style, parsons, worksheet (2026-10-07)
+
+- `core/export/`: one document model (headings, paragraphs, code blocks,
+  numbered items with answer space, tables, hint boxes, page breaks; answer
+  sections) rendered to docx (python-docx), PDF (reportlab) and plain text.
+  Header with title / topic / date, footer with page numbers, monospace code.
+  `export()` writes `<stem>.<fmt>` and `<stem>_key.<fmt>`.
+- `tools/parsons`: a .py from the library (or pasted) → blocks at statement
+  level (compound headers and bodies apart) or per line, seeded shuffle,
+  distractors by mutating a line (missing colon, wrong comparison, off by
+  one), indentation shown or stripped, optional hint box. Key gives the
+  order, the distractors and the reconstructed program. Tests prove the key
+  rebuilds an ast-equal program for seven program shapes and 39 seeds.
+- `tools/worksheet`: nine seeded generators (binary/denary/hex, two's
+  complement, binary addition with overflow, shifts, truth tables, Boolean
+  simplification with laws listed, file sizes, run-length encoding, Huffman
+  weight). The seed, difficulty and count sit in the sheet header so a set
+  can be regenerated. Every generator is verified by independent computation.
+- CLI: `tt parsons make <file> --seed N --distractors K [--lines]
+  [--no-indent] [--format]`, `tt worksheet make --topic T --count N --seed S
+  [--difficulty]`, `tt worksheet topics`.
+- Widget kit: `TextArea` input for pasted code.
+- python-docx and reportlab added.
+- Fixed: outputs for an input that lives in the resources folder were being
+  written next to it. The resources folder is read-only to every tool, so
+  those outputs now go to `~/TeachingSessions/outputs` unless an output
+  folder is configured.
+
 ## Phase 2 — marks (2026-10-06)
 
 - `tools/marks`: raw marks per question (q1..qn, one row per script, no

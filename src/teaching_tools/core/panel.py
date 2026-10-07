@@ -16,6 +16,7 @@ FilePicker         ``pathlib.Path | None``
 FolderPicker       ``pathlib.Path | None``
 ResourcePicker     ``pathlib.Path | None`` (from the Resource Library or a dialog)
 TextField          ``str``
+TextArea           ``str`` (multi-line)
 OptionsForm        an instance of the given dataclass
 EditableTable      :class:`~teaching_tools.core.table.Table`
 TablePreview       (display only; never appears in ``inputs``)
@@ -86,6 +87,19 @@ class TextField:
 
 
 @dataclass(frozen=True)
+class TextArea:
+    """Several lines of free text, e.g. pasted code. Value is ``str``."""
+
+    key: str
+    label: str
+    placeholder: str = ""
+    help: str = ""
+    monospace: bool = True
+    required: bool = False
+    rows: int = 10
+
+
+@dataclass(frozen=True)
 class OptionsForm:
     """A form generated from a dataclass. Field types drive the widgets:
     ``bool`` -> checkbox, ``int``/``float`` -> spin box, ``str`` -> line edit,
@@ -141,6 +155,7 @@ InputWidget = (
     | FolderPicker
     | ResourcePicker
     | TextField
+    | TextArea
     | OptionsForm
     | EditableTable
     | TablePreview

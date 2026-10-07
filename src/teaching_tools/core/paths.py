@@ -46,11 +46,30 @@ def sessions_root(configured: str) -> Path:
     return Path(configured or DEFAULT_SESSIONS_ROOT).expanduser()
 
 
-def default_output_dir(input_path: Path | None, configured: str) -> Path:
+OUTPUTS_SUBDIR = "outputs"
+
+
+def default_output_dir(
+    input_path: Path | None, configured: str, *, resources_root: str = ""
+) -> Path:
     """Resolve where a tool should write: the configured folder if set,
-    otherwise alongside the input, otherwise the current directory."""
+    otherwise alongside the input, otherwise the current directory.
+
+    The resources folder is read-only to every tool, so an input that lives
+    under ``resources_root`` sends outputs to ``<sessions_root>/outputs``
+    instead of next to the file."""
     if configured:
         return Path(configured).expanduser()
     if input_path is not None:
+        if resources_root and _is_under(input_path, Path(resources_root).expanduser()):
+            return sessions_root("") / OUTPUTS_SUBDIR
         return input_path.parent
     return Path.cwd()
+
+
+def _is_under(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+    except (ValueError, OSError):
+        return False
+    return True

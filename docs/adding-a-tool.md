@@ -111,6 +111,15 @@ just lint
 The boundary tests fail if the tool imports Qt or if `logic.py` does I/O.
 The pre-commit hook refuses any CSV/XLSX without a `# FAKE DATA` first line.
 
+## Producing worksheets and keys
+
+Build a `core.export.Document`, add blocks to `doc.section()` and to
+`doc.section("Answer key", answers=True)`, then call
+`export(doc, ctx.output_dir, stem, formats)`. That writes the sheet and a
+separate key in each format with the house header and footer. `to_text(doc)`
+gives a preview for a `TextView`. `tools/worksheet` and `tools/parsons` are
+the references.
+
 ## Presets for an editable table
 
 `EditableTable(..., presets=(("OCR J277", rows), ...), preset_action="save_preset")`

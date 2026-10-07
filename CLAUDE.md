@@ -54,7 +54,8 @@ src/teaching_tools/
   core/             shared, GUI-free: Table, csvio, privacy, config, paths, log,
                     launch (editor command), plugin (ToolPlugin protocol),
                     panel (UI vocabulary), discovery (pkgutil), scaffold (tt new),
-                    library/ (Resource Library: index, search, tags, service)
+                    library/ (Resource Library: index, search, tags, service),
+                    export/ (house style: Document → docx / PDF / text)
   shell/            tt-gui: the PySide6 launcher and its widget kit
   tools/<name>/     one package per tool: __init__ (plugin), cli, logic, panel, tests/
 examples/           small FAKE data files (marker row required, no names)
@@ -116,7 +117,8 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
   widget code.
 * Keep tools small. `hello` is the reference: read it before writing a tool.
   `marks` shows presets, charts and aggregate-only saving; `classroom`
-  shows row actions and the Resource Library.
+  shows row actions and the Resource Library; `worksheet` and `parsons`
+  show the house-style export.
 * Screenshots for docs: `just screenshots` (renders offscreen via `tt-gui
   --screenshot`).
 * Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db).

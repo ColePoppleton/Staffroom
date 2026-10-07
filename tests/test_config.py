@@ -39,3 +39,19 @@ def test_unknown_general_keys_ignored(isolated_home: Path) -> None:
 def test_default_output_dir(tmp_path: Path) -> None:
     assert paths.default_output_dir(tmp_path / "in.csv", "") == tmp_path
     assert paths.default_output_dir(None, str(tmp_path)) == tmp_path
+
+
+def test_outputs_never_land_in_the_resources_folder(tmp_path: Path) -> None:
+    root = tmp_path / "Resources"
+    (root / "Python").mkdir(parents=True)
+    inside = root / "Python" / "9a.py"
+    inside.write_text("x = 1\n")
+    out = paths.default_output_dir(inside, "", resources_root=str(root))
+    assert out == paths.sessions_root("") / "outputs"
+    assert not str(out).startswith(str(root))
+    elsewhere = tmp_path / "other.py"
+    assert paths.default_output_dir(elsewhere, "", resources_root=str(root)) == tmp_path
+    assert (
+        paths.default_output_dir(inside, str(tmp_path / "o"), resources_root=str(root))
+        == tmp_path / "o"
+    )

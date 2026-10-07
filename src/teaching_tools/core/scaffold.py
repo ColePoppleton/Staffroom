@@ -169,7 +169,9 @@ def register(app: typer.Typer) -> None:
         config = load_config()
         ctx = RunContext(
             config=config,
-            output_dir=out or default_output_dir(source, config.general.output_dir),
+            output_dir=out or default_output_dir(
+                source, config.general.output_dir, resources_root=config.general.resources_root
+            ),
             progress=lambda _f, msg: typer.echo(msg, err=True),
             log=lambda msg: typer.echo(msg, err=True),
         )

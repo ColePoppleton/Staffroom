@@ -21,6 +21,7 @@ from teaching_tools.core.panel import (
     PanelSpec,
     ResourcePicker,
     TablePreview,
+    TextArea,
     TextField,
 )
 from teaching_tools.core.paths import default_output_dir
@@ -34,6 +35,7 @@ from teaching_tools.shell.widgets import (
     ResultsArea,
     RunBar,
     TablePreviewWidget,
+    TextAreaWidget,
     TextFieldWidget,
     make_label,
 )
@@ -62,6 +64,7 @@ class ToolPanel(QWidget):
         self.pickers: dict[str, PathPickerWidget] = {}
         self.resource_pickers: dict[str, ResourcePickerWidget] = {}
         self.text_fields: dict[str, TextFieldWidget] = {}
+        self.text_areas: dict[str, TextAreaWidget] = {}
         self._refreshed = False
         self._quiet = False
         self.forms: dict[str, OptionsFormWidget] = {}
@@ -139,6 +142,11 @@ class ToolPanel(QWidget):
                 field = TextFieldWidget(spec)
                 card.add(field)
                 self.text_fields[spec.key] = field
+            elif isinstance(spec, TextArea):
+                card = Card(spec.label, spec.help)
+                area = TextAreaWidget(spec)
+                card.add(area)
+                self.text_areas[spec.key] = area
             elif isinstance(spec, TablePreview):
                 card = Card(spec.label)
                 preview = TablePreviewWidget(spec)
@@ -193,6 +201,8 @@ class ToolPanel(QWidget):
             values[key] = rpicker.value()
         for key, field in self.text_fields.items():
             values[key] = field.value()
+        for key, area in self.text_areas.items():
+            values[key] = area.value()
         for key, form in self.forms.items():
             values[key] = form.value()
         for key, grid in self.grids.items():
@@ -206,7 +216,10 @@ class ToolPanel(QWidget):
             self.pickers[key].set_path(path)
 
     def set_text(self, key: str, text: str) -> None:
-        self.text_fields[key].set_value(text)
+        if key in self.text_areas:
+            self.text_areas[key].set_value(text)
+        else:
+            self.text_fields[key].set_value(text)
 
     def showEvent(self, event: QShowEvent) -> None:  # noqa: N802
         super().showEvent(event)
@@ -226,14 +239,18 @@ class ToolPanel(QWidget):
             if isinstance(s, FilePicker | FolderPicker | ResourcePicker) and s.required:
                 if inputs.get(s.key) is None:
                     missing.append(s.label)
-            elif isinstance(s, TextField) and s.required and not inputs.get(s.key):
+            elif isinstance(s, TextField | TextArea) and s.required and not inputs.get(s.key):
                 missing.append(s.label)
         return missing
 
     def output_dir(self, inputs: dict[str, Any]) -> Path:
         first = self.first_file_key()
         anchor = inputs.get(first) if first else None
-        return default_output_dir(anchor, self.config.general.output_dir)
+        return default_output_dir(
+            anchor,
+            self.config.general.output_dir,
+            resources_root=self.config.general.resources_root,
+        )
 
     # -- running ---------------------------------------------------------
     def start_run(self) -> None:
