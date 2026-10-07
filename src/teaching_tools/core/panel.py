@@ -179,11 +179,13 @@ class ImageView:
 
 @dataclass(frozen=True)
 class TextView:
-    """A read-only block of text (``RunResult.texts[key]``), e.g. a diff."""
+    """A read-only block of text (``RunResult.texts[key]``), e.g. a diff.
+    ``copy_button`` adds a Copy button that puts the text on the clipboard."""
 
     key: str
     label: str = "Output"
     monospace: bool = True
+    copy_button: bool = False
 
 
 @dataclass(frozen=True)

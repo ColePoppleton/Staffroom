@@ -3,7 +3,15 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QAbstractItemView, QLabel, QPlainTextEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
+    QLabel,
+    QPlainTextEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from teaching_tools.core.panel import (
     ActionTable,
@@ -19,6 +27,11 @@ from teaching_tools.shell.widgets.card import Card
 from teaching_tools.shell.widgets.image_view import ImageViewWidget
 from teaching_tools.shell.widgets.table_view import TableModel, TableWidget
 from teaching_tools.shell.widgets.text_view import TextViewWidget
+
+
+def _copy_text(view: QPlainTextEdit) -> None:
+    clipboard = QApplication.clipboard()
+    clipboard.setText(view.toPlainText())
 
 
 class ResultsArea(QWidget):
@@ -58,6 +71,12 @@ class ResultsArea(QWidget):
                 text_view = TextViewWidget(spec)
                 card.add(text_view)
                 self.text_views[spec.key] = text_view
+                if spec.copy_button:
+                    copy = QPushButton("Copy")
+                    copy.setProperty("role", "ghost")
+                    copy.setToolTip("Copy the text to the clipboard")
+                    copy.clicked.connect(lambda _c=False, v=text_view: _copy_text(v))
+                    card.add_trailing(copy)
             elif isinstance(spec, ImageView):
                 image = ImageViewWidget()
                 card.add(image)

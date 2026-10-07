@@ -121,7 +121,7 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
 * Keep tools small. `hello` is the reference: read it before writing a tool.
   `marks` shows presets, charts and aggregate-only saving; `classroom`
   shows row actions and the Resource Library; `worksheet` and `parsons`
-  show the house-style export; `trace`, `bugs` and `fade` show the sandboxed runner.
+  show the house-style export; `trace`, `bugs` and `fade` show the sandboxed runner; `pseudocode` is an AST → IR → text translator.
 * Screenshots for docs: `just screenshots` (renders offscreen via `tt-gui
   --screenshot`).
 * Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db).

@@ -1,5 +1,27 @@
 # Changelog
 
+## Phase 5 — pseudocode (2026-10-07)
+
+- `tools/pseudocode`: Python ↔ OCR Exam Reference Language ↔ AQA pseudocode
+  for the GCSE subset, through one intermediate representation. Covers
+  variables, arithmetic (`DIV`, `MOD`, `^`), comparisons, `AND/OR/NOT`,
+  if/elif/else, count loops, for-each, while, do…until / REPEAT…UNTIL,
+  functions and procedures, lists and indexing, string length / substring /
+  upper / lower, casts, random, basic file methods and comments.
+- Anything outside the subset is kept as a comment in the output and listed
+  under "Could not translate"; translations with a caveat (for-each in ERL,
+  `.append` on fixed arrays, AQA `USERINPUT` losing the prompt) are listed
+  as notes. Nothing is dropped silently.
+- Both pseudocode dialects parse back to Python, so Python → ERL → Python
+  round trips. Every OCR Booklet program 1a-8c round-trips to an
+  ast-equivalent program (tested against the real files when present and
+  against embedded copies always).
+- Panel: file or pasted code, direction dropdown, translation pane with a
+  Copy button, report pane. CLI `tt pseudocode to-ocr | to-aqa | to-python
+  <file> [--from] [--save] [--out]`.
+- Widget kit: `TextView(copy_button=True)` adds a Copy button to any text
+  output.
+
 ## Phase 4 — sandboxed runner, trace, bugs, fade (2026-10-07)
 
 - `core/runner/`: runs a file with `python -I -u` in a temp working
