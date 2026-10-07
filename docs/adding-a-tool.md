@@ -111,6 +111,14 @@ just lint
 The boundary tests fail if the tool imports Qt or if `logic.py` does I/O.
 The pre-commit hook refuses any CSV/XLSX without a `# FAKE DATA` first line.
 
+## Running pupil code
+
+Never `exec` it in the app. Use `core.runner.run_source(source, stdin=...,
+timeout=...)` (or `run_file`), which runs it in a subprocess with a hard
+timeout and a temp working directory and returns stdout, stderr, exit code
+and whether it timed out. `tools/trace` shows how to ship a helper script
+alongside the program with `extra_files`.
+
 ## Producing worksheets and keys
 
 Build a `core.export.Document`, add blocks to `doc.section()` and to

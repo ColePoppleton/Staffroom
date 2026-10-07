@@ -40,6 +40,8 @@ contain no names even invented ones.
 - This project is standalone. No integration with other apps Cole has built (e.g. Praxis); no shared data formats.
 
 ### Other rules from PHASES.md
+- Pupil code is only ever executed through `core/runner` (subprocess, timeout,
+  temp cwd), never with in-process `exec`.
 - Legacy Office files (.doc/.ppt/.pub/.pptx/.docx/.xlsx) are never parsed for preview or search; they are
   opened externally in their native app (`open <path>` on macOS). Full-text search covers .py/.txt/.md/.csv/.pdf only.
 - Thonny is the editor on the board and on school machines (IDLE is the fallback). On the Mac, launch with
@@ -55,7 +57,8 @@ src/teaching_tools/
                     launch (editor command), plugin (ToolPlugin protocol),
                     panel (UI vocabulary), discovery (pkgutil), scaffold (tt new),
                     library/ (Resource Library: index, search, tags, service),
-                    export/ (house style: Document → docx / PDF / text)
+                    export/ (house style: Document → docx / PDF / text),
+                    runner/ (sandboxed subprocess with timeout), codeinput
   shell/            tt-gui: the PySide6 launcher and its widget kit
   tools/<name>/     one package per tool: __init__ (plugin), cli, logic, panel, tests/
 examples/           small FAKE data files (marker row required, no names)
@@ -118,7 +121,7 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
 * Keep tools small. `hello` is the reference: read it before writing a tool.
   `marks` shows presets, charts and aggregate-only saving; `classroom`
   shows row actions and the Resource Library; `worksheet` and `parsons`
-  show the house-style export.
+  show the house-style export; `trace`, `bugs` and `fade` show the sandboxed runner.
 * Screenshots for docs: `just screenshots` (renders offscreen via `tt-gui
   --screenshot`).
 * Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db).

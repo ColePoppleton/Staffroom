@@ -1,5 +1,29 @@
 # Changelog
 
+## Phase 4 — sandboxed runner, trace, bugs, fade (2026-10-07)
+
+- `core/runner/`: runs a file with `python -I -u` in a temp working
+  directory with a minimal environment, hard wall-clock timeout (the process
+  is killed and reported), CPU rlimit as a second guard, captured output,
+  optional stdin, and an AST refusal of networking and subprocess imports.
+  Not a security boundary, by design: these are the teacher's own files.
+- `tools/trace`: a tracer runs inside the sandbox under `sys.settrace`,
+  recording each executed line of the program with the variable values after
+  it and anything printed, capped at N steps. Filter which lines are
+  recorded (assignments, loop headers, ifs, calls) and which variables are
+  columns. Sheet: numbered listing plus blank table; key: completed table and
+  the program output. Functions get a Scope column.
+- `tools/bugs`: seven error classes (comparison flipped, off by one, missing
+  colon, missing bracket, wrong variable name, indentation slip, string /
+  integer confusion). N variant files with exactly one mutation each; every
+  variant is run in the sandbox against the original so the key says
+  crashes with X, output wrong, hangs, or no visible change.
+- `tools/fade`: K progressively faded versions (bottom-up, top-down or by
+  line ranges; headers kept by default), one document with a page per
+  version and the solution as key.
+- `core/codeinput.py`: shared "file from the library or pasted code" input.
+- CLI: `tt trace make`, `tt bugs make` / `tt bugs kinds`, `tt fade make`.
+
 ## Phase 3 — house style, parsons, worksheet (2026-10-07)
 
 - `core/export/`: one document model (headings, paragraphs, code blocks,

@@ -26,7 +26,9 @@ def register(app: typer.Typer) -> None:
         ] = "medium",
         fmt: Annotated[str, typer.Option("--format", "-f", help="both, docx or pdf")] = "both",
         out: Annotated[Path | None, typer.Option("--out", "-o", help="Output folder")] = None,
-        preview: Annotated[bool, typer.Option("--preview", help="Print the sheet and key")] = True,
+        preview: Annotated[
+            bool, typer.Option("--preview/--no-preview", help="Print the sheet and key")
+        ] = True,
     ) -> None:
         """Make a worksheet and answer key."""
         from teaching_tools.tools.worksheet import plugin
