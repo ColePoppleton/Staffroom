@@ -8,7 +8,7 @@ Conventions that apply to every phase (also in `CLAUDE.md`):
 - Tools never import Qt. `logic.py` never does I/O. New UI needs go into the shared widget kit.
 - No pupil data anywhere — see `ROADMAP.md` Hard rules. No class lists, names, seating plans, per-pupil feedback or
   flags, no MIS imports. `marks` takes marks only, with no identifier column; only class-level aggregates are saved.
-- This project is standalone: no integration with, or data handoff to, any other app (e.g. Praxis).
+- This project is standalone: no integration with, or data handoff to, any other app.
 - The resources root is read-only. Edits happen on session copies; tags live in a sidecar JSON.
 - Legacy Office files (.doc/.ppt/.pub/.pptx/.docx/.xlsx) are **not** parsed for preview or search — they are
   opened externally in their native app (`open <path>` on macOS). Full-text search covers .py/.txt/.md/.csv/.pdf only.
@@ -37,7 +37,7 @@ The two things used every lesson. Build the library first; `classroom` depends o
 ### 1a. Library
 
 Scope:
-- Settings: one configurable `resources_root` (currently `~/Desktop/Resources`, ~587 files).
+- Settings: one configurable `resources_root` (the teacher's resources folder; empty until set).
 - Indexer: walk the root, record path, type, size, mtime, and extracted text for .py/.txt/.md/.csv/.pdf
   (pdf via `pypdf`; skip if text layer is empty). Store in SQLite at `~/.config/teaching-tools/library.db`.
   Incremental re-index by mtime; manual "Re-index" button; `tt library index` CLI.
@@ -67,8 +67,8 @@ Scope:
   the configured editor on the copy. Default editor command on macOS: `open -a Thonny {file}`; IDLE and
   "system default" as presets; fully editable in settings.
 - `sessions_root` is configurable and defaults to local `~/TeachingSessions`. Never auto-detect or default to a
-  OneDrive folder: the school does not use OneDrive and every OneDrive on this Mac is personal or a client's.
-  A folder picker in Settings covers syncing elsewhere if ever wanted. State the folder in the UI.
+  cloud-synced folder: which folder is reachable from school is the teacher's call. A folder picker in Settings
+  covers syncing elsewhere if wanted. State the folder in the UI.
 - Label is free text for the lesson (e.g. "P3 Y9 loops"). Never a class list or pupil names; the field is a single
   short line and the UI says so.
 - Session browser: list of past sessions, each with its files; **Diff vs original** (unified diff in a read-only view);
@@ -188,7 +188,7 @@ picks only from topics taught in the configured windows on a fixture log.
 - App icon, dark/light theme check on every panel, keyboard shortcuts (⌘K search in library, ⌘O open for class).
 - Settings page covers: resources root, sessions root, editor command, spec preset, house-style title/footer text.
 - `uv run tt-gui` → a `.app` via PyInstaller or briefcase so it sits in the Dock. Only after everything else works.
-- Review which of the nine tools were actually used in a month. Delete or shelve the rest.
+- Review which of the nine tools were actually used in a month (`tt usage`). Delete or shelve the rest.
 
 ---
 

@@ -24,7 +24,7 @@ class GeneralSettings:
     output_dir: str = ""  # empty means "next to the input file"
     log_level: str = "INFO"
     last_tool: str = ""
-    resources_root: str = "~/Desktop/Resources"
+    resources_root: str = ""  # the teacher's resources folder; set in Settings
     sessions_root: str = ""  # empty means ~/TeachingSessions (local; never a cloud folder)
     editor_command: str = "open -a Thonny {file}"
     board: str = "ocr"  # default exam board for presets and tags: ocr | aqa

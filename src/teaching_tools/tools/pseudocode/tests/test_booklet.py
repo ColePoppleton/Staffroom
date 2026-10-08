@@ -4,13 +4,19 @@ to an ast-equivalent program, or the report lists what was dropped.
 The real files live in the teacher's resources folder; the same programs
 are embedded here so the test also runs where that folder is absent."""
 
+import os
 from pathlib import Path
 
 import pytest
 
 from teaching_tools.tools.pseudocode import logic
 
-BOOKLET = Path.home() / "Desktop" / "Resources" / "Python" / "OCR Booklet"
+# Point TT_BOOKLET_DIR at a folder of the OCR booklet programs to run against the real files.
+BOOKLET = (
+    Path(os.environ.get("TT_BOOKLET_DIR", ""))
+    if os.environ.get("TT_BOOKLET_DIR")
+    else Path("/nonexistent")
+)
 NAMES = [f"{n}{s}" for n in range(1, 9) if n != 7 for s in "abc"]
 
 EMBEDDED = {

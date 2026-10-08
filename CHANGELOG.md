@@ -8,6 +8,12 @@ with every change; `just release <part>` turns it into a version.
 ## [Unreleased]
 
 ### Added
+- Documentation site (MkDocs Material on GitHub Pages): install, launcher,
+  privacy, updating, one page per tool, file formats, process.
+
+### Changed
+- Personal references generalised; the resources folder is empty until set
+  in Settings; the booklet round-trip test reads `TT_BOOKLET_DIR`.
 - Thin launcher app (`just install`) and self-update from the git remote.
 - Semantic versioning, Keep-a-Changelog, tag-driven GitHub Releases with a
   wheel and sdist (`.github/workflows/release.yml`, `scripts/release.py`,
@@ -192,7 +198,7 @@ The seven roadmap phases, as built:
   file up on re-index.
 - Sessions folder defaults to local `~/TeachingSessions`; a folder picker in
   Settings covers syncing elsewhere. No cloud-folder detection, by decision:
-  the school does not use OneDrive and every OneDrive on this Mac is personal.
+  which folder is reachable from school is the teacher's decision.
 - Editor: `core/launch.py` turns a `{file}` command template into argv.
   Presets Thonny (`open -a Thonny {file}`, default), IDLE
   (`python3 -m idlelib {file}`), System default (`open {file}`), or Custom,

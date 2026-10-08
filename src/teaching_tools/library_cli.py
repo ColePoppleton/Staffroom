@@ -28,7 +28,8 @@ def index(
     """Index (or incrementally re-index) the resources root."""
     svc = _service()
     if not svc.root_exists:
-        typer.secho(f"resources root not found: {svc.root}", fg=typer.colors.RED, err=True)
+        where = svc.root or "(not set: tt-gui › Settings › Resources folder)"
+        typer.secho(f"resources root not found: {where}", fg=typer.colors.RED, err=True)
         raise typer.Exit(1)
     typer.echo(f"indexing {svc.root}")
 

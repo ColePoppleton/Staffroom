@@ -46,6 +46,9 @@ dev = [
     "types-openpyxl",
     "pyinstaller>=6.22.3",
 ]
+docs = [
+    "mkdocs-material>=9.7.7",
+]
 
 [build-system]
 requires = ["hatchling"]

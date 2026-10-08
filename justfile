@@ -74,5 +74,10 @@ release PART="patch":
     git push --follow-tags
     @echo "pushed; watch the Release workflow on GitHub"
 
+# Serve the documentation site locally
+docs:
+    cp CHANGELOG.md docs/changelog.md
+    uv run --only-group docs mkdocs serve
+
 # Everything CI would do
 check: lint test
