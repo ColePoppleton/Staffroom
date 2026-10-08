@@ -1,5 +1,31 @@
 # Changelog
 
+## Phase 6 — quiz (2026-10-08)
+
+- `core/spec/`: OCR J277 and AQA 8525 content maps as TOML data files with a
+  loader (`load_taxonomy`, `find`, `describe`). Indicative: check against
+  the current specification.
+- `tools/quiz`: Markdown question banks (`## ` per question; `type: mcq |
+  short | tf`; `tags:` with spec codes and `topic:` tags; `- [x]` options;
+  `answer:`; `time:`; `why:`), validated with line-numbered errors.
+- Exporters: Kahoot (.xlsx in the template layout, headers on row 8 and
+  data from row 9, plus a .csv with the same headers; 120/75-character
+  limits enforced, times snapped to Kahoot's allowed values, true/false as
+  two options, short answers given three borrowed distractors or skipped
+  with a note), Forms paste text with a separate answers block, and a
+  printable do-now through the house style with the key split off.
+- Retrieval scheduler: a `date,topic` taught log (never a class or a pupil)
+  picks questions from topics taught 1, 3 and 6 weeks ago (± 3 days),
+  round-robin across the three windows.
+- CLI: `tt quiz export --bank B --format F --topics T --spec S --n N`,
+  `tt quiz retrieval --bank B --log L --date D`, `tt quiz list`,
+  `tt quiz check`, `tt quiz spec ocr|aqa`.
+- Examples: `question_bank.md` (13 invented questions) and `taught_log.csv`.
+- Manual check still owed, as PHASES.md says: import `question_bank_kahoot.xlsx`
+  into Kahoot once and confirm it accepts the columns.
+- Banks are Markdown (and could be TOML) rather than YAML, to avoid a
+  dependency.
+
 ## Phase 5 — pseudocode (2026-10-07)
 
 - `tools/pseudocode`: Python ↔ OCR Exam Reference Language ↔ AQA pseudocode

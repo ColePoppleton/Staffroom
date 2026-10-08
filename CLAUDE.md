@@ -58,7 +58,8 @@ src/teaching_tools/
                     panel (UI vocabulary), discovery (pkgutil), scaffold (tt new),
                     library/ (Resource Library: index, search, tags, service),
                     export/ (house style: Document → docx / PDF / text),
-                    runner/ (sandboxed subprocess with timeout), codeinput
+                    runner/ (sandboxed subprocess with timeout), codeinput,
+                    spec/ (OCR J277 / AQA 8525 taxonomies as TOML)
   shell/            tt-gui: the PySide6 launcher and its widget kit
   tools/<name>/     one package per tool: __init__ (plugin), cli, logic, panel, tests/
 examples/           small FAKE data files (marker row required, no names)

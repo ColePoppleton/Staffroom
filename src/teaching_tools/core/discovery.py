@@ -43,6 +43,11 @@ def load_plugin(name: str, package: str = TOOLS_PACKAGE) -> ToolPlugin:
     if plugin.name != name:
         msg = f"plugin in package {name!r} calls itself {plugin.name!r}; they must match"
         raise ValueError(msg)
+    try:
+        plugin.panel_spec()
+    except Exception as exc:
+        msg = f"{name}: panel_spec() is invalid: {exc}"
+        raise ValueError(msg) from exc
     return plugin
 
 
@@ -55,7 +60,7 @@ def discover_plugins() -> tuple[ToolPlugin, ...]:
         try:
             found.append(load_plugin(name))
         except Exception:
-            log.exception("skipping tool %r: failed to import", name)
+            log.exception("skipping tool %r: failed to load", name)
     return tuple(found)
 
 
