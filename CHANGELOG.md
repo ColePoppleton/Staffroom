@@ -23,6 +23,12 @@ with every change; `just release <part>` turns it into a version.
   warning fires, for trying the tool and for the tests.
 
 ### Changed
+- Parsons and bugs sheets print on fewer pages (#22): Parsons blocks are
+  numbered cut-out boxes, two across, with dashed cut lines and the answer
+  grid on the same page (`year9.py`, 15 blocks: 2 pages → 1); the bugs sheet
+  puts two versions on a page (4 versions: 4 pages → 2). `core.export` gains
+  `BoxedBlocks` and `AnswerGrid` for every tool, rendered to docx, PDF and
+  text; `examples/year9.py` is the program the page-count tests measure.
 - `marks`: the saved distribution chart is always print-friendly: white
   background and the light palette's ink, whatever `general.theme` is.
   The panel shows the same file (#13).

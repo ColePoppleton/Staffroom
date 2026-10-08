@@ -11,6 +11,9 @@ Each variant differs from the original by exactly one line, and the key says
 *crashes: SyntaxError*, *runs, but the output is wrong*, *hangs*, or
 *no visible change*.
 
+The sheet puts two versions on each page, each with its *Line / What is
+wrong / What happens* line underneath, so four versions print on two pages.
+
 Each run has a 4 second limit and a 1 MB cap on output; a variant that
 prints past the cap is marked *output capped*. The runs are not a security
 sandbox: see [Running pupil code](../guide/running-code.md).

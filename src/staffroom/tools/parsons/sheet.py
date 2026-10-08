@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from datetime import date
 
-from staffroom.core.export import Code, Document, HintBox, Numbered, Paragraph, TableBlock
+from staffroom.core.export import (
+    AnswerGrid,
+    BoxedBlocks,
+    Code,
+    Document,
+    HintBox,
+    Paragraph,
+    TableBlock,
+)
 from staffroom.tools.parsons.logic import (
     Block,
     Options,
@@ -28,7 +36,8 @@ def build_document(
     sheet = doc.section()
     sheet.add(
         Paragraph(
-            "Put the blocks in the right order to make a working program. "
+            "Put the blocks in the right order to make a working program: cut them out "
+            "along the dashed lines, or write their numbers in the grid. "
             + (
                 "Some blocks are wrong and must be left out. "
                 if problem.distractor_numbers()
@@ -50,13 +59,13 @@ def build_document(
             )
         )
     sheet.add(
-        Numbered(
+        BoxedBlocks(
             tuple(render_block(b, options.show_indentation) for b in problem.shuffled),
-            code=True,
+            columns=2,
         )
     )
     sheet.add(Paragraph("Write the block numbers in order:", style="instruction"))
-    sheet.add(Numbered(tuple("" for _ in problem.solution), answer_lines=0))
+    sheet.add(AnswerGrid(len(problem.solution)))
 
     key = doc.section("Answer key", answers=True)
     key.add(Paragraph("Correct order: " + ", ".join(str(n) for n in problem.answer_order())))

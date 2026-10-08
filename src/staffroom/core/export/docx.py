@@ -6,13 +6,17 @@ from pathlib import Path
 
 import docx
 from docx.document import Document as DocxDocument
+from docx.enum.table import WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Pt, RGBColor
+from docx.shared import Mm, Pt, RGBColor
+from docx.table import _Cell
 from docx.text.paragraph import Paragraph as DocxParagraph
 
 from staffroom.core.export.model import (
+    AnswerGrid,
+    BoxedBlocks,
     Code,
     Document,
     Heading,
@@ -183,5 +187,87 @@ def _render(d: DocxDocument, block: object) -> None:
         t.font.color.rgb = ACCENT
         p.add_run(block.text)
         d.add_paragraph()
+    elif isinstance(block, BoxedBlocks):
+        _boxed(d, block)
+    elif isinstance(block, AnswerGrid):
+        _answer_grid(d, block)
     elif isinstance(block, PageBreak):
         d.add_page_break()  # type: ignore[no-untyped-call]
+
+
+def _boxed(d: DocxDocument, block: BoxedBlocks) -> None:
+    """Cut-out cells: a grid with dashed borders, the number beside the first
+    line of each item. Word wraps a line too long for its column."""
+    if not block.items:
+        return
+    columns = max(1, block.columns)
+    n_rows = -(-len(block.items) // columns)
+    table = d.add_table(rows=n_rows, cols=columns)
+    table.style = "Table Grid"
+    for idx, item in enumerate(block.items):
+        cell = table.cell(idx // columns, idx % columns)
+        _cell_borders(cell, "dashed")
+        first, *rest = item.splitlines() or [""]
+        p = cell.paragraphs[0]
+        p.paragraph_format.space_after = Pt(0)
+        num = p.add_run(f"{block.start + idx}  ")
+        num.bold = True
+        if block.code:
+            _mono(p, first)
+        else:
+            p.add_run(first)
+        for line in rest:
+            q = cell.add_paragraph()
+            q.paragraph_format.left_indent = Pt(16)
+            q.paragraph_format.space_after = Pt(0)
+            if block.code:
+                _mono(q, line)
+            else:
+                q.add_run(line)
+    for idx in range(len(block.items), n_rows * columns):
+        _cell_borders(table.cell(idx // columns, idx % columns), "nil")
+    d.add_paragraph()
+
+
+def _answer_grid(d: DocxDocument, block: AnswerGrid) -> None:
+    if block.count <= 0:
+        return
+    per_row = max(1, block.per_row)
+    positions = list(range(block.start, block.start + block.count))
+    for i in range(0, len(positions), per_row):
+        chunk = positions[i : i + per_row]
+        table = d.add_table(rows=2, cols=len(chunk))
+        table.style = "Table Grid"
+        table.autofit = False
+        for col, position in enumerate(chunk):
+            head = table.cell(0, col)
+            head.text = ""
+            head.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = head.paragraphs[0].add_run(str(position))
+            run.bold = True
+            run.font.size = Pt(9)
+            run.font.color.rgb = MUTED
+            for row in (0, 1):
+                table.cell(row, col).width = Mm(20)
+        answer_row = table.rows[1]
+        answer_row.height = Mm(11)
+        answer_row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
+        d.add_paragraph()
+
+
+def _cell_borders(cell: _Cell, val: str) -> None:
+    """Set all four borders of a table cell (``dashed``, ``single``, ``nil``)."""
+    tc_pr = cell._tc.get_or_add_tcPr()
+    borders = tc_pr.find(qn("w:tcBorders"))
+    if borders is None:
+        borders = OxmlElement("w:tcBorders")
+        tc_pr.append(borders)
+    for edge in ("top", "left", "bottom", "right"):
+        element = borders.find(qn(f"w:{edge}"))
+        if element is None:
+            element = OxmlElement(f"w:{edge}")
+            borders.append(element)
+        element.set(qn("w:val"), val)
+        element.set(qn("w:sz"), "6")
+        element.set(qn("w:space"), "0")
+        element.set(qn("w:color"), "667085")

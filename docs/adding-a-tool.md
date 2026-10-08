@@ -160,7 +160,11 @@ Build a `core.export.Document`, add blocks to `doc.section()` and to
 `export(doc, ctx.output_dir, stem, formats)`. That writes the sheet and a
 separate key in each format with the house header and footer. `to_text(doc)`
 gives a preview for a `TextView`. `tools/worksheet` and `tools/parsons` are
-the references.
+the references. The blocks are `Heading`, `Paragraph`, `Code`, `Numbered`,
+`TableBlock`, `HintBox`, `BoxedBlocks` (numbered cut-out cells with dashed
+cut lines, laid out in columns), `AnswerGrid` (empty boxes headed by
+position) and `PageBreak`. A new block goes in `core/export/model.py` with a
+rendering in each of `pdf.py`, `docx.py` and `text.py`, so every tool gets it.
 
 ## Presets for an editable table
 

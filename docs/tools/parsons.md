@@ -10,7 +10,10 @@ with optional distractors, and a key.
 - **Distractors** are real lines with a colon removed, a comparison flipped
   or a number off by one. The key says which blocks to leave out.
 - **Show indentation** off makes pupils decide the indents.
-- The key reconstructs the program; the tests prove it is equivalent to the input.
+- The sheet prints the blocks as numbered cut-out boxes, two across, with
+  dashed cut lines and an answer grid underneath; a 15-block problem fits on
+  one A4 page. The key reconstructs the program; the tests prove it is
+  equivalent to the input.
 
 ```bash
 staff parsons make program.py --seed 7 --distractors 2 [--lines] [--no-indent]

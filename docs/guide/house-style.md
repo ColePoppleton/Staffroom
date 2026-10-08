@@ -7,6 +7,8 @@ they all look the same:
 - header: your header text, the title, the topic and the date;
 - footer: your footer text and the page number;
 - monospace blocks for code; numbered questions with ruled answer space;
+- numbered cut-out boxes with dashed cut lines (Parsons blocks) and answer
+  grids, laid out to use the page;
 - an answer key split into a separate `_key` file.
 
 Set the header and footer text in **Settings › Worksheets**. Tools that
