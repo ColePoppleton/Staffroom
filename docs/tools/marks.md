@@ -31,6 +31,6 @@ Facility is the mean mark as a fraction of the max; discrimination is the
 difference between the top and bottom third's mean, over the max.
 
 ```bash
-tt marks run marks.csv --preset "OCR J277 (GCSE 9-1)" --unit percent --max 4,6,8,6,10,6
-tt marks presets
+staff marks run marks.csv --preset "OCR J277 (GCSE 9-1)" --unit percent --max 4,6,8,6,10,6
+staff marks presets
 ```

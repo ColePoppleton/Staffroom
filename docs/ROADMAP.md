@@ -1,4 +1,4 @@
-# Teaching Tools — Roadmap
+# Staffroom — Roadmap
 
 Nine tools for a UK secondary computer science teacher (KS3, GCSE OCR J277 / AQA 8525, A-level).
 Runs on the teacher's Mac. Outputs (PDF, docx, CSV, PNG) are taken into school systems manually.
@@ -34,7 +34,7 @@ Not a plugin — a second root in the sidebar ("Tools" / "Resources") exposed to
 - Index a configured resources root (a typical department folder: a few hundred .py, .pptx, .doc, .pdf and Scratch files plus txt/csv/images).
 - Full-text search across .py/.txt/.md/.csv/.docx/.pptx/.pdf. Legacy .doc/.ppt/.pub need conversion
   (LibreOffice headless or skip with a warning) — do not use python-docx on .doc.
-- Filters: type, topic, key stage, tag. Tags and notes in `<root>/.teaching-tools/tags.json`, never in the files.
+- Filters: type, topic, key stage, tag. Tags and notes in `<root>/.staffroom/tags.json`, never in the files.
 - Preview pane: syntax-highlighted code, extracted text for documents, thumbnail for images.
 - Hide cruft (Thumbs.db, .DS_Store, zips) by default. Detect iCloud placeholder files (reads fail with
   "Resource deadlock avoided") and mark them cloud-only rather than crashing.

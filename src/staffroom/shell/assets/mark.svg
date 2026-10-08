@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Staffroom mark B: a door ajar. Manila tile, navy ink, red-pen accent. -->
+  <defs>
+    <clipPath id="tile"><rect x="0" y="0" width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#f4efe3"/>
+  <g clip-path="url(#tile)">
+    <!-- light spilling through the open door onto the floor -->
+    <path d="M292 392 L292 392 L420 512 L160 512 Z" fill="#c8322b" opacity="0.16"/>
+  </g>
+  <!-- wall: a frame with a flat top, drawn as one stroke -->
+  <path d="M120 420 V128 a24 24 0 0 1 24 -24 h224 a24 24 0 0 1 24 24 v292"
+        fill="none" stroke="#1c2433" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- floor line -->
+  <path d="M84 420 H428" stroke="#1c2433" stroke-width="28" stroke-linecap="round"/>
+  <!-- door, swung open towards the viewer: a parallelogram hinged on the right jamb -->
+  <path d="M292 392 V152 L380 132 V412 Z" fill="#c8322b"/>
+  <path d="M292 392 V152 L380 132 V412 Z" fill="none" stroke="#1c2433" stroke-width="22" stroke-linejoin="round"/>
+  <!-- knob -->
+  <circle cx="318" cy="286" r="14" fill="#f4efe3"/>
+</svg>

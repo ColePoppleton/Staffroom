@@ -1,4 +1,4 @@
-# Teaching Tools task runner. `just` with no arguments lists these.
+# Staffroom task runner. `just` with no arguments lists these.
 
 set shell := ["zsh", "-cu"]
 
@@ -28,20 +28,20 @@ fix:
 
 # Run a CLI command, e.g. `just run hello run examples/marks_10x.csv`
 run *ARGS:
-    uv run tt {{ARGS}}
+    uv run staff {{ARGS}}
 
 # Open the launcher
 gui *ARGS:
-    uv run tt-gui {{ARGS}}
+    uv run staffroom {{ARGS}}
 
 # Scaffold a new tool: `just new marks`
 new NAME:
-    uv run tt new {{NAME}}
+    uv run staff new {{NAME}}
 
 # Render the launcher (hello panel, example loaded, run) to docs/ in both themes
 screenshots:
-    QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/marks_10x.csv --run --theme dark --screenshot docs/launcher-dark.png
-    QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/marks_10x.csv --run --theme light --screenshot docs/launcher-light.png
+    QT_QPA_PLATFORM=offscreen uv run staffroom --tool hello --open examples/marks_10x.csv --run --theme dark --screenshot docs/launcher-dark.png
+    QT_QPA_PLATFORM=offscreen uv run staffroom --tool hello --open examples/marks_10x.csv --run --theme light --screenshot docs/launcher-light.png
 
 # Build the thin launcher app (runs this checkout via uv; updates need no reinstall)
 app:
@@ -53,11 +53,11 @@ install:
 
 # Build a frozen, self-contained bundle with PyInstaller (for a machine without the repo)
 bundle:
-    uv run pyinstaller packaging/tt-gui.spec --noconfirm --clean
+    uv run pyinstaller packaging/staffroom.spec --noconfirm --clean
 
 # Pull the latest code and sync dependencies (what the app's Update button does)
 update:
-    uv run tt update
+    uv run staff update
 
 # Redraw the app icon from scripts/make_icon.py
 icon:

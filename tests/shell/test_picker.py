@@ -8,10 +8,10 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
-from teaching_tools.core.library.service import LibraryService
-from teaching_tools.core.panel import ResourcePicker
-from teaching_tools.shell.library.picker import REL_ROLE, ResourcePickerDialog
-from teaching_tools.shell.widgets import ResourcePickerWidget
+from staffroom.core.library.service import LibraryService
+from staffroom.core.panel import ResourcePicker
+from staffroom.shell.library.picker import REL_ROLE, ResourcePickerDialog
+from staffroom.shell.widgets import ResourcePickerWidget
 
 
 def test_tree_then_results(qtbot: QtBot, service: LibraryService, resources_root: Path) -> None:

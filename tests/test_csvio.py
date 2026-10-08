@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from teaching_tools.core.csvio import (
+from staffroom.core.csvio import (
     FAKE_DATA_MARKER,
     has_fake_data_marker,
     read_table,
     write_table,
 )
-from teaching_tools.core.table import Table
+from staffroom.core.table import Table
 
 
 def test_read_example_strips_marker(example_marks: Path) -> None:

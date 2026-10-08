@@ -13,5 +13,5 @@ with optional distractors, and a key.
 - The key reconstructs the program; the tests prove it is equivalent to the input.
 
 ```bash
-tt parsons make program.py --seed 7 --distractors 2 [--lines] [--no-indent]
+staff parsons make program.py --seed 7 --distractors 2 [--lines] [--no-indent]
 ```

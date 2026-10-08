@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Deep product audit of Teaching Tools. Drives the actual app as several teacher personas, writes evidence-backed findings, then holds the PM / stakeholder meeting and turns the decisions into a GitHub Milestone of issues plus an explicit "not doing" list. Run from the main chat at the start of a phase, or when the user asks to audit, review the product, or plan the next phase.
+description: Deep product audit of Staffroom. Drives the actual app as several teacher personas, writes evidence-backed findings, then holds the PM / stakeholder meeting and turns the decisions into a GitHub Milestone of issues plus an explicit "not doing" list. Run from the main chat at the start of a phase, or when the user asks to audit, review the product, or plan the next phase.
 ---
 
 # /audit
@@ -24,7 +24,7 @@ separate. Users produce evidence; the meeting produces decisions.
 
 - Run its CLI on the example files in `examples/` and on at least one real-shaped input you make
   up (fake, marked `# FAKE DATA` if it is a table). Capture the exact command and output.
-- Render its panel: `QT_QPA_PLATFORM=offscreen uv run tt-gui --tool <name> [--open <file> --run] --screenshot <scratch>/<name>.png`
+- Render its panel: `QT_QPA_PLATFORM=offscreen uv run staffroom --tool <name> [--open <file> --run] --screenshot <scratch>/<name>.png`
   in both themes. Look at every screenshot. Note anything unreadable, cramped, misleading,
   or that needs a manual the user does not have.
 - Try to break it: empty input, a wrong file type, a huge file, a file with an identifier column,

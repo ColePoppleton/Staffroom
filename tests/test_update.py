@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from teaching_tools.core import update
+from staffroom.core import update
 
 
 def git(*args: str, cwd: Path) -> str:

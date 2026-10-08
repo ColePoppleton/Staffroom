@@ -18,7 +18,7 @@ Tools reach the library through a picker: ⌘O, or *From library…* on any
 file input.
 
 ```bash
-tt library index
-tt library search while --kind python
-tt library tags "Python/loops.py" --set loops,ks3 --notes "Good starter"
+staff library index
+staff library search while --kind python
+staff library tags "Python/loops.py" --set loops,ks3 --notes "Good starter"
 ```

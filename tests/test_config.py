@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from teaching_tools.core import paths
-from teaching_tools.core.config import load_config
+from staffroom.core import paths
+from staffroom.core.config import load_config
 
 
 def test_defaults_when_missing(isolated_home: Path) -> None:

@@ -29,11 +29,11 @@ each panel says exactly what happened.
 | Exam board | OCR J277 or AQA 8525: sets default presets and tags |
 | Header / footer text | printed on every worksheet and key |
 
-Everything is saved to `~/.config/teaching-tools/config.toml` as you change it.
+Everything is saved to `~/.config/staffroom/config.toml` as you change it.
 
 ## The command line
 
-Every tool is also a `tt` subcommand with the same options. `tt --help`
-lists them; `tt <tool> --help` shows a tool's commands. The CLI is the
+Every tool is also a `staff` subcommand with the same options. `staff --help`
+lists them; `staff <tool> --help` shows a tool's commands. The CLI is the
 primary way the tools are tested, so if something works in the panel it
 works in the terminal and vice versa.

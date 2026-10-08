@@ -2,8 +2,8 @@
 
 ## The canonical way: `uv tool install`
 
-Teaching Tools is a Python package. Installing it as a tool gives you the
-`tt` and `tt-gui` commands without touching any other Python on the machine.
+Staffroom is a Python package. Installing it as a tool gives you the
+`staff` and `staffroom` commands without touching any other Python on the machine.
 
 1. Install [uv](https://docs.astral.sh/uv/) if you don't have it:
    ```bash
@@ -11,18 +11,18 @@ Teaching Tools is a Python package. Installing it as a tool gives you the
    ```
 2. Install the tools:
    ```bash
-   uv tool install teaching-tools
+   uv tool install staffroom
    ```
 3. Start the launcher:
    ```bash
-   tt-gui
+   staffroom
    ```
 
-Upgrade later with `uv tool upgrade teaching-tools`.
+Upgrade later with `uv tool upgrade staffroom`.
 
 !!! note "Until the first PyPI release"
     Install straight from GitHub:
-    `uv tool install git+https://github.com/ColePoppleton/Teaching-Tools`.
+    `uv tool install git+https://github.com/ColePoppleton/Staffroom`.
     Add `@v0.2.0` (any tag) to pin a version.
 
 ## macOS: a Dock icon
@@ -40,8 +40,8 @@ they are on the roadmap, not a priority yet.
 ## For developers
 
 ```bash
-git clone https://github.com/ColePoppleton/Teaching-Tools
-cd Teaching-Tools
+git clone https://github.com/ColePoppleton/Staffroom
+cd Staffroom
 just setup      # uv sync + pre-commit hooks
 just test
 just gui

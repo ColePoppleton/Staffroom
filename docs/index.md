@@ -1,4 +1,4 @@
-# Teaching Tools
+# Staffroom
 
 Small tools for secondary computing teachers (KS3, GCSE, A-level), in one
 desktop launcher. Mark a mock and see which questions to reteach, turn a
@@ -27,14 +27,14 @@ saved can be traced to a pupil. See [Privacy](guide/privacy.md).
 | [Quiz](tools/quiz.md) | Markdown question bank → Kahoot, Forms text, printable do-now; retrieval scheduler |
 | [Resource Library](tools/library.md) | Index, search, preview and tag your resources folder |
 
-Every tool has a command-line twin (`tt <tool> ...`), so anything you can
+Every tool has a command-line twin (`staff <tool> ...`), so anything you can
 click you can script.
 
 ## Install in one line
 
 ```bash
-uv tool install teaching-tools
-tt-gui
+uv tool install staffroom
+staffroom
 ```
 
 Details and alternatives in [Install](guide/install.md).

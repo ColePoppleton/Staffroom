@@ -4,8 +4,8 @@ from pathlib import Path
 from docx import Document as DocxReader
 from pypdf import PdfReader
 
-from teaching_tools.core.config import load_config
-from teaching_tools.core.export import (
+from staffroom.core.config import load_config
+from staffroom.core.export import (
     Document,
     HouseStyle,
     Paragraph,

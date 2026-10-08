@@ -1,4 +1,4 @@
-# Teaching Tools — conventions
+# Staffroom — conventions
 
 A monorepo of small Python tools for UK secondary computing teachers (KS3,
 GCSE OCR J277 / AQA 8525, A-level), run locally on the teacher's own Mac. Outputs (PDF, docx,
@@ -51,29 +51,30 @@ contain no names even invented ones.
 ## Shape
 
 ```
-src/teaching_tools/
-  cli.py            tt: typer root; mounts each tool's sub-app and shell features
+src/staffroom/
+  cli.py            staff: typer root; mounts each tool's sub-app and shell features
   core/             shared, GUI-free: Table, csvio, privacy, config, paths, log,
                     launch (editor command), plugin (ToolPlugin protocol),
-                    panel (UI vocabulary), discovery (pkgutil), scaffold (tt new),
+                    panel (UI vocabulary), discovery (pkgutil), scaffold (staff new),
                     library/ (Resource Library: index, search, tags, service),
                     export/ (house style: Document → docx / PDF / text),
                     runner/ (sandboxed subprocess with timeout), codeinput,
                     spec/ (OCR J277 / AQA 8525 taxonomies as TOML)
-  shell/            tt-gui: the PySide6 launcher and its widget kit
+  shell/            staffroom: the PySide6 launcher and its widget kit
   tools/<name>/     one package per tool: __init__ (plugin), cli, logic, panel, tests/
 examples/           small FAKE data files (marker row required, no names)
 data/               git-ignored scratch space
 docs/               ROADMAP.md, PHASES.md, adding-a-tool.md, screenshots
 ```
 
-Two entry points over the same code: `tt` (CLI, primary for testing) and
-`tt-gui` (launcher). `just` has the day-to-day commands.
+Two entry points over the same code: `staff` (CLI, primary for testing) and
+`staffroom` (launcher); `tt` and `tt-gui` are aliases kept for one release.
+`just` has the day-to-day commands.
 
 ## The three engineering rules, as enforced here
 
 1. **Tools never touch Qt.** Nothing under `tools/` imports PySide6, shiboken6
-   or `teaching_tools.shell`. Enforced by an import-linter contract
+   or `staffroom.shell`. Enforced by an import-linter contract
    (`just lint`) and by `tests/test_boundaries.py` (`just test`).
 2. **Logic never touches I/O.** `tools/<name>/logic.py` is pure functions over
    `core.table.Table` and plain values: no files, no typer, no Qt, no network.
@@ -105,8 +106,8 @@ A tool package exposes `plugin`, an object with `name`, `description`,
 * `RunResult.tables` / `.images` / `.texts` are keyed by output widget keys;
   `.files` lists what was written; `.summary` is one line.
 
-Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
-`tt list` with no reinstall. Broken tools are logged and skipped.
+Discovery is `pkgutil` over `staffroom.tools`: a new folder appears in
+`staff list` with no reinstall. Broken tools are logged and skipped.
 
 ## Process
 
@@ -121,12 +122,12 @@ app runs. Nothing merges without a PR and green CI.
   `just install` (thin launcher app in /Applications), `just bundle`
   (PyInstaller), `just icon`, `just screenshots`, `just update`.
 * The installed app runs this checkout via uv: commit and push to
-  github.com/ColePoppleton/Teaching-Tools and the app offers the update.
+  github.com/ColePoppleton/Staffroom and the app offers the update.
 * `uv` manages the environment; Python 3.12+; src layout.
 * ruff (line length 100), pytest (+ pytest-qt, offscreen), mypy (strict on
   `core`, normal elsewhere), import-linter, pre-commit.
 * Tests for a tool live in `tools/<name>/tests/`; shared fixtures in the root
-  `conftest.py` (every test gets an isolated `TEACHING_TOOLS_HOME`).
+  `conftest.py` (every test gets an isolated `STAFFROOM_HOME`).
 * The shell's look is defined in `shell/theme.py` as tokens + generated QSS.
   Widgets opt in with object names and `role` properties; no colours in
   widget code.
@@ -134,9 +135,9 @@ app runs. Nothing merges without a PR and green CI.
   `marks` shows presets, charts and aggregate-only saving; `classroom`
   shows row actions and the Resource Library; `worksheet` and `parsons`
   show the house-style export; `trace`, `bugs` and `fade` show the sandboxed runner; `pseudocode` is an AST → IR → text translator.
-* Screenshots for docs: `just screenshots` (renders offscreen via `tt-gui
+* Screenshots for docs: `just screenshots` (renders offscreen via `staffroom
   --screenshot`).
-* Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db,
+* Config lives at `~/.config/staffroom/` (config.toml, logs/, library.db,
   usage.toml). Worksheets read the house-style header/footer from config.
 * Lesson copies live in `~/TeachingSessions` by default (`sessions_root`).
   Never default to, or detect, any cloud-synced folder; the teacher chooses.

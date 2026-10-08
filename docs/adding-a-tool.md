@@ -6,21 +6,21 @@
 just new my_tool
 ```
 
-This creates `src/teaching_tools/tools/my_tool/` with:
+This creates `src/staffroom/tools/my_tool/` with:
 
 | File | Owns |
 | --- | --- |
 | `__init__.py` | the `plugin` object: metadata, `run()` glue (reads/writes files, calls logic) |
 | `logic.py` | pure functions and an `Options` dataclass; no I/O |
 | `panel.py` | `panel_spec()`: the declarative UI |
-| `cli.py` | `tt my_tool run ...` and friends |
+| `cli.py` | `staff my_tool run ...` and friends |
 | `tests/` | tests; shared fixtures come from the root `conftest.py` |
 
 It shows up straight away:
 
 ```bash
-uv run tt list
-uv run tt my_tool run examples/marks_10x.csv
+uv run staff list
+uv run staff my_tool run examples/marks_10x.csv
 ```
 
 ## 2. Write the logic

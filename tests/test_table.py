@@ -1,6 +1,6 @@
 import pytest
 
-from teaching_tools.core.table import Table, coerce
+from staffroom.core.table import Table, coerce
 
 
 def test_shape_and_column() -> None:

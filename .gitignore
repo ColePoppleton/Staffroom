@@ -16,7 +16,8 @@ data/
 *.png
 .idea/
 !docs/*.png
-!src/teaching_tools/shell/assets/*.png
+!docs/assets/*.png
+!src/staffroom/shell/assets/*.png
 .idea/
 .DS_Store
 

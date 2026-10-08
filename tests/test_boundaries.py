@@ -12,13 +12,13 @@ from pathlib import Path
 
 import pytest
 
-import teaching_tools
-import teaching_tools.tools as tools_pkg
+import staffroom
+import staffroom.tools as tools_pkg
 
-PKG = Path(teaching_tools.__file__).parent
+PKG = Path(staffroom.__file__).parent
 TOOLS = Path(tools_pkg.__file__).parent
 
-QT_PREFIXES = ("PySide6", "shiboken6", "PyQt5", "PyQt6", "teaching_tools.shell")
+QT_PREFIXES = ("PySide6", "shiboken6", "PyQt5", "PyQt6", "staffroom.shell")
 IO_MODULES = {
     "os",
     "io",
@@ -32,9 +32,9 @@ IO_MODULES = {
     "openpyxl",
     "sqlite3",
     "requests",
-    "teaching_tools.core.csvio",
-    "teaching_tools.core.config",
-    "teaching_tools.core.paths",
+    "staffroom.core.csvio",
+    "staffroom.core.config",
+    "staffroom.core.paths",
 }
 
 
@@ -70,5 +70,5 @@ def test_logic_is_pure(path: Path) -> None:
 def test_core_never_imports_qt_or_tools() -> None:
     for path in (PKG / "core").rglob("*.py"):
         mods = imported_modules(path)
-        bad = {m for m in mods if m.startswith((*QT_PREFIXES, "teaching_tools.tools", "typer"))}
+        bad = {m for m in mods if m.startswith((*QT_PREFIXES, "staffroom.tools", "typer"))}
         assert not bad, f"{path.relative_to(PKG)}: {sorted(bad)}"
