@@ -47,3 +47,23 @@ def test_xlsx_round_trip(tmp_path: Path) -> None:
 def test_unsupported_suffix(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="unsupported"):
         read_table(tmp_path / "x.txt")
+
+
+def test_flag_rows_are_found_before_identifier_columns_are_dropped(tmp_path: Path) -> None:
+    # A markbook export: the MAX flag sits in the name column, which the filter drops.
+    p = tmp_path / "markbook.csv"
+    p.write_text("# FAKE DATA\nSurname,Forename,q1,q2\nMAX,,4,6\ns1,f1,3,5\ns2,f2,4,6\n")
+    t = read_table(p, flag="max")
+    assert t.columns == ["q1", "q2"]  # the filter still ran, unconditionally
+    assert t.dropped_columns == ["Surname", "Forename"]
+    assert t.flagged_rows == [0]
+    assert t.rows[0] == [4, 6]  # the flag cell itself did not come through
+    assert read_table(p).flagged_rows == []  # no flag asked for, nothing recorded
+
+
+def test_flag_rows_xlsx_and_whitespace(tmp_path: Path) -> None:
+    src = Table(["Name", "q1"], [["x", 3], [" Max ", 4], ["y", 2]], fake_data=True)
+    out = write_table(src, tmp_path / "book.xlsx")
+    t = read_table(out, flag="MAX")
+    assert t.columns == ["q1"] and t.flagged_rows == [1]
+    assert read_table(out, flag="TOTAL").flagged_rows == []

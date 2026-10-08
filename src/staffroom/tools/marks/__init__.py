@@ -38,7 +38,9 @@ class MarksPlugin:
         )
 
         ctx.progress(0.1, f"Reading {source.name}")
-        table = read_table(source)
+        # The MAX row is found on the raw file, before identifier columns go:
+        # a markbook export keeps the flag in the name column.
+        table = read_table(source, flag=logic.MAX_FLAG)
         if table.dropped_columns:
             ctx.log("Dropped identifier column(s), never used: " + ", ".join(table.dropped_columns))
         ctx.progress(0.4, "Analysing")
@@ -57,7 +59,9 @@ class MarksPlugin:
         out = ctx.output_dir
         stem = source.stem
         chart = distribution_chart(
-            analysis.distribution, out / f"{stem}_distribution.png", ctx.config.general.theme
+            logic.without_incomplete_row(analysis.distribution),
+            out / f"{stem}_distribution.png",
+            ctx.config.general.theme,
         )
         # Aggregates only. The per-script table is never written.
         dist_csv = write_table(
@@ -65,6 +69,8 @@ class MarksPlugin:
         )
         q_csv = write_table(_marked(analysis.questions, table), out / f"{stem}_questions.csv")
         ctx.progress(1.0, "Done")
+        n_warn = len(analysis.warnings)
+        caveat = "" if not n_warn else f"{n_warn} warning{'s' if n_warn > 1 else ''} in the log; "
         return RunResult(
             tables={
                 "distribution": analysis.distribution,
@@ -74,7 +80,7 @@ class MarksPlugin:
             },
             images={"chart": chart},
             files=[dist_csv, q_csv, chart],
-            summary=f"{len(analysis.grades)} scripts graded; aggregates saved to {out}",
+            summary=f"{len(analysis.grades)} scripts graded; {caveat}aggregates saved to {out}",
         )
 
     def act(self, name: str, row: Mapping[str, Any], ctx: RunContext) -> RunResult:

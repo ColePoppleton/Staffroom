@@ -8,6 +8,13 @@ identify a pupil are removed before the data reaches a tool, a preview or an
 output; the names of the dropped columns are kept on ``Table.dropped_columns``
 and logged as a warning. There is no way to opt out.
 
+A tool may need to know which row carried a flag word (``marks`` looks for a
+``MAX`` row) even when that word sits in an identifier column, as it does in
+a markbook export. ``read_table(path, flag="MAX")`` decides that on the raw
+table, before the filter runs, and hands the tool only the row indices on
+``Table.flagged_rows``; the filter itself is unchanged and the identifier
+cells never leave this module.
+
 Fake-data marker
 ----------------
 Real pupil data must never be committed. Every example file carries a marker
@@ -45,16 +52,33 @@ def is_marker_line(line: str) -> bool:
     return line.strip().upper().startswith(FAKE_DATA_MARKER)
 
 
-def read_table(path: Path) -> Table:
+def read_table(path: Path, *, flag: str | None = None) -> Table:
     """Read a CSV or XLSX file, dispatching on suffix. Identifier columns are
-    dropped (see module docstring)."""
+    dropped (see module docstring). With ``flag``, the indices of rows where any
+    cell equals it (case-insensitive, whitespace ignored) are recorded on
+    ``Table.flagged_rows``; the decision is made before the columns are dropped."""
     suffix = path.suffix.lower()
     if suffix == ".csv":
-        return _privacy_filter(read_csv(path), path)
-    if suffix == ".xlsx":
-        return _privacy_filter(read_xlsx(path), path)
-    msg = f"unsupported table file {path.name!r}; expected one of {TABLE_EXTENSIONS}"
-    raise ValueError(msg)
+        raw = read_csv(path)
+    elif suffix == ".xlsx":
+        raw = read_xlsx(path)
+    else:
+        msg = f"unsupported table file {path.name!r}; expected one of {TABLE_EXTENSIONS}"
+        raise ValueError(msg)
+    flagged = flagged_rows(raw, flag) if flag else []
+    clean = _privacy_filter(raw, path)
+    clean.flagged_rows = flagged
+    return clean
+
+
+def flagged_rows(table: Table, flag: str) -> list[int]:
+    """Indices of rows where any cell is the word ``flag`` (case-insensitive)."""
+    want = flag.strip().upper()
+    return [
+        i
+        for i, row in enumerate(table.rows)
+        if any(isinstance(c, str) and c.strip().upper() == want for c in row)
+    ]
 
 
 def _privacy_filter(table: Table, path: Path) -> Table:

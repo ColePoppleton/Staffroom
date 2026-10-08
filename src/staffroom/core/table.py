@@ -20,12 +20,17 @@ class Table:
     that anything written back out keeps it (see :mod:`staffroom.core.csvio`).
     ``dropped_columns`` lists identifier columns removed at load time by
     :mod:`staffroom.core.privacy`; it is informational and not compared.
+    ``flagged_rows`` holds the indices of rows that carried a flag word the
+    reader was asked to look for (``csvio.read_table(path, flag="MAX")``),
+    decided on the raw file before identifier columns were dropped. Only the
+    yes/no decision travels; the cells it was made on do not.
     """
 
     columns: list[str]
     rows: list[Row] = field(default_factory=list)
     fake_data: bool = False
     dropped_columns: list[str] = field(default_factory=list, compare=False)
+    flagged_rows: list[int] = field(default_factory=list, compare=False)
 
     def __post_init__(self) -> None:
         width = len(self.columns)
