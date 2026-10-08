@@ -7,9 +7,11 @@ from typer.testing import CliRunner
 
 from staffroom.cli import app
 from staffroom.core.config import load_config
+from staffroom.core.export import to_text
 from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.trace import logic, plugin, run_trace
 from staffroom.tools.trace.logic import Options
+from staffroom.tools.trace.sheet import build_document
 
 runner = CliRunner()
 
@@ -99,6 +101,23 @@ def test_errors_are_reported_not_fatal() -> None:
 def test_step_cap() -> None:
     result = run_trace("i = 0\nwhile i < 1000:\n    i += 1\n", "", 25)
     assert result.truncated and len(result.steps) == 25
+
+
+def test_print_flood_output_is_capped_inside_the_run() -> None:
+    # Prints 2 MB in one go: the tracer keeps 1 MB and the key says so.
+    result = run_trace("print('x' * 2_000_000)\n", "", 10)
+    assert result.stdout.endswith("[output truncated at 1024 KB]\n")
+    assert len(result.stdout) < 1024 * 1024 + 64
+    doc = build_document(
+        "flood",
+        "print('x')",
+        logic.trace_table([], []),
+        logic.trace_table([], []),
+        result.stdout,
+        truncated=False,
+        error=None,
+    )
+    assert "[output truncated at 1024 KB]" in to_text(doc.key())
 
 
 def test_plugin_and_cli(tmp_path: Path) -> None:

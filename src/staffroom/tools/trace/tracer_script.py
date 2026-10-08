@@ -17,6 +17,25 @@ from types import FrameType
 from typing import Any
 
 MAX_REPR = 48
+MAX_OUTPUT = 1024 * 1024  # characters of program output kept; core.runner caps bytes the same
+TRUNCATION_MARKER = f"[output truncated at {MAX_OUTPUT // 1024} KB]\n"  # same text as core.runner
+
+
+class CappedOutput(io.StringIO):
+    """Keeps the first ``MAX_OUTPUT`` characters the program prints and counts
+    the rest, so a print flood traced for ten seconds does not grow without
+    bound inside this process."""
+
+    dropped = 0
+
+    def write(self, s: str, /) -> int:
+        room = MAX_OUTPUT - self.tell()
+        if len(s) > room:
+            self.dropped += len(s) - max(room, 0)
+            s = s[: max(room, 0)]
+        if s:
+            super().write(s)
+        return len(s)
 
 
 def show(value: Any) -> str | None:
@@ -36,7 +55,7 @@ def main() -> None:
         source = fh.read()
     code = compile(source, program, "exec")
     real_stdout = sys.stdout
-    captured = io.StringIO()
+    captured = CappedOutput()
     sys.stdout = captured
     rows: list[dict[str, Any]] = []
     pending: dict[int, dict[str, Any]] = {}  # id(frame) -> row awaiting its "after" state
@@ -108,7 +127,9 @@ def main() -> None:
         "variables": variables,
         "truncated": state["truncated"],
         "error": error,
-        "stdout": captured.getvalue(),
+        "stdout": captured.getvalue()
+        + (("\n" if not captured.getvalue().endswith("\n") else "") + TRUNCATION_MARKER)
+        * bool(captured.dropped),
     }
     print(json.dumps(payload))
 

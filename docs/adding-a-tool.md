@@ -117,9 +117,15 @@ The pre-commit hook refuses any CSV/XLSX without a `# FAKE DATA` first line.
 
 Never `exec` it in the app. Use `core.runner.run_source(source, stdin=...,
 timeout=...)` (or `run_file`), which runs it in a subprocess with a hard
-timeout and a temp working directory and returns stdout, stderr, exit code
-and whether it timed out. `tools/trace` shows how to ship a helper script
-alongside the program with `extra_files`.
+timeout, a temp working directory and a 1 MB cap on each of stdout and
+stderr (`MAX_OUTPUT_BYTES`; the rest is drained and discarded, the text ends
+with `truncation_marker()` and the outcome's `stdout_truncated` /
+`stderr_truncated` say so). It returns stdout, stderr, exit code and whether
+it timed out. `tools/trace` shows how to ship a helper script alongside the
+program with `extra_files`. Put `core.runner.limits_note(timeout)` in the
+panel description so the teacher sees the limits, and keep
+`docs/guide/running-code.md` true: it is a fence against accidents, not a
+sandbox.
 
 ## Producing worksheets and keys
 

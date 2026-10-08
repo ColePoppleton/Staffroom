@@ -8,13 +8,13 @@ from staffroom.core.codeinput import code_from_inputs
 from staffroom.core.export import export, house_style_from, to_text
 from staffroom.core.panel import PanelSpec
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
-from staffroom.core.runner import RunOutcome, run_source
+from staffroom.core.runner import RunOutcome, capped_note, run_source
 from staffroom.core.table import Table
 from staffroom.tools.bugs import logic
 from staffroom.tools.bugs.panel import panel_spec
 from staffroom.tools.bugs.sheet import build_document
 
-TIMEOUT = 4.0
+TIMEOUT = logic.TIMEOUT
 
 
 def formats_for(choice: str) -> tuple[str, ...]:
@@ -26,12 +26,16 @@ def classify(original: RunOutcome, variant: RunOutcome) -> str:
     if variant.blocked_imports:
         return "refused: imports " + ", ".join(variant.blocked_imports)
     if variant.timed_out:
-        return "hangs (infinite loop)"
-    if variant.crashed:
-        return f"crashes: {variant.exception_name or 'error'}"
-    if variant.stdout != original.stdout:
-        return "runs, but the output is wrong"
-    return "no visible change (still runs the same)"
+        text = "hangs (infinite loop)"
+    elif variant.crashed:
+        text = f"crashes: {variant.exception_name or 'error'}"
+    elif variant.stdout != original.stdout:
+        text = "runs, but the output is wrong"
+    else:
+        text = "no visible change (still runs the same)"
+    if variant.truncated:
+        text += f"; {capped_note(variant.output_limit)}"
+    return text
 
 
 class BugsPlugin:

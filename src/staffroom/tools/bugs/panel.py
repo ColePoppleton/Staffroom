@@ -11,7 +11,8 @@ from staffroom.core.panel import (
     TextArea,
     TextView,
 )
-from staffroom.tools.bugs.logic import Options
+from staffroom.core.runner import limits_note
+from staffroom.tools.bugs.logic import TIMEOUT, Options
 
 
 def panel_spec() -> PanelSpec:
@@ -19,7 +20,7 @@ def panel_spec() -> PanelSpec:
         title="Bugs",
         description=(
             "Inject one controlled error per copy of a working program; "
-            "the key says what each does."
+            "the key says what each does. " + limits_note(TIMEOUT)
         ),
         inputs=(
             ResourcePicker(

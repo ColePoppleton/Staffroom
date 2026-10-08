@@ -11,14 +11,16 @@ from staffroom.core.panel import (
     TextArea,
     TextView,
 )
-from staffroom.tools.trace.logic import Options
+from staffroom.core.runner import limits_note
+from staffroom.tools.trace.logic import TIMEOUT, Options
 
 
 def panel_spec() -> PanelSpec:
     return PanelSpec(
         title="Trace",
         description=(
-            "Run a program step by step in a sandbox and produce blank and completed trace tables."
+            "Run a program step by step and produce blank and completed trace tables. "
+            + limits_note(TIMEOUT)
         ),
         inputs=(
             ResourcePicker(

@@ -9,7 +9,8 @@ from typer.testing import CliRunner
 from staffroom.cli import app
 from staffroom.core.config import load_config
 from staffroom.core.plugin import RunContext
-from staffroom.tools.bugs import logic, plugin
+from staffroom.core.runner import RunOutcome
+from staffroom.tools.bugs import classify, logic, plugin
 from staffroom.tools.bugs.logic import KIND_LABELS, Options
 
 runner = CliRunner()
@@ -120,3 +121,10 @@ def test_cli(tmp_path: Path) -> None:
     assert r.exit_code == 0 and "indentation_slip" in r.output
     r = runner.invoke(app, ["bugs", "make", str(src), "--kinds", "nope"])
     assert r.exit_code == 1
+
+
+def test_classify_says_when_a_variant_prints_past_the_cap() -> None:
+    original = RunOutcome(stdout="1\n", returncode=0)
+    flood = RunOutcome(stdout="1\n1\n", returncode=0, stdout_truncated=True)
+    assert classify(original, flood) == "runs, but the output is wrong; output capped at 1024 KB"
+    assert classify(original, RunOutcome(stdout="1\n", returncode=0)).startswith("no visible")

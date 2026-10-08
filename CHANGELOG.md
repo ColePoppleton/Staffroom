@@ -32,6 +32,18 @@ with every change; `just release <part>` turns it into a version.
   names the folder before Run and "Open output folder" works at any time;
   Settings explains the default. Screenshot runs (`just screenshots`) write
   to a throwaway folder, so `git status` stays clean. (#11, #10)
+- A docs page, *Running pupil code*, that says what a trace / bugs run is
+  limited to and what it does not stop (`os.system`, file writes, computed
+  import names); the Trace, Bugs and Fade panels point to it (#16).
+
+### Fixed
+- The runner caps captured stdout and stderr at 1 MB each and drains the
+  rest, so a `while True: print(i)` no longer captures hundreds of megabytes
+  before the timeout kills it; capped output ends with
+  `[output truncated at 1024 KB]` and the trace and bugs keys say so. The
+  tracer caps the program's output inside the run too. The import check now
+  also catches `__import__("socket")` and `importlib.import_module("socket")`
+  with a literal name (#16).
 
 ## [0.3.0] - 2026-10-08
 ### Changed

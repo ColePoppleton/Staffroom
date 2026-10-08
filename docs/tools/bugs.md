@@ -11,6 +11,10 @@ Each variant differs from the original by exactly one line, and the key says
 *crashes: SyntaxError*, *runs, but the output is wrong*, *hangs*, or
 *no visible change*.
 
+Each run has a 4 second limit and a 1 MB cap on output; a variant that
+prints past the cap is marked *output capped*. The runs are not a security
+sandbox: see [Running pupil code](../guide/running-code.md).
+
 ```bash
 staff bugs make program.py -n 4 --seed 1 --kinds missing_colon,off_by_one --stdin "Apple"
 staff bugs kinds

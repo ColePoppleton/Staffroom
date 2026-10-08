@@ -9,6 +9,7 @@ from typing import Any, Literal
 from staffroom.core.table import Row, Table
 
 Kind = Literal["assign", "loop", "if", "call", "other"]
+TIMEOUT = 10.0  # seconds a traced run may take; the panel description quotes it
 
 
 @dataclass

@@ -51,6 +51,7 @@ nav:
   - Install: guide/install.md
   - Using the launcher: guide/launcher.md
   - Privacy: guide/privacy.md
+  - Running pupil code: guide/running-code.md
   - Updating: guide/updating.md
   - Tools:
       - Classroom: tools/classroom.md
