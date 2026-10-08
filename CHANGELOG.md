@@ -34,6 +34,14 @@ with every change; `just release <part>` turns it into a version.
   `staff list` shows it marked `[hidden]`. Plugins may declare optional
   `order` and `hidden` attributes (`docs/adding-a-tool.md`); tools without
   them need no change. `just screenshots` now renders the marks tool. (#15)
+- Input mistakes are one-line messages for the teacher, never tracebacks
+  (#14). `read_table` raises `ToolError` for the wrong kind of file, a missing
+  file, a CSV that is really a binary file or a damaged workbook, naming the
+  file and what is accepted, so every tool, the CLI and the launcher show the
+  sentence; `code_from_inputs` does the same for code files; every tool CLI
+  command turns a `ToolError` into a red line and exit 1 without per-command
+  `try` blocks. `fade --ranges abc`, `marks --max 4,6,x` and the quiz "as of"
+  date say what was expected instead of `invalid literal for int()`.
 - Outputs never land in the code checkout or the shell's current directory.
   With no output folder set and no input file, tools write to
   `<sessions folder>/outputs/<tool>/` (created on first write); the run bar

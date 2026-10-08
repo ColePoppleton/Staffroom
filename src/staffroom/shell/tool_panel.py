@@ -24,7 +24,7 @@ from staffroom.core.panel import (
     TextArea,
     TextField,
 )
-from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolPlugin
+from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolError, ToolPlugin
 from staffroom.shell.widgets import (
     Card,
     EditableTableWidget,
@@ -192,6 +192,9 @@ class ToolPanel(QWidget):
                     f"Dropped identifier column(s) from {path.name}: "
                     + ", ".join(table.dropped_columns)
                 )
+        except ToolError as exc:  # already a one-line message naming the file
+            log.warning("could not preview %s: %s", path, exc)
+            preview.set_error(str(exc))
         except Exception as exc:
             log.warning("could not preview %s: %s", path, exc)
             preview.set_error(f"Could not read {path.name}: {exc}")

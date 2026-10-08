@@ -118,13 +118,26 @@ def parse_max_text(text: str, qcols: list[str]) -> dict[str, float] | None:
     parts = [p.strip() for p in text.replace(";", ",").split(",") if p.strip()]
     if not parts:
         return None
-    values = [float(p) for p in parts]
+    try:
+        values = [float(p) for p in parts]
+    except ValueError:
+        bad = next(p for p in parts if not _is_number(p))
+        msg = f"Max marks should be numbers like 4,6,8 (one per question) or 10, not {bad!r}."
+        raise ValueError(msg) from None
     if len(values) == 1:
         return dict.fromkeys(qcols, values[0])
     if len(values) != len(qcols):
         msg = f"Max marks lists {len(values)} values but there are {len(qcols)} questions"
         raise ValueError(msg)
     return dict(zip(qcols, values, strict=True))
+
+
+def _is_number(text: str) -> bool:
+    try:
+        float(text)
+    except ValueError:
+        return False
+    return True
 
 
 def observed_max(table: Table, qcols: list[str]) -> dict[str, float]:

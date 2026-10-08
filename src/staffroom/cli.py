@@ -6,8 +6,10 @@ gets a sub-app: ``staff <tool> <subcommand>``.
 
 from __future__ import annotations
 
+import functools
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
@@ -15,7 +17,7 @@ from staffroom import __version__
 from staffroom.core.config import load_config
 from staffroom.core.discovery import discover_plugins
 from staffroom.core.log import setup_logging
-from staffroom.core.plugin import plugin_hidden
+from staffroom.core.plugin import ToolError, plugin_hidden
 from staffroom.core.scaffold import scaffold_tool
 from staffroom.library_cli import library_app
 
@@ -114,10 +116,30 @@ def usage_() -> None:
 app.add_typer(library_app, name="library")
 
 
+def _teacher_message_on_tool_error(command: Callable[..., Any]) -> Callable[..., Any]:
+    """A ``ToolError`` is a message for the teacher (wrong file type, mistyped
+    option): print its one line in red and exit 1. Every other exception is a
+    bug and keeps its traceback. Wrapping here means a tool's commands get this
+    without each one repeating the ``try``."""
+
+    @functools.wraps(command)
+    def guarded(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return command(*args, **kwargs)
+        except ToolError as exc:
+            typer.secho(str(exc), fg=typer.colors.RED, err=True)
+            raise typer.Exit(1) from None
+
+    return guarded
+
+
 def _mount_plugins() -> None:
     for plugin in discover_plugins():
         sub = typer.Typer(help=plugin.description, no_args_is_help=True)
         plugin.register_cli(sub)
+        for info in sub.registered_commands:
+            if info.callback is not None:
+                info.callback = _teacher_message_on_tool_error(info.callback)
         app.add_typer(sub, name=plugin.name)
 
 

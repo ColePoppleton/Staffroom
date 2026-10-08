@@ -8,6 +8,7 @@ from staffroom.core.csvio import (
     read_table,
     write_table,
 )
+from staffroom.core.plugin import ToolError
 from staffroom.core.table import Table
 
 
@@ -44,9 +45,40 @@ def test_xlsx_round_trip(tmp_path: Path) -> None:
     assert not has_fake_data_marker(tmp_path / "plain.xlsx")
 
 
-def test_unsupported_suffix(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="unsupported"):
-        read_table(tmp_path / "x.txt")
+# Input mistakes are teacher messages (ToolError), not tracebacks (#14). Each
+# message names the file and says what would have worked.
+def test_unsupported_suffix_is_a_teacher_message(tmp_path: Path) -> None:
+    (tmp_path / "notes.txt").write_text("hello")
+    with pytest.raises(ToolError, match=r"notes\.txt.*\.csv.*\.xlsx") as info:
+        read_table(tmp_path / "notes.txt")
+    assert "ValueError" not in str(info.value) and "\n" not in str(info.value)
+    with pytest.raises(ToolError, match="no file extension"):
+        read_table(tmp_path / "notes")
+
+
+def test_missing_file_is_a_teacher_message(tmp_path: Path) -> None:
+    with pytest.raises(ToolError, match=r"Could not find gone\.csv"):
+        read_table(tmp_path / "gone.csv")
+
+
+def test_binary_file_named_csv_is_a_teacher_message(tmp_path: Path) -> None:
+    # An xlsx renamed to .csv: bytes that are not UTF-8 text.
+    write_table(Table(["a"], [[1]]), tmp_path / "book.xlsx")
+    fake_csv = tmp_path / "book.csv"
+    fake_csv.write_bytes((tmp_path / "book.xlsx").read_bytes())
+    with pytest.raises(ToolError, match=r"book\.csv.*not a plain CSV"):
+        read_table(fake_csv)
+
+
+def test_damaged_xlsx_is_a_teacher_message(tmp_path: Path) -> None:
+    (tmp_path / "renamed.xlsx").write_text("a,b\n1,2\n")  # a CSV renamed to .xlsx
+    with pytest.raises(ToolError, match=r"renamed\.xlsx.*not really an Excel file"):
+        read_table(tmp_path / "renamed.xlsx")
+    (tmp_path / "truncated.xlsx").write_bytes(b"PK\x03\x04 not a workbook")
+    with pytest.raises(ToolError, match=r"truncated\.xlsx"):
+        read_table(tmp_path / "truncated.xlsx")
+    # A real workbook still reads: the catch is narrow.
+    assert read_table(write_table(Table(["a"], [[1]]), tmp_path / "ok.xlsx")).rows == [[1]]
 
 
 def test_flag_rows_are_found_before_identifier_columns_are_dropped(tmp_path: Path) -> None:

@@ -32,10 +32,7 @@ class FadePlugin:
 
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
-        try:
-            source, name = code_from_inputs(inputs)
-        except ValueError as exc:
-            raise ToolError(str(exc)) from exc
+        source, name = code_from_inputs(inputs)
         try:
             versions = logic.fade_versions(source, options)
         except ValueError as exc:
