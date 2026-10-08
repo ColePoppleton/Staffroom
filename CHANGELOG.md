@@ -23,6 +23,9 @@ with every change; `just release <part>` turns it into a version.
   warning fires, for trying the tool and for the tests.
 
 ### Changed
+- `marks`: the saved distribution chart is always print-friendly: white
+  background and the light palette's ink, whatever `general.theme` is.
+  The panel shows the same file (#13).
 - Outputs never land in the code checkout or the shell's current directory.
   With no output folder set and no input file, tools write to
   `<sessions folder>/outputs/<tool>/` (created on first write); the run bar

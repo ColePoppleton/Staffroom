@@ -1,5 +1,10 @@
 """Grade distribution as a PNG. Single series, one hue, counts labelled,
-recessive axes, drawn in the app's theme colours. Writes a file; not logic."""
+recessive axes. Writes a file; not logic.
+
+The file is for paper and slides, not for the screen: it is always drawn on
+white in the light palette's ink, whatever theme the launcher is using (#13).
+The panel shows the same file; a white chart reads as a card on the dark
+theme."""
 
 from __future__ import annotations
 
@@ -12,19 +17,19 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 from staffroom.core.table import Table
-from staffroom.core.theme_tokens import palette
+from staffroom.core.theme_tokens import LIGHT
+
+PAPER = "#ffffff"
 
 
-def distribution_chart(
-    distribution: Table, path: Path, theme: str = "dark", title: str = ""
-) -> Path:
-    p = palette(theme)
+def distribution_chart(distribution: Table, path: Path, title: str = "") -> Path:
+    p = LIGHT
     grades = [str(g) for g in distribution.column("Grade")]
     counts = [int(c or 0) for c in distribution.column("Count")]
 
     fig, ax = plt.subplots(figsize=(8, 3.6), dpi=150)
-    fig.patch.set_facecolor(p.surface)
-    ax.set_facecolor(p.surface)
+    fig.patch.set_facecolor(PAPER)
+    ax.set_facecolor(PAPER)
     bars = ax.bar(grades, counts, width=0.62, color=p.accent, linewidth=0)
     for bar, count in zip(bars, counts, strict=True):
         if count:
@@ -52,6 +57,6 @@ def distribution_chart(
         ax.set_title(title, color=p.text, fontsize=11, loc="left", pad=10)
     fig.tight_layout()
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, facecolor=fig.get_facecolor())
+    fig.savefig(path, facecolor=PAPER)
     plt.close(fig)
     return path

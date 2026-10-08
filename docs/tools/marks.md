@@ -27,6 +27,11 @@ edit them to the published boundaries and *Save as preset*.
 | Grade distribution | `<stem>_distribution.csv` and `.png` |
 | Per-question analysis, worst five | `<stem>_questions.csv` |
 
+The chart is drawn for paper and slides, white background whatever theme
+the launcher is using, so it can go straight into a report.
+
+![Distribution chart](../marks-chart.png)
+
 Facility is the mean mark as a fraction of the max; discrimination is the
 difference between the top and bottom third's mean, over the max.
 

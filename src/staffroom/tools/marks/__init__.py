@@ -58,10 +58,9 @@ class MarksPlugin:
         ctx.progress(0.7, "Drawing chart")
         out = ctx.output_dir
         stem = source.stem
+        # Always light: the PNG is for reports and slides, not the screen (#13).
         chart = distribution_chart(
-            logic.without_incomplete_row(analysis.distribution),
-            out / f"{stem}_distribution.png",
-            ctx.config.general.theme,
+            logic.without_incomplete_row(analysis.distribution), out / f"{stem}_distribution.png"
         )
         # Aggregates only. The per-script table is never written.
         dist_csv = write_table(

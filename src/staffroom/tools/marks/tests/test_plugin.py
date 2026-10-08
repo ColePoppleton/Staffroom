@@ -139,3 +139,27 @@ def test_warnings_reach_the_log_and_cli_and_nothing_per_row_is_saved(
     )
     assert r.exit_code == 0
     assert "above the paper total of 20" in r.output
+
+
+def _corner_luminance(png: Path) -> float:
+    from PIL import Image
+
+    with Image.open(png) as img:
+        pixel = img.convert("RGB").getpixel((3, 3))
+    assert isinstance(pixel, tuple)
+    r, g, b = pixel
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+
+def test_saved_chart_is_light_whatever_the_theme(example_marks_max: Path, tmp_path: Path) -> None:
+    # The PNG goes into reports and slides; the UI theme must not reach it (#13).
+    for theme in ("dark", "light"):
+        config = load_config()
+        config.general.theme = theme
+        out = tmp_path / theme
+        plugin.run({"marks": example_marks_max, "options": Options()}, RunContext(config, out))
+        png = out / "marks_10x_max_distribution.png"
+        assert _corner_luminance(png) > 0.9, f"{theme}: chart background is not light"
+    assert (tmp_path / "dark" / "marks_10x_max_distribution.png").read_bytes() == (
+        tmp_path / "light" / "marks_10x_max_distribution.png"
+    ).read_bytes()
