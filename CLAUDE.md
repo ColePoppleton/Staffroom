@@ -1,7 +1,7 @@
 # Teaching Tools — conventions
 
-A monorepo of small Python tools for a UK secondary computing teacher (KS3,
-GCSE OCR J277 / AQA 8525, A-level), run locally on a Mac. Outputs (PDF, docx,
+A monorepo of small Python tools for UK secondary computing teachers (KS3,
+GCSE OCR J277 / AQA 8525, A-level), run locally on the teacher's own Mac. Outputs (PDF, docx,
 CSV, PNG) are taken into school systems by hand. Optimise for the teacher's
 workflow, not for deployment.
 
@@ -37,7 +37,7 @@ contain no names even invented ones.
 ### Engineering rules
 - Tools never import Qt. Logic never does I/O. New UI needs go into the shared widget kit.
 - The resources folder is read-only to every tool. Edits happen on session copies; tags live in a sidecar.
-- This project is standalone. No integration with other apps Cole has built (e.g. Praxis); no shared data formats.
+- This project is standalone. No integration with the author's other apps; no shared data formats.
 
 ### Other rules from PHASES.md
 - Pupil code is only ever executed through `core/runner` (subprocess, timeout,
@@ -108,6 +108,13 @@ A tool package exposes `plugin`, an object with `name`, `description`,
 Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
 `tt list` with no reinstall. Broken tools are logged and skipped.
 
+## Process
+
+Branches, the Issues board, and the three skills (`/audit`, `/next-task`,
+`/merge-prs`) are described in `docs/process.md`. Task sessions work in a
+git worktree on a feature branch from `dev`; `main` is what the installed
+app runs. Nothing merges without a PR and green CI.
+
 ## Working here
 
 * `just setup`, `just test`, `just lint`, `just gui`, `just new <name>`,
@@ -132,5 +139,4 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
 * Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db,
   usage.toml). Worksheets read the house-style header/footer from config.
 * Lesson copies live in `~/TeachingSessions` by default (`sessions_root`).
-  Never default to, or detect, any cloud folder: the school does not use
-  OneDrive and the OneDrives on this Mac are personal.
+  Never default to, or detect, any cloud-synced folder; the teacher chooses.

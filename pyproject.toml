@@ -1,9 +1,20 @@
 [project]
 name = "teaching-tools"
 version = "0.1.0"
-description = "A launcher of small Python tools for a UK secondary computing teacher."
+description = "Small tools for secondary computing teachers: marks analysis, worksheets, Parsons problems, trace tables, pseudocode and quizzes. No pupil data."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
+keywords = ["teaching", "computer-science", "gcse", "worksheets", "pyside6"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: MacOS X",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Education",
+]
 dependencies = [
     "typer>=0.12",
     "pyside6>=6.7",
@@ -19,6 +30,11 @@ dependencies = [
 tt = "teaching_tools.cli:main"
 tt-gui = "teaching_tools.shell.app:main"
 
+[project.urls]
+Repository = "https://github.com/ColePoppleton/Teaching-Tools"
+Changelog = "https://github.com/ColePoppleton/Teaching-Tools/blob/main/CHANGELOG.md"
+Issues = "https://github.com/ColePoppleton/Teaching-Tools/issues"
+
 [dependency-groups]
 dev = [
     "pytest>=8",
@@ -29,6 +45,9 @@ dev = [
     "import-linter>=2.0",
     "types-openpyxl",
     "pyinstaller>=6.22.3",
+]
+docs = [
+    "mkdocs-material>=9.7.7",
 ]
 
 [build-system]

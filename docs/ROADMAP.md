@@ -24,14 +24,14 @@ an identifier (name, id, upn, candidate, email) with a warning; no tool has a "n
 ### Engineering rules
 - Tools never import Qt. Logic never does I/O. New UI needs go into the shared widget kit.
 - The resources folder is read-only to every tool. Edits happen on session copies; tags live in a sidecar.
-- This project is standalone. No integration with other apps Cole has built (e.g. Praxis); no shared data formats.
+- This project is standalone. No integration with the author's other apps; no shared data formats.
 
 ## Shell-level feature: Resource Library
 
 Not a plugin — a second root in the sidebar ("Tools" / "Resources") exposed to plugins as a service
 (`ResourceService.pick()`, `.open_for_class()`, `.search()`).
 
-- Index a configured resources root (currently ~587 files: ~246 .py, 28 .pptx, 28 .doc, 23 .pdf, 27 Scratch .sb, plus txt/csv/images).
+- Index a configured resources root (a typical department folder: a few hundred .py, .pptx, .doc, .pdf and Scratch files plus txt/csv/images).
 - Full-text search across .py/.txt/.md/.csv/.docx/.pptx/.pdf. Legacy .doc/.ppt/.pub need conversion
   (LibreOffice headless or skip with a warning) — do not use python-docx on .doc.
 - Filters: type, topic, key stage, tag. Tags and notes in `<root>/.teaching-tools/tags.json`, never in the files.
@@ -68,6 +68,6 @@ Build order rationale: `classroom` and the library are used every lesson from da
 
 - Code editor — Thonny is better for pupils; `classroom` solves the overwrite problem instead.
 - Class lists, seating plans, trackers, per-pupil feedback, behaviour/praise logs, MIS imports — pupil data (see Hard rules).
-- Teachers' Standards evidence logger — lives in a separate project; this one stays independent of it.
+- Teachers' Standards evidence logging — out of scope; this project stays independent of it.
 - LMC / sorting visualisers — need custom animated widgets; good web versions exist.
 - Exam-paper generator — only pays off once a question bank exists; revisit next year.

@@ -1,0 +1,68 @@
+site_name: Teaching Tools
+site_description: Small tools for secondary computing teachers, with no pupil data.
+site_url: https://colepoppleton.github.io/Teaching-Tools/
+repo_url: https://github.com/ColePoppleton/Teaching-Tools
+repo_name: ColePoppleton/Teaching-Tools
+edit_uri: edit/dev/docs/
+copyright: MIT licensed.
+
+theme:
+  name: material
+  logo: assets/icon.png
+  favicon: assets/icon.png
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Install: guide/install.md
+  - Using the launcher: guide/launcher.md
+  - Privacy: guide/privacy.md
+  - Updating: guide/updating.md
+  - Tools:
+      - Classroom: tools/classroom.md
+      - Marks: tools/marks.md
+      - Worksheet: tools/worksheet.md
+      - Parsons: tools/parsons.md
+      - Trace: tools/trace.md
+      - Bugs: tools/bugs.md
+      - Fade: tools/fade.md
+      - Pseudocode: tools/pseudocode.md
+      - Quiz: tools/quiz.md
+      - Resource Library: tools/library.md
+  - Formats:
+      - Question banks: guide/question-banks.md
+      - Marks files: guide/marks-files.md
+      - House style: guide/house-style.md
+  - Contributing:
+      - Process: process.md
+      - Adding a tool: adding-a-tool.md
+      - Roadmap: ROADMAP.md
+  - Changelog: changelog.md

@@ -16,7 +16,7 @@ from teaching_tools.core.library.tags import TagEntry, TagStore
 Opener = Callable[[Sequence[str]], None]
 Picker = Callable[[str | None], Path | None]
 
-DEFAULT_RESOURCES_ROOT = "~/Desktop/Resources"
+DEFAULT_RESOURCES_ROOT = ""
 
 
 class ResourceService(Protocol):

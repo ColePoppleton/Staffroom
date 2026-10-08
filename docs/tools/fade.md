@@ -1,0 +1,11 @@
+# Fade
+
+A worked solution → K versions with progressively more lines blanked to
+`________`, for faded-example practice. Bottom-up by default, top-down, or
+only the line ranges you choose. `def`/`if`/`for`/`while` headers stay unless
+you say otherwise. The key is the complete program.
+
+```bash
+tt fade make solution.py -k 4 --order bottom_up
+tt fade make solution.py -k 2 --order ranges --ranges 3-5,8
+```
