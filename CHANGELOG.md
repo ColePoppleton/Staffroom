@@ -7,6 +7,7 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-08
 ### Added
 - Documentation site (MkDocs Material on GitHub Pages): install, launcher,
   privacy, updating, one page per tool, file formats, process.
