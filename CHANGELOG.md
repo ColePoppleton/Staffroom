@@ -6,6 +6,30 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Changed
+- Renamed to **Staffroom**. The package is `staffroom`; the commands are
+  `staff` (CLI) and `staffroom` (launcher), with `tt` and `tt-gui` kept as
+  aliases for one release. Config moves to `~/.config/staffroom/` and is
+  copied from `~/.config/teaching-tools/` on first run (the old folder is
+  left alone); resource tags live in `<root>/.staffroom/tags.json` and an
+  old `.teaching-tools` sidecar is still read. Environment variables are
+  `STAFFROOM_HOME` and `STAFFROOM_BOOKLET_DIR`.
+- New brand: the door-ajar mark, a manila / navy ink / red-pen colour scheme
+  in both the dark and the light theme, and an icon, icns and favicon
+  rendered from the SVG with QtSvg (`scripts/make_icon.py`). The docs site
+  uses the mark, the scheme and Fraunces / Source Sans 3.
+- The thin launcher is `Staffroom.app` (`uk.staffroom.launcher`, executable
+  `staffroom`). The repository and docs URLs are unchanged until the GitHub
+  repo is renamed.
+
+### Fixed
+- The thin launcher no longer runs under Rosetta when opened from Finder
+  (`LSRequiresNativeExecution`, `arch -arm64`), which made the arm64 wheels
+  fail to load, left only three tools discovered and took a minute to start.
+  The bundle is ad-hoc signed (Spotlight ignores an unsigned one), the
+  build in `dist/` is unregistered and the installed copy registered with
+  Launch Services and Spotlight, and the app icon keeps the macOS inset
+  instead of drawing oversized.
 
 ## [0.2.0] - 2026-10-08
 ### Added

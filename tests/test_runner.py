@@ -3,7 +3,7 @@ reports it; network imports are refused before anything runs."""
 
 import time
 
-from teaching_tools.core.runner import blocked_imports, run_source
+from staffroom.core.runner import blocked_imports, run_source
 
 
 def test_runs_and_captures_output_with_stdin() -> None:

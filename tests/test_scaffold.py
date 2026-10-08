@@ -1,4 +1,4 @@
-"""``tt new`` must produce a tool that imports, satisfies the protocol and
+"""``staff new`` must produce a tool that imports, satisfies the protocol and
 passes its own generated test."""
 
 import importlib
@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from teaching_tools.core.plugin import ToolPlugin
-from teaching_tools.core.scaffold import class_name_for, scaffold_tool, validate_tool_name
+from staffroom.core.plugin import ToolPlugin
+from staffroom.core.scaffold import class_name_for, scaffold_tool, validate_tool_name
 
 
 def test_names() -> None:
@@ -18,18 +18,18 @@ def test_names() -> None:
 
 
 def test_scaffold_produces_working_plugin(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Build a throwaway namespace package 'teaching_tools.tools' lookalike under tmp.
+    # Build a throwaway namespace package 'staffroom.tools' lookalike under tmp.
     pkg_root = tmp_path / "scaffolded"
-    tools_dir = pkg_root / "teaching_tools" / "tools"
+    tools_dir = pkg_root / "staffroom" / "tools"
     tools_dir.mkdir(parents=True)
     written = scaffold_tool("demo_tool", tools_dir)
     assert {p.name for p in written} >= {"__init__.py", "logic.py", "panel.py", "cli.py"}
 
     # Import it as a real tool by extending the tools package path.
-    import teaching_tools.tools as tools_pkg
+    import staffroom.tools as tools_pkg
 
     monkeypatch.setattr(tools_pkg, "__path__", [*tools_pkg.__path__, str(tools_dir)])
-    module = importlib.import_module("teaching_tools.tools.demo_tool")
+    module = importlib.import_module("staffroom.tools.demo_tool")
     plugin = module.plugin
     assert isinstance(plugin, ToolPlugin)
     assert plugin.name == "demo_tool"
@@ -41,5 +41,5 @@ def test_scaffold_produces_working_plugin(tmp_path: Path, monkeypatch: pytest.Mo
         scaffold_tool("demo_tool", tools_dir)
 
     # The generated test passes.
-    generated = importlib.import_module("teaching_tools.tools.demo_tool.tests.test_logic")
+    generated = importlib.import_module("staffroom.tools.demo_tool.tests.test_logic")
     generated.test_process_returns_table()

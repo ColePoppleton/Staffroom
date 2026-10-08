@@ -51,7 +51,7 @@ user left it on. Do not `git checkout` there.
   one-line mention in the PR.
 - Add a line under `## [Unreleased]` in `CHANGELOG.md`.
 - If the UI changed, take a screenshot:
-  `QT_QPA_PLATFORM=offscreen uv run tt-gui --tool <name> --screenshot <path> …`.
+  `QT_QPA_PLATFORM=offscreen uv run staffroom --tool <name> --screenshot <path> …`.
 - `just check` must be green before a PR. Fix what it finds; do not weaken the checks.
 - Commit in small steps with messages that say *why*. End the message with
   `Co-Authored-By: Claude <noreply@anthropic.com>`.

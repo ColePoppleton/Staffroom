@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-from teaching_tools.core.library.service import LibraryService
-from teaching_tools.core.library.tags import TagStore, normalise_tags
+from staffroom.core.library.service import LibraryService
+from staffroom.core.library.tags import TagStore, normalise_tags
 
 
 def test_normalise() -> None:
@@ -15,7 +15,7 @@ def test_tags_persist_and_resource_untouched(service: LibraryService, resources_
     service.set_tags("Python/Python_Course/while_loops.py", "loops, ks3", "Good starter.")
     assert target.stat().st_mtime_ns == before
     assert target.read_text().startswith("count = 0")
-    sidecar = resources_root / ".teaching-tools" / "tags.json"
+    sidecar = resources_root / ".staffroom" / "tags.json"
     assert sidecar.exists()
 
     # "Restart": a fresh store reads the sidecar back.
@@ -33,5 +33,23 @@ def test_tags_persist_and_resource_untouched(service: LibraryService, resources_
 def test_sidecar_is_hidden_from_index(service: LibraryService) -> None:
     service.set_tags("Python/notes.md", "x")
     service.index()
-    assert all(".teaching-tools" not in r.rel_path for r in service.resources())
+    assert all(".staffroom" not in r.rel_path for r in service.resources())
     assert os.path.exists(service.tags.path)
+
+
+def test_legacy_sidecar_is_read_and_migrated_on_save(resources_root: Path) -> None:
+    # Tags written by the app under its old name must survive the rename.
+    legacy = resources_root / ".teaching-tools" / "tags.json"
+    legacy.parent.mkdir()
+    legacy.write_text(
+        '{"version": 1, "entries": {"Python/notes.md": {"tags": ["loops"], "notes": "old"}}}'
+    )
+    store = TagStore(resources_root)
+    assert store.get("Python/notes.md").tags == ["loops"]
+
+    store.set_entry("Python/readme.txt", "text")
+    assert (resources_root / ".staffroom" / "tags.json").exists()
+    assert legacy.exists(), "the old sidecar is left for an older checkout"
+    again = TagStore(resources_root)
+    assert again.get("Python/notes.md").notes == "old"
+    assert again.get("Python/readme.txt").tags == ["text"]

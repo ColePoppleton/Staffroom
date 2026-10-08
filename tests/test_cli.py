@@ -1,7 +1,7 @@
 from typer.testing import CliRunner
 
-from teaching_tools import __version__
-from teaching_tools.cli import app
+from staffroom import __version__
+from staffroom.cli import app
 
 runner = CliRunner()
 

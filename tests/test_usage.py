@@ -3,8 +3,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from teaching_tools.cli import app
-from teaching_tools.core.usage import record_run, summary, usage_file
+from staffroom.cli import app
+from staffroom.core.usage import record_run, summary, usage_file
 
 runner = CliRunner()
 

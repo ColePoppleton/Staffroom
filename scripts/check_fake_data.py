@@ -3,7 +3,7 @@
 
 Real pupil data must never enter the repository. A CSV must start with a line
 beginning ``# FAKE DATA``; an XLSX must contain ``FAKE DATA`` in a cell within
-the first three rows of some sheet. See ``teaching_tools.core.csvio``.
+the first three rows of some sheet. See ``staffroom.core.csvio``.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from teaching_tools.core.csvio import FAKE_DATA_MARKER, has_fake_data_marker
+from staffroom.core.csvio import FAKE_DATA_MARKER, has_fake_data_marker
 
 
 def main(argv: list[str]) -> int:

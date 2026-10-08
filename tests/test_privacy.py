@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from teaching_tools.core.csvio import read_table, write_table
-from teaching_tools.core.privacy import drop_identifier_columns, is_identifier_column
-from teaching_tools.core.table import Table
+from staffroom.core.csvio import read_table, write_table
+from staffroom.core.privacy import drop_identifier_columns, is_identifier_column
+from staffroom.core.table import Table
 
 
 @pytest.mark.parametrize(

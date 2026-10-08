@@ -1,4 +1,4 @@
-site_name: Teaching Tools
+site_name: Staffroom
 site_description: Small tools for secondary computing teachers, with no pupil data.
 site_url: https://colepoppleton.github.io/Teaching-Tools/
 repo_url: https://github.com/ColePoppleton/Teaching-Tools
@@ -9,7 +9,10 @@ copyright: MIT licensed.
 theme:
   name: material
   logo: assets/icon.png
-  favicon: assets/icon.png
+  favicon: assets/favicon.png
+  # Fonts come from docs/stylesheets/brand.css (Fraunces for headings, Source
+  # Sans 3 for body) so Material does not also load Roboto.
+  font: false
   features:
     - navigation.sections
     - navigation.top
@@ -18,18 +21,21 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Light mode
+
+extra_css:
+  - stylesheets/brand.css
 
 markdown_extensions:
   - admonition

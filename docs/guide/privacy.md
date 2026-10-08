@@ -25,9 +25,15 @@ a name, a candidate number or a seating plan.
 
 | What | Where |
 | --- | --- |
-| Config, logs, library index, usage counts | `~/.config/teaching-tools/` |
+| Config, logs, library index, usage counts | `~/.config/staffroom/` |
 | Lesson copies | `~/TeachingSessions/` (or the folder you choose) |
-| Tags and notes on resources | `<resources folder>/.teaching-tools/tags.json` |
+| Tags and notes on resources | `<resources folder>/.staffroom/tags.json` |
+
+!!! note "Upgrading from Teaching Tools"
+    The first run of Staffroom copies `~/.config/teaching-tools/` to
+    `~/.config/staffroom/` and leaves the old folder alone. A
+    `.teaching-tools/tags.json` sidecar in the resources folder is still
+    read; the next edit writes `.staffroom/tags.json`.
 | Tool outputs | next to the input, or your output folder |
 
 Nothing leaves the machine. The app checks its git remote for updates when

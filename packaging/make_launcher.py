@@ -2,7 +2,7 @@
 straight from this checkout with uv. Updating the code updates the app;
 there is nothing to rebuild or reinstall.
 
-    uv run python packaging/make_launcher.py            # -> dist/Teaching Tools.app
+    uv run python packaging/make_launcher.py            # -> dist/Staffroom.app
     uv run python packaging/make_launcher.py --install  # also copy into /Applications
 """
 
@@ -16,21 +16,32 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "src" / "teaching_tools" / "shell" / "assets"
-APP_NAME = "Teaching Tools"
+ASSETS = ROOT / "src" / "staffroom" / "shell" / "assets"
+APP_NAME = "Staffroom"
 
 LAUNCHER = """#!/bin/bash
-# Thin launcher: runs Teaching Tools from the git checkout with uv, so a
+# Thin launcher: runs Staffroom from the git checkout with uv, so a
 # 'git pull' (or the app's own Update button) is all an update takes.
 REPO="{repo}"
 UV="{uv}"
 export PATH="$(dirname "$UV"):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 cd "$REPO" || {{
-    osascript -e 'display alert "Teaching Tools" message "Repository not found at {repo}"'
+    osascript -e 'display alert "Staffroom" message "Repository not found at {repo}"'
     exit 1
 }}
-exec "$UV" run --quiet tt-gui "$@"
+# Finder may start a script executable under Rosetta; a universal Python then
+# comes up as x86_64 and none of the arm64 wheels in .venv can load. Pin the
+# architecture when the tool to do so exists.
+if [ -x /usr/bin/arch ]; then
+    exec /usr/bin/arch -arm64 "$UV" run --quiet staffroom "$@"
+fi
+exec "$UV" run --quiet staffroom "$@"
 """
+
+LSREGISTER = (
+    "/System/Library/Frameworks/CoreServices.framework/Frameworks/"
+    "LaunchServices.framework/Support/lsregister"
+)
 
 
 def build(out_dir: Path, repo: Path, uv: Path) -> Path:
@@ -41,29 +52,44 @@ def build(out_dir: Path, repo: Path, uv: Path) -> Path:
     resources = app / "Contents" / "Resources"
     macos.mkdir(parents=True)
     resources.mkdir(parents=True)
-    launcher = macos / "tt-gui"
+    launcher = macos / "staffroom"
     launcher.write_text(LAUNCHER.format(repo=repo, uv=uv), encoding="utf-8")
     launcher.chmod(0o755)
     shutil.copy2(ASSETS / "icon.icns", resources / "icon.icns")
     plist = {
         "CFBundleName": APP_NAME,
         "CFBundleDisplayName": APP_NAME,
-        "CFBundleIdentifier": "uk.teachingtools.launcher",
+        "CFBundleIdentifier": "uk.staffroom.launcher",
         "CFBundleVersion": "1",
         "CFBundleShortVersionString": "0.1.0",
         "CFBundlePackageType": "APPL",
-        "CFBundleExecutable": "tt-gui",
+        "CFBundleExecutable": "staffroom",
         "CFBundleIconFile": "icon.icns",
         "LSMinimumSystemVersion": "12.0",
         "NSHighResolutionCapable": True,
+        # Never run the launcher (and so Python) under Rosetta.
+        "LSRequiresNativeExecution": True,
+        "LSArchitecturePriority": ["arm64"],
     }
     with (app / "Contents" / "Info.plist").open("wb") as fh:
         plistlib.dump(plist, fh)
+    sign(app)
     return app
 
 
-def install(app: Path) -> Path:
-    for target_dir in (Path("/Applications"), Path.home() / "Applications"):
+def sign(app: Path) -> None:
+    """Ad-hoc sign the bundle. Spotlight on recent macOS does not list an
+    unsigned bundle at all; an ad-hoc signature is enough for a local app."""
+    if shutil.which("codesign"):
+        subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)], check=False)
+
+
+def install(app: Path, target_dirs: tuple[Path, ...] | None = None) -> Path:
+    """Copy the bundle into /Applications (or ~/Applications when that is not
+    writable) and make it the one copy Launch Services knows about."""
+    if target_dirs is None:
+        target_dirs = (Path("/Applications"), Path.home() / "Applications")
+    for target_dir in target_dirs:
         target = target_dir / app.name
         try:
             if target.exists():
@@ -72,9 +98,28 @@ def install(app: Path) -> Path:
         except PermissionError:
             continue
         subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(target)], check=False)
+        unregister(app)
+        register(target)
         return target
     msg = "could not write to /Applications or ~/Applications"
     raise SystemExit(msg)
+
+
+def unregister(app: Path) -> None:
+    """Forget the build in dist/ so Launch Services knows one bundle only:
+    the installed copy. Otherwise `open -a` and Spotlight may pick the
+    stale one."""
+    if Path(LSREGISTER).exists():
+        subprocess.run([LSREGISTER, "-u", str(app)], check=False)
+
+
+def register(app: Path) -> None:
+    """Tell Launch Services and Spotlight about the bundle so it shows up in
+    Spotlight and opens by name straight away."""
+    if Path(LSREGISTER).exists():
+        subprocess.run([LSREGISTER, "-f", str(app)], check=False)
+    if shutil.which("mdimport"):
+        subprocess.run(["mdimport", str(app)], check=False)
 
 
 def main() -> None:
@@ -86,7 +131,7 @@ def main() -> None:
     if "--install" in sys.argv:
         target = install(app)
         print("installed", target)
-        if os.environ.get("TT_OPEN"):
+        if os.environ.get("STAFFROOM_OPEN"):
             subprocess.run(["open", str(target)], check=False)
 
 

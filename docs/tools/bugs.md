@@ -12,6 +12,6 @@ Each variant differs from the original by exactly one line, and the key says
 *no visible change*.
 
 ```bash
-tt bugs make program.py -n 4 --seed 1 --kinds missing_colon,off_by_one --stdin "Apple"
-tt bugs kinds
+staff bugs make program.py -n 4 --seed 1 --kinds missing_colon,off_by_one --stdin "Apple"
+staff bugs kinds
 ```

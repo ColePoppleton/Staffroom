@@ -1,7 +1,7 @@
 import pytest
 
-from teaching_tools.core.discovery import discover_plugins, get_plugin, iter_tool_module_names
-from teaching_tools.core.plugin import ToolPlugin
+from staffroom.core.discovery import discover_plugins, get_plugin, iter_tool_module_names
+from staffroom.core.plugin import ToolPlugin
 
 
 def test_hello_is_discovered() -> None:
@@ -21,7 +21,7 @@ def test_invalid_panel_spec_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None
     """A tool whose panel_spec() raises is skipped at discovery, not fatal."""
     import types
 
-    from teaching_tools.core.discovery import load_plugin
+    from staffroom.core.discovery import load_plugin
 
     class Broken:
         name = "broken"
@@ -37,9 +37,9 @@ def test_invalid_panel_spec_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None
         def run(self, inputs: object, ctx: object) -> None:
             pass
 
-    module = types.ModuleType("teaching_tools.tools.broken")
+    module = types.ModuleType("staffroom.tools.broken")
     module.plugin = Broken()  # type: ignore[attr-defined]
-    monkeypatch.setitem(__import__("sys").modules, "teaching_tools.tools.broken", module)
+    monkeypatch.setitem(__import__("sys").modules, "staffroom.tools.broken", module)
     with pytest.raises(ValueError, match="panel_spec\\(\\) is invalid"):
         load_plugin("broken")
 

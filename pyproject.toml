@@ -1,12 +1,12 @@
 [project]
-name = "teaching-tools"
+name = "staffroom"
 version = "0.2.0"
 description = "Small tools for secondary computing teachers: marks analysis, worksheets, Parsons problems, trace tables, pseudocode and quizzes. No pupil data."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
-keywords = ["teaching", "computer-science", "gcse", "worksheets", "pyside6"]
+keywords = ["staffroom", "teaching", "computer-science", "gcse", "worksheets", "pyside6"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: MacOS X",
@@ -27,8 +27,11 @@ dependencies = [
 ]
 
 [project.scripts]
-tt = "teaching_tools.cli:main"
-tt-gui = "teaching_tools.shell.app:main"
+staffroom = "staffroom.shell.app:main"
+staff = "staffroom.cli:main"
+# Kept for one release so existing shells and installed launchers keep working.
+tt = "staffroom.cli:main"
+tt-gui = "staffroom.shell.app:main"
 
 [project.urls]
 Repository = "https://github.com/ColePoppleton/Teaching-Tools"
@@ -55,7 +58,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/teaching_tools"]
+packages = ["src/staffroom"]
 
 # ---------------------------------------------------------------- ruff
 [tool.ruff]
@@ -69,20 +72,20 @@ select = ["E", "F", "I", "UP", "B", "SIM", "N", "RUF", "TID"]
 ignore = ["RUF012", "RUF001"]  # RUF001: we like × and … in UI text
 
 [tool.ruff.lint.per-file-ignores]
-"src/teaching_tools/tools/*/tests/*" = ["S101"]
+"src/staffroom/tools/*/tests/*" = ["S101"]
 "tests/*" = ["S101"]
 
 # ---------------------------------------------------------------- pytest
 [tool.pytest.ini_options]
-testpaths = ["tests", "src/teaching_tools/tools"]
+testpaths = ["tests", "src/staffroom/tools"]
 addopts = "-q"
 qt_api = "pyside6"
-filterwarnings = ["error::DeprecationWarning:teaching_tools.*"]
+filterwarnings = ["error::DeprecationWarning:staffroom.*"]
 
 # ---------------------------------------------------------------- mypy
 [tool.mypy]
 python_version = "3.12"
-packages = ["teaching_tools"]
+packages = ["staffroom"]
 mypy_path = "src"
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -91,7 +94,7 @@ check_untyped_defs = true
 no_implicit_optional = true
 
 [[tool.mypy.overrides]]
-module = "teaching_tools.core.*"
+module = "staffroom.core.*"
 strict = true
 
 [[tool.mypy.overrides]]
@@ -100,17 +103,17 @@ ignore_missing_imports = true
 
 # ---------------------------------------------------------------- import-linter
 [tool.importlinter]
-root_package = "teaching_tools"
+root_package = "staffroom"
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "Tools never import Qt or the shell"
 type = "forbidden"
-source_modules = ["teaching_tools.tools", "teaching_tools.core", "teaching_tools.cli"]
-forbidden_modules = ["PySide6", "shiboken6", "teaching_tools.shell"]
+source_modules = ["staffroom.tools", "staffroom.core", "staffroom.cli"]
+forbidden_modules = ["PySide6", "shiboken6", "staffroom.shell"]
 
 [[tool.importlinter.contracts]]
 name = "Core knows nothing about tools or the CLI"
 type = "forbidden"
-source_modules = ["teaching_tools.core"]
-forbidden_modules = ["teaching_tools.tools", "teaching_tools.cli", "typer"]
+source_modules = ["staffroom.core"]
+forbidden_modules = ["staffroom.tools", "staffroom.cli", "typer"]

@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 from pytestqt.qtbot import QtBot
 
-from teaching_tools.core.config import load_config
-from teaching_tools.shell.main_window import MainWindow
-from teaching_tools.shell.tool_panel import ToolPanel
+from staffroom.core.config import load_config
+from staffroom.shell.main_window import MainWindow
+from staffroom.shell.tool_panel import ToolPanel
 
 
 @pytest.fixture

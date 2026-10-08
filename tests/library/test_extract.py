@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from teaching_tools.core.library.extract import CloudOnlyError, extract_text, read_text
-from teaching_tools.core.library.model import Resource
+from staffroom.core.library.extract import CloudOnlyError, extract_text, read_text
+from staffroom.core.library.model import Resource
 
 
 def res(rel: str, kind: str) -> Resource:

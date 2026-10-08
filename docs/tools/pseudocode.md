@@ -12,7 +12,7 @@ functions and procedures, lists and indexing, string length / substring /
 upper / lower, casts, random, basic file methods, comments.
 
 ```bash
-tt pseudocode to-ocr program.py
-tt pseudocode to-aqa program.py --save --out ./out
-tt pseudocode to-python sheet.ocr.txt
+staff pseudocode to-ocr program.py
+staff pseudocode to-aqa program.py --save --out ./out
+staff pseudocode to-python sheet.ocr.txt
 ```

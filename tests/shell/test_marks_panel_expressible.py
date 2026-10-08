@@ -12,8 +12,8 @@ from typing import Any
 
 from pytestqt.qtbot import QtBot
 
-from teaching_tools.core.config import load_config
-from teaching_tools.core.panel import (
+from staffroom.core.config import load_config
+from staffroom.core.panel import (
     Column,
     EditableTable,
     FilePicker,
@@ -23,9 +23,9 @@ from teaching_tools.core.panel import (
     ResultsTable,
     TablePreview,
 )
-from teaching_tools.core.plugin import Inputs, RunContext, RunResult
-from teaching_tools.core.table import Table
-from teaching_tools.shell.tool_panel import ToolPanel
+from staffroom.core.plugin import Inputs, RunContext, RunResult
+from staffroom.core.table import Table
+from staffroom.shell.tool_panel import ToolPanel
 
 BOUNDARIES = EditableTable(
     key="boundaries",

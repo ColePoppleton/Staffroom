@@ -6,7 +6,7 @@ from typing import Literal
 
 from pytestqt.qtbot import QtBot
 
-from teaching_tools.shell.widgets import OptionsFormWidget
+from staffroom.shell.widgets import OptionsFormWidget
 
 
 class Mode(enum.Enum):

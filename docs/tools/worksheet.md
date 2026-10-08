@@ -22,8 +22,8 @@ count are printed in the header so a set can be regenerated.
 Every generator is verified in the tests by independent computation.
 
 ```bash
-tt worksheet make --topic binary --count 20 --seed 42 --difficulty medium
-tt worksheet topics
+staff worksheet make --topic binary --count 20 --seed 42 --difficulty medium
+staff worksheet topics
 ```
 
 Output: `<topic>_<difficulty>_s<seed>.docx/.pdf` plus a `_key` file, in the

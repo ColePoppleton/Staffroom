@@ -1,5 +1,5 @@
 """Root conftest: shared fixtures for tests/ and every tool's tests/. Every test
-gets an isolated config/log home so nothing touches ~/.config/teaching-tools."""
+gets an isolated config/log home so nothing touches ~/.config/staffroom."""
 
 from __future__ import annotations
 
@@ -10,16 +10,16 @@ from pathlib import Path
 import pytest
 from pypdf import PdfWriter
 
-from teaching_tools.core import paths
-from teaching_tools.core.library.service import LibraryService
+from staffroom.core import paths
+from staffroom.core.library.service import LibraryService
 
 EXAMPLES = paths.examples_dir()
 
 
 @pytest.fixture(autouse=True)
 def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    home = tmp_path / "tt-home"
-    monkeypatch.setenv("TEACHING_TOOLS_HOME", str(home))
+    home = tmp_path / "staffroom-home"
+    monkeypatch.setenv("STAFFROOM_HOME", str(home))
     yield home
 
 

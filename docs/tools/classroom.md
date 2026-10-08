@@ -20,11 +20,11 @@ versioned name; never overwrites).
 ## On the command line
 
 ```bash
-tt classroom open path/to/resource.py --label "P3 Y9 loops"
-tt classroom list
-tt classroom diff "2026-10-06/P3 Y9 loops/resource.py"
-tt classroom promote "2026-10-06/P3 Y9 loops/resource.py"
-tt classroom reopen "2026-10-06/P3 Y9 loops/resource.py"
+staff classroom open path/to/resource.py --label "P3 Y9 loops"
+staff classroom list
+staff classroom diff "2026-10-06/P3 Y9 loops/resource.py"
+staff classroom promote "2026-10-06/P3 Y9 loops/resource.py"
+staff classroom reopen "2026-10-06/P3 Y9 loops/resource.py"
 ```
 
 ## Settings that matter

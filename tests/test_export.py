@@ -8,7 +8,7 @@ import pytest
 from docx import Document as DocxReader
 from pypdf import PdfReader
 
-from teaching_tools.core.export import (
+from staffroom.core.export import (
     Code,
     Document,
     Heading,

@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from teaching_tools.core.library.db import fts_query
-from teaching_tools.core.library.service import LibraryService
+from staffroom.core.library.db import fts_query
+from staffroom.core.library.service import LibraryService
 
 
 def test_fts_query_is_safe() -> None:

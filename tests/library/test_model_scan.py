@@ -1,7 +1,7 @@
 from pathlib import Path, PurePosixPath
 
-from teaching_tools.core.library.model import is_hidden, kind_for
-from teaching_tools.core.library.scan import scan
+from staffroom.core.library.model import is_hidden, kind_for
+from staffroom.core.library.scan import scan
 
 
 def test_kinds() -> None:
@@ -17,7 +17,7 @@ def test_hidden_rules() -> None:
     assert is_hidden(PurePosixPath("Python/.DS_Store"))
     assert is_hidden(PurePosixPath("Thumbs.db"))
     assert is_hidden(PurePosixPath("Python/old.zip"))
-    assert is_hidden(PurePosixPath(".teaching-tools/tags.json"))
+    assert is_hidden(PurePosixPath(".staffroom/tags.json"))
     assert not is_hidden(PurePosixPath("Python/while_loops.py"))
     assert not is_hidden(PurePosixPath("Python/cloud_file.py"))
 

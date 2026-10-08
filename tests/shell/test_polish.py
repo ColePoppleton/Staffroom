@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from pytestqt.qtbot import QtBot
 
-from teaching_tools.core import usage
-from teaching_tools.core.config import load_config
-from teaching_tools.shell.main_window import MainWindow
-from teaching_tools.shell.tool_panel import ToolPanel
+from staffroom.core import usage
+from staffroom.core.config import load_config
+from staffroom.shell.main_window import MainWindow
+from staffroom.shell.tool_panel import ToolPanel
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_settings_board_and_house_style_persist(window: MainWindow) -> None:
 
 
 def test_app_icon_assets_exist() -> None:
-    assets = Path(__file__).resolve().parents[2] / "src" / "teaching_tools" / "shell" / "assets"
+    assets = Path(__file__).resolve().parents[2] / "src" / "staffroom" / "shell" / "assets"
     assert (assets / "icon.png").stat().st_size > 1000
     assert (assets / "icon.icns").stat().st_size > 1000
 

@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from teaching_tools.cli import app
-from teaching_tools.core.config import load_config
+from staffroom.cli import app
+from staffroom.core.config import load_config
 
 runner = CliRunner()
 

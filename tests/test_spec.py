@@ -1,6 +1,6 @@
 import pytest
 
-from teaching_tools.core import spec
+from staffroom.core import spec
 
 
 def test_taxonomies_load_and_lookup() -> None:

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from teaching_tools.core.launch import EDITOR_PRESETS, editor_argv, launch_editor, preset_for
+from staffroom.core.launch import EDITOR_PRESETS, editor_argv, launch_editor, preset_for
 
 
 def test_editor_argv_handles_spaces_and_missing_placeholder() -> None:

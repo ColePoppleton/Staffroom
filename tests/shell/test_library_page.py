@@ -9,10 +9,10 @@ import pytest
 from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
-from teaching_tools.core.config import load_config
-from teaching_tools.core.library.service import LibraryService
-from teaching_tools.shell.library.tree import REL_PATH_ROLE
-from teaching_tools.shell.main_window import MainWindow
+from staffroom.core.config import load_config
+from staffroom.core.library.service import LibraryService
+from staffroom.shell.library.tree import REL_PATH_ROLE
+from staffroom.shell.main_window import MainWindow
 
 
 @pytest.fixture
@@ -114,7 +114,7 @@ def test_tag_editor_saves_to_sidecar(window: MainWindow, resources_root: Path) -
     page.preview.notes_edit.setPlainText("Starter for Y8")
     page.preview.save_button.click()
     assert page.preview.tags_edit.text() == "loops, ks3"
-    assert (resources_root / ".teaching-tools" / "tags.json").exists()
+    assert (resources_root / ".staffroom" / "tags.json").exists()
     assert window.library.tag_entry("Python/notes.md").notes == "Starter for Y8"
     # The resource itself was not written.
     assert (resources_root / "Python" / "notes.md").read_text().startswith("# Notes")
