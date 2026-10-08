@@ -9,10 +9,29 @@ from __future__ import annotations
 import heapq
 import random
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 Difficulty = Literal["easy", "medium", "hard"]
+Level = Literal["gcse", "a_level"]
+Laws = Literal["absorption", "de_morgan", "identities", "all"]
+
+
+@dataclass(frozen=True)
+class Step:
+    """One law applied in a key: ``before`` rewrites to ``after`` (via an optional
+    middle form), leaving the whole expression as ``result``. Every text is in the
+    question's own letters."""
+
+    law: str
+    before: str
+    after: str
+    result: str
+    via: str = ""
+
+    def text(self) -> str:
+        chain = " = ".join(x for x in (self.before, self.via, self.after) if x)
+        return f"{self.law}: {chain}, leaving {self.result}"
 
 
 @dataclass(frozen=True)
@@ -22,6 +41,7 @@ class Question:
     working: str = ""  # shown in the key
     answer_lines: int = 1
     table: tuple[tuple[str, ...], ...] | None = None  # columns + rows for the sheet
+    steps: tuple[Step, ...] = ()  # the key's reasoning, structured, for the property tests
 
 
 Generator = Callable[[int, int, Difficulty], list[Question]]
@@ -43,6 +63,20 @@ class Options:
     count: int = field(default=10, metadata={"label": "Questions", "min": 1, "max": 60})
     seed: int = field(default=42, metadata={"label": "Seed", "min": 0, "max": 999_999})
     difficulty: Difficulty = field(default="medium", metadata={"label": "Difficulty"})
+    level: Level = field(
+        default="gcse",
+        metadata={
+            "label": "Level",
+            "help": "Truth tables: GCSE follows the board; A-level adds XOR, and NAND/NOR at hard",
+        },
+    )
+    laws: Laws = field(
+        default="absorption",
+        metadata={
+            "label": "Boolean laws",
+            "help": "Simplification: 'identities' allows X AND X, NOT NOT X and 0/1 on the sheet",
+        },
+    )
     formats: Literal["both", "docx", "pdf"] = field(default="both", metadata={"label": "Output"})
 
 
@@ -187,18 +221,39 @@ _OPS: dict[str, Callable[[int, int], int]] = {
     "NOR": lambda a, b: 1 - (a | b),
 }
 
+# What each GCSE board requires. Neither has NAND or NOR; AQA 8525 (3.4.2) has XOR, OCR J277
+# (2.4.1) does not. A-level adds XOR for every board and NAND/NOR, but those only at "hard".
+GCSE_GATES: dict[str, tuple[str, ...]] = {
+    "ocr": ("AND", "OR", "NOT"),
+    "aqa": ("AND", "OR", "NOT", "XOR"),
+}
+A_LEVEL_GATES: tuple[str, ...] = ("AND", "OR", "NOT", "XOR")
+BEYOND_GCSE_GATES: tuple[str, ...] = ("NAND", "NOR")
+
+
+def gate_set(
+    board: str, level: Level = "gcse", difficulty: Difficulty = "medium"
+) -> tuple[str, ...]:
+    """The operators a truth-table sheet may use. An unknown board gets the OCR set,
+    the smaller one, so a misconfigured board never puts off-spec gates on a sheet."""
+    if level == "a_level":
+        return A_LEVEL_GATES + (BEYOND_GCSE_GATES if difficulty == "hard" else ())
+    return GCSE_GATES.get(board.lower(), GCSE_GATES["ocr"])
+
 
 @dataclass(frozen=True)
 class Expr:
     text: str
     fn: Callable[[dict[str, int]], int]
+    names: frozenset[str]
+    tidy: bool = True  # no gate fed the same input on both sides, no repeated sub-expression
 
 
 def _leaf(name: str, negate: bool) -> Expr:
     def fn(env: dict[str, int]) -> int:
         return 1 - env[name] if negate else env[name]
 
-    return Expr(f"NOT {name}" if negate else name, fn)
+    return Expr(f"NOT {name}" if negate else name, fn, frozenset({name}))
 
 
 def _node(op: str, left: Expr, right: Expr) -> Expr:
@@ -207,40 +262,64 @@ def _node(op: str, left: Expr, right: Expr) -> Expr:
     def fn(env: dict[str, int]) -> int:
         return apply(left.fn(env), right.fn(env))
 
-    return Expr(f"({left.text} {op} {right.text})", fn)
+    same_input = len(left.names) == 1 and left.names == right.names  # C XOR C, NOT B AND B
+    tidy = left.tidy and right.tidy and not same_input and left.text != right.text
+    return Expr(f"({left.text} {op} {right.text})", fn, left.names | right.names, tidy)
 
 
-def _random_expr(rng: random.Random, inputs: list[str], depth: int) -> Expr:
+def _random_expr(rng: random.Random, inputs: list[str], gates: list[str], depth: int) -> Expr:
     if depth == 0 or (depth < 2 and rng.random() < 0.3):
         return _leaf(rng.choice(inputs), rng.random() < 0.3)
-    op = rng.choice(list(_OPS))
-    return _node(op, _random_expr(rng, inputs, depth - 1), _random_expr(rng, inputs, depth - 1))
+    op = rng.choice(gates)
+    left = _random_expr(rng, inputs, gates, depth - 1)
+    return _node(op, left, _random_expr(rng, inputs, gates, depth - 1))
 
 
-def truth_tables(seed: int, count: int, difficulty: Difficulty) -> list[Question]:
+def _degenerate(expr: Expr, names: list[str], column: list[int]) -> bool:
+    """A table nobody would set: an input the table lists goes unused, a gate is fed
+    the same input twice, Q is constant, or Q is just one input (or its NOT)."""
+    if expr.names != set(names) or not expr.tidy or len(set(column)) < 2:
+        return True
+    n = len(names)
+    for i in range(n):
+        inputs = [(combo >> (n - 1 - i)) & 1 for combo in range(2**n)]
+        if column in (inputs, [1 - v for v in inputs]):
+            return True
+    return False
+
+
+def truth_tables(
+    seed: int, count: int, difficulty: Difficulty, gates: tuple[str, ...] = GCSE_GATES["ocr"]
+) -> list[Question]:
     rng = random.Random(seed)
     n_inputs = 2 if difficulty == "easy" else 3
     depth = 1 if difficulty == "easy" else 2
     names = ["A", "B", "C"][:n_inputs]
+    binary_gates = [g for g in gates if g in _OPS]  # NOT is applied at the leaves
+    envs = [
+        {name: (combo >> (n_inputs - 1 - i)) & 1 for i, name in enumerate(names)}
+        for combo in range(2**n_inputs)
+    ]
+    seen: set[str] = set()
     out: list[Question] = []
     for _ in range(count):
-        expr = _random_expr(rng, names, depth)
-        if expr.text in names or expr.text.startswith("NOT "):
-            expr = _random_expr(rng, names, 1)
+        for attempt in range(300):
+            expr = _random_expr(rng, names, binary_gates, depth)
+            column = [expr.fn(env) for env in envs]
+            if _degenerate(expr, names, column):
+                continue
+            if expr.text in seen and attempt < 200:  # prefer a fresh question; small spaces repeat
+                continue
+            break
+        seen.add(expr.text)
         text = (
             expr.text[1:-1] if expr.text.startswith("(") and expr.text.endswith(")") else expr.text
         )
-        rows: list[tuple[str, ...]] = []
-        answers: list[str] = []
-        for combo in range(2**n_inputs):
-            env = {name: (combo >> (n_inputs - 1 - i)) & 1 for i, name in enumerate(names)}
-            value = expr.fn(env)
-            rows.append((*(str(env[n]) for n in names), ""))
-            answers.append(str(value))
+        rows = [(*(str(env[n]) for n in names), "") for env in envs]
         out.append(
             Question(
                 f"Complete the truth table for Q = {text}.",
-                " ".join(answers) + "  (Q column, rows in table order)",
+                " ".join(str(v) for v in column) + "  (Q column, rows in table order)",
                 "",
                 answer_lines=0,
                 table=((*names, "Q"), *rows),
@@ -250,40 +329,242 @@ def truth_tables(seed: int, count: int, difficulty: Difficulty) -> list[Question
 
 
 # ---------------------------------------------------------------- 6. Boolean simplification
-_LAWS: list[tuple[str, Callable[[str], str], str]] = [
-    ("identity", lambda a: f"({a} AND 1)", "A AND 1 = A"),
-    ("identity", lambda a: f"({a} OR 0)", "A OR 0 = A"),
-    ("idempotent", lambda a: f"({a} AND {a})", "A AND A = A"),
-    ("idempotent", lambda a: f"({a} OR {a})", "A OR A = A"),
-    ("double negation", lambda a: f"NOT NOT {a}", "NOT NOT A = A"),
-    ("absorption", lambda a: f"({a} OR ({a} AND B))", "A OR (A AND B) = A"),
-    ("absorption", lambda a: f"({a} AND ({a} OR B))", "A AND (A OR B) = A"),
-    ("complement", lambda a: f"(({a} OR NOT {a}) AND {a})", "A OR NOT A = 1, then 1 AND A = A"),
-]
+@dataclass(frozen=True)
+class BoolExpr:
+    """A small Boolean expression tree: a letter, a constant, NOT, AND or OR."""
+
+    kind: Literal["var", "const", "not", "and", "or"]
+    name: str = ""  # the letter, or "0" / "1"
+    kids: tuple[BoolExpr, ...] = ()
+
+    @property
+    def text(self) -> str:
+        if self.kind in ("var", "const"):
+            return self.name
+        if self.kind == "not":
+            return f"NOT {self.kids[0].text}"
+        left, right = self.kids
+        return f"({left.text} {self.kind.upper()} {right.text})"
+
+    @property
+    def shown(self) -> str:
+        """The text without the outermost brackets, as printed on the sheet."""
+        return self.text[1:-1] if self.kind in ("and", "or") else self.text
+
+    def letters(self) -> frozenset[str]:
+        if self.kind == "var":
+            return frozenset({self.name})
+        return frozenset().union(*(k.letters() for k in self.kids))
 
 
-def boolean_simplification(seed: int, count: int, difficulty: Difficulty) -> list[Question]:
-    """Start from a simple target and wrap it in identities; the key lists
-    the laws in reverse, which is the simplification."""
+def _v(name: str) -> BoolExpr:
+    return BoolExpr("var", name)
+
+
+def _c(bit: int) -> BoolExpr:
+    return BoolExpr("const", str(bit))
+
+
+def _not(x: BoolExpr) -> BoolExpr:
+    return BoolExpr("not", kids=(x,))
+
+
+def _neg(x: BoolExpr) -> BoolExpr:
+    """NOT x with a double negation removed, as a textbook would write it."""
+    return x.kids[0] if x.kind == "not" else _not(x)
+
+
+def _and(a: BoolExpr, b: BoolExpr) -> BoolExpr:
+    return BoolExpr("and", kids=(a, b))
+
+
+def _or(a: BoolExpr, b: BoolExpr) -> BoolExpr:
+    return BoolExpr("or", kids=(a, b))
+
+
+def _paths(node: BoolExpr, prefix: tuple[int, ...] = ()) -> list[tuple[tuple[int, ...], BoolExpr]]:
+    found = [(prefix, node)]
+    for i, kid in enumerate(node.kids):
+        found += _paths(kid, (*prefix, i))
+    return found
+
+
+def _replace(node: BoolExpr, path: tuple[int, ...], new: BoolExpr) -> BoolExpr:
+    if not path:
+        return new
+    head, rest = path[0], path[1:]
+    kids = tuple(_replace(k, rest, new) if i == head else k for i, k in enumerate(node.kids))
+    return replace(node, kids=kids)
+
+
+def _trivial(node: BoolExpr) -> bool:
+    """X AND X, NOT NOT X or a constant anywhere in the expression. Fine when the
+    identities are what is being practised; otherwise not a question a teacher sets."""
+    if node.kind == "const":
+        return True
+    if node.kind == "not" and node.kids[0].kind == "not":
+        return True
+    if node.kind in ("and", "or") and node.kids[0] == node.kids[1]:
+        return True
+    return any(_trivial(k) for k in node.kids)
+
+
+# A law wraps a node ``x`` (using a different letter ``y`` where it needs one) in a longer
+# form that simplifies back to ``x``. It returns the longer form, the law's name and an
+# optional intermediate form for the key.
+_Law = Callable[[BoolExpr, BoolExpr, random.Random], tuple[BoolExpr, str, str]]
+
+
+def _absorption(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+    if rng.random() < 0.5:  # X OR (X AND Y) = X
+        inner = _and(x, y) if rng.random() < 0.5 else _and(y, x)
+        new = _or(x, inner) if rng.random() < 0.5 else _or(inner, x)
+    else:  # X AND (X OR Y) = X
+        inner = _or(x, y) if rng.random() < 0.5 else _or(y, x)
+        new = _and(x, inner) if rng.random() < 0.5 else _and(inner, x)
+    return new, "absorption", ""
+
+
+def _combining(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+    if rng.random() < 0.5:  # (X AND Y) OR (X AND NOT Y) = X AND (Y OR NOT Y) = X
+        return (
+            _or(_and(x, y), _and(x, _neg(y))),
+            "distributive then complement",
+            (_and(x, _or(y, _neg(y))).shown),
+        )
+    return (
+        _and(_or(x, y), _or(x, _neg(y))),
+        "distributive then complement",
+        (_or(x, _and(y, _neg(y))).shown),
+    )
+
+
+def _identity(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+    forms = [_and(x, _c(1)), _and(_c(1), x), _or(x, _c(0)), _or(_c(0), x)]
+    return rng.choice(forms), "identity", ""
+
+
+def _idempotent(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+    return rng.choice([_and(x, x), _or(x, x)]), "idempotent", ""
+
+
+def _double_negation(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+    return _not(_not(x)), "double negation", ""
+
+
+def _complement(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+    if rng.random() < 0.5:  # X AND (Y OR NOT Y) = X AND 1 = X
+        return _and(x, _or(y, _neg(y))), "complement then identity", _and(x, _c(1)).shown
+    return _or(x, _and(y, _neg(y))), "complement then identity", _or(x, _c(0)).shown
+
+
+def _de_morgan(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+    left, right = x.kids
+    if x.kind == "and":  # NOT (NOT L OR NOT R) = L AND R
+        return _not(_or(_neg(left), _neg(right))), "De Morgan", ""
+    return _not(_and(_neg(left), _neg(right))), "De Morgan", ""
+
+
+# What the header says each family practises.
+LAW_FAMILIES: dict[str, tuple[str, ...]] = {
+    "absorption": ("absorption", "distributive", "complement"),
+    "de_morgan": ("absorption", "distributive", "complement", "De Morgan"),
+    "identities": ("identity", "idempotent", "double negation", "complement"),
+    "all": (
+        "absorption",
+        "distributive",
+        "complement",
+        "De Morgan",
+        "identity",
+        "idempotent",
+        "double negation",
+    ),
+}
+
+
+def _laws_for(family: str) -> tuple[list[_Law], list[_Law]]:
+    """(laws that wrap a letter, laws that wrap an AND/OR)."""
+    on_letters: list[_Law] = []
+    on_gates: list[_Law] = []
+    if family in ("absorption", "de_morgan", "all"):
+        on_letters += [_absorption, _combining]
+    if family in ("identities", "all"):
+        on_letters += [_identity, _idempotent, _double_negation, _complement]
+    if family in ("de_morgan", "all"):
+        on_gates.append(_de_morgan)
+    return on_letters, on_gates
+
+
+def _targets() -> list[BoolExpr]:
+    a, b = _v("A"), _v("B")
+    return [
+        _v("A"),
+        _v("B"),
+        _v("C"),
+        _and(a, b),
+        _or(a, b),
+        _not(a),
+        _and(a, _not(b)),
+        _or(_not(a), b),
+    ]
+
+
+def _other_letter(rng: random.Random, node: BoolExpr, whole: BoolExpr) -> BoolExpr:
+    """A letter that is not the one being wrapped, preferring one the question does
+    not use yet so sheets read A, B, C rather than A, A, A. Sometimes negated."""
+    unused = [n for n in "ABC" if n not in whole.letters() and n not in node.letters()]
+    pool = unused or [n for n in "ABC" if n not in node.letters()] or list("ABC")
+    letter = _v(rng.choice(pool))  # the last fallback is for a gate that uses every letter
+    return _neg(letter) if rng.random() < 0.3 else letter
+
+
+def boolean_simplification(
+    seed: int, count: int, difficulty: Difficulty, laws: Laws = "absorption"
+) -> list[Question]:
+    """Start from a short target and wrap one letter (or one gate, for De Morgan) at a
+    time in a law's longer form. The key undoes the wraps in reverse order, each step
+    written with the actual sub-expression it rewrites, so it reads in the question's
+    own letters and ends at the target."""
     rng = random.Random(seed)
     steps_n = {"easy": 1, "medium": 2, "hard": 3}[difficulty]
+    on_letters, on_gates = _laws_for(laws)
+    allow_trivial = laws in ("identities", "all")
+    targets = _targets()
     out: list[Question] = []
     for _ in range(count):
-        target = rng.choice(["A", "B", "C", "(A AND B)", "(A OR B)", "NOT A"])
+        target = rng.choice(targets)
         expr = target
-        applied: list[str] = []
+        wraps: list[tuple[str, BoolExpr, BoolExpr, str, BoolExpr]] = []
         for _ in range(steps_n):
-            name, wrap, law = rng.choice(_LAWS)
-            expr = wrap(expr)
-            applied.append(f"{name}: {law}")
-        shown = expr[1:-1] if expr.startswith("(") and expr.endswith(")") else expr
-        working = "\n".join(f"{i}. {law}" for i, law in enumerate(reversed(applied), 1))
+            for _attempt in range(50):
+                spots = [
+                    (path, node)
+                    for path, node in _paths(expr)
+                    if (node.kind == "var" and on_letters)
+                    or (node.kind in ("and", "or") and on_gates)
+                ]
+                path, node = rng.choice(spots)
+                law = rng.choice(on_letters if node.kind == "var" else on_gates)
+                new, name, via = law(node, _other_letter(rng, node, expr), rng)
+                candidate = _replace(expr, path, new)
+                if allow_trivial or not _trivial(candidate):
+                    break
+            else:  # no clean wrap found (does not happen in practice); stop short
+                break
+            wraps.append((name, new, node, via, expr))
+            expr = candidate
+        steps = tuple(
+            Step(law=name, before=new.shown, after=old.shown, result=state.shown, via=via)
+            for name, new, old, via, state in reversed(wraps)
+        )
+        working = "\n".join(f"{i}. {step.text()}" for i, step in enumerate(steps, 1))
         out.append(
             Question(
-                f"Simplify: {shown}",
-                target.strip("()"),
+                f"Simplify: {expr.shown}",
+                target.shown,
                 working,
                 answer_lines=2 + steps_n,
+                steps=steps,
             )
         )
     return out
@@ -438,10 +719,37 @@ TOPIC_TITLES: dict[str, str] = {
 }
 
 
-def generate(topic: str, seed: int, count: int, difficulty: Difficulty) -> list[Question]:
+def generate(
+    topic: str,
+    seed: int,
+    count: int,
+    difficulty: Difficulty,
+    *,
+    board: str = "ocr",
+    level: Level = "gcse",
+    laws: Laws = "absorption",
+) -> list[Question]:
+    """``board`` is the teacher's exam board from config (``ocr`` or ``aqa``); it and
+    ``level`` decide the gates a truth table may use, ``laws`` the simplification family."""
     try:
         gen = GENERATORS[topic]
     except KeyError:
         msg = f"unknown topic {topic!r}; choose from {', '.join(GENERATORS)}"
         raise ValueError(msg) from None
+    if topic == "truth_tables":
+        return truth_tables(seed, count, difficulty, gate_set(board, level, difficulty))
+    if topic == "boolean_simplification":
+        return boolean_simplification(seed, count, difficulty, laws)
     return gen(seed, count, difficulty)
+
+
+def header_note(options: Options, board: str) -> str:
+    """What the sheet header must state beyond seed and difficulty for the set to be
+    trusted and regenerated: the gate set for truth tables, the laws for simplification."""
+    if options.topic == "truth_tables":
+        gates = ", ".join(gate_set(board, options.level, options.difficulty))
+        prefix = "A-level · " if options.level == "a_level" else ""
+        return f"{prefix}gates: {gates}"
+    if options.topic == "boolean_simplification":
+        return "laws: " + ", ".join(LAW_FAMILIES[options.laws])
+    return ""

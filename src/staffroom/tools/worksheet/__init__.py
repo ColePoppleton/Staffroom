@@ -31,16 +31,24 @@ class WorksheetPlugin:
 
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
+        board = ctx.config.general.board  # gates follow the teacher's board unless A-level
         ctx.progress(0.2, "Generating questions")
         try:
             questions = logic.generate(
-                options.topic, options.seed, options.count, options.difficulty
+                options.topic,
+                options.seed,
+                options.count,
+                options.difficulty,
+                board=board,
+                level=options.level,
+                laws=options.laws,
             )
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
-        doc = build_document(questions, options)
+        doc = build_document(questions, options, board=board)
         ctx.progress(0.6, "Writing files")
-        stem = f"{options.topic}_{options.difficulty}_s{options.seed}"
+        level = "_alevel" if options.level == "a_level" else ""  # so GCSE files are not overwritten
+        stem = f"{options.topic}_{options.difficulty}{level}_s{options.seed}"
         files = export(
             doc,
             ctx.output_dir,
@@ -48,7 +56,11 @@ class WorksheetPlugin:
             formats_for(options.formats),
             style=house_style_from(ctx.config),
         )
-        ctx.log(f"{len(questions)} questions, seed {options.seed}, {options.difficulty}")
+        note = logic.header_note(options, board)
+        ctx.log(
+            f"{len(questions)} questions, seed {options.seed}, {options.difficulty}"
+            + (f", {note}" if note else "")
+        )
         ctx.progress(1.0, "Done")
         preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
         return RunResult(

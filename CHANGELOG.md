@@ -53,6 +53,17 @@ with every change; `just release <part>` turns it into a version.
   import names); the Trace, Bugs and Fade panels point to it (#16).
 
 ### Fixed
+- Worksheet truth tables never set a degenerate question: every input the
+  table lists is used, no gate is fed the same input twice, and Q is neither
+  constant nor just one input. Gates follow the exam board (OCR J277: AND, OR,
+  NOT; AQA 8525 adds XOR); a new **Level** option, `a_level`, adds XOR and,
+  at hard only, NAND and NOR. Boolean simplification wraps one letter at a
+  time so questions read like a textbook, no longer sets `X AND X`,
+  `NOT NOT X` or `0`/`1` unless the new **Boolean laws** option is
+  `identities`, and every key step is written in the question's own letters
+  (`absorption: B AND (B OR NOT C) = B, leaving A AND B`). The header states
+  the gate set or the law family so a sheet is self-describing, and an
+  A-level sheet carries `alevel` in its file name (#20).
 - `marks` finds the `MAX` row of a markbook export even when the flag sits in
   the name column: `core.csvio.read_table(path, flag=...)` decides which rows
   carry the word on the raw file and passes only the row indices on
