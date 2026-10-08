@@ -6,6 +6,8 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+
+## [0.3.0] - 2026-10-08
 ### Changed
 - Renamed to **Staffroom**. The package is `staffroom`; the commands are
   `staff` (CLI) and `staffroom` (launcher), with `tt` and `tt-gui` kept as
