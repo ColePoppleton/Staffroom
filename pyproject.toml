@@ -28,6 +28,7 @@ dev = [
     "pre-commit>=3.8",
     "import-linter>=2.0",
     "types-openpyxl",
+    "pyinstaller>=6.22.3",
 ]
 
 [build-system]

@@ -67,6 +67,15 @@ class Section:
         return self
 
 
+@dataclass(frozen=True)
+class HouseStyle:
+    """Text the teacher wants on every sheet: a header prefix (school or
+    department) and a footer line beside the page number."""
+
+    header: str = ""
+    footer: str = ""
+
+
 @dataclass
 class Document:
     title: str
@@ -74,6 +83,7 @@ class Document:
     date: date | None = None
     subtitle: str = ""
     sections: list[Section] = field(default_factory=list)
+    style: HouseStyle = field(default_factory=HouseStyle)
 
     def section(self, title: str = "", *, answers: bool = False) -> Section:
         section = Section(title=title, answers=answers)
@@ -83,6 +93,15 @@ class Document:
     @property
     def date_text(self) -> str:
         return self.date.strftime("%d %B %Y") if self.date else ""
+
+    @property
+    def header_text(self) -> str:
+        parts = [self.style.header, self.title, self.topic, self.date_text]
+        return "   ·   ".join(p for p in parts if p)
+
+    @property
+    def footer_text(self) -> str:
+        return self.style.footer
 
     def sheet(self) -> Document:
         """The pupil-facing document: everything but the answer sections."""

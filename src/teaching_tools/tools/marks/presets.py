@@ -46,6 +46,11 @@ BUILTIN_PRESETS: dict[str, PresetRows] = {
 }
 
 DEFAULT_PRESET = "OCR J277 (GCSE 9-1)"
+BOARD_PRESETS = {"ocr": "OCR J277 (GCSE 9-1)", "aqa": "AQA 8525 (GCSE 9-1)"}
+
+
+def default_preset_for(board: str) -> str:
+    return BOARD_PRESETS.get(board.lower(), DEFAULT_PRESET)
 
 
 def saved_presets(config: Config) -> dict[str, PresetRows]:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from teaching_tools.core.export import export, to_text
+from teaching_tools.core.export import export, house_style_from, to_text
 from teaching_tools.core.panel import PanelSpec
 from teaching_tools.core.plugin import Inputs, RunContext, RunResult, ToolError
 from teaching_tools.tools.worksheet import logic
@@ -41,7 +41,13 @@ class WorksheetPlugin:
         doc = build_document(questions, options)
         ctx.progress(0.6, "Writing files")
         stem = f"{options.topic}_{options.difficulty}_s{options.seed}"
-        files = export(doc, ctx.output_dir, stem, formats_for(options.formats))
+        files = export(
+            doc,
+            ctx.output_dir,
+            stem,
+            formats_for(options.formats),
+            style=house_style_from(ctx.config),
+        )
         ctx.log(f"{len(questions)} questions, seed {options.seed}, {options.difficulty}")
         ctx.progress(1.0, "Done")
         preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())

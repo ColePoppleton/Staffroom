@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from teaching_tools.core.codeinput import code_from_inputs
-from teaching_tools.core.export import export, to_text
+from teaching_tools.core.export import export, house_style_from, to_text
 from teaching_tools.core.panel import PanelSpec
 from teaching_tools.core.plugin import Inputs, RunContext, RunResult, ToolError
 from teaching_tools.core.runner import RunOutcome, run_source
@@ -90,7 +90,13 @@ class BugsPlugin:
             path.write_text(v.source, encoding="utf-8")
             files.append(path)
         doc = build_document(name, source, variants)
-        files += export(doc, out, f"{name}_bugs", formats_for(options.formats))
+        files += export(
+            doc,
+            out,
+            f"{name}_bugs",
+            formats_for(options.formats),
+            style=house_style_from(ctx.config),
+        )
         ctx.progress(1.0, "Done")
         key = Table(
             ["Version", "Line", "Bug", "Original", "Changed to", "What happens"],

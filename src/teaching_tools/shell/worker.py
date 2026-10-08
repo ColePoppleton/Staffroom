@@ -11,6 +11,7 @@ from PySide6.QtCore import QThread, Signal
 from teaching_tools.core.config import Config
 from teaching_tools.core.library.service import ResourceService
 from teaching_tools.core.plugin import Inputs, RunContext, RunResult, ToolError, ToolPlugin
+from teaching_tools.core.usage import record_run
 
 Job = Callable[[RunContext], RunResult]
 
@@ -37,6 +38,7 @@ class RunWorker(QThread):
         self.output_dir = output_dir
         self.resources = resources
         self.job: Job = job or (lambda ctx: plugin.run(inputs, ctx))
+        self.job_is_run = job is None
 
     def run(self) -> None:
         ctx = RunContext(
@@ -48,6 +50,8 @@ class RunWorker(QThread):
         )
         try:
             result = self.job(ctx)
+            if self.job_is_run:
+                record_run(self.plugin.name)
         except ToolError as exc:
             self.failed.emit(str(exc), False)
         except Exception:

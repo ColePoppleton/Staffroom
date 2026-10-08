@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from teaching_tools.core.codeinput import code_from_inputs
-from teaching_tools.core.export import export, to_text
+from teaching_tools.core.export import export, house_style_from, to_text
 from teaching_tools.core.panel import PanelSpec
 from teaching_tools.core.plugin import Inputs, RunContext, RunResult, ToolError
 from teaching_tools.core.runner import blocked_imports, run_source
@@ -97,7 +97,13 @@ class TracePlugin:
             error=result.error,
         )
         ctx.progress(0.7, "Writing files")
-        files = export(doc, ctx.output_dir, f"{name}_trace", formats_for(options.formats))
+        files = export(
+            doc,
+            ctx.output_dir,
+            f"{name}_trace",
+            formats_for(options.formats),
+            style=house_style_from(ctx.config),
+        )
         ctx.progress(1.0, "Done")
         return RunResult(
             tables={"table": completed},

@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from teaching_tools.core.export import to_text
+from teaching_tools.core.export import house_style_from, to_text
 from teaching_tools.core.panel import PanelSpec
 from teaching_tools.core.plugin import Inputs, RunContext, RunResult, ToolError
 from teaching_tools.tools.quiz import logic
@@ -86,7 +86,9 @@ class QuizPlugin:
             files = write_forms(chosen, ctx.output_dir, stem, options.title)
             preview = files[0].read_text(encoding="utf-8")
         else:
-            files = write_donow(chosen, ctx.output_dir, stem, options.title)
+            files = write_donow(
+                chosen, ctx.output_dir, stem, options.title, house_style_from(ctx.config)
+            )
             doc = donow_document(chosen, options.title)
             preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
         for n in notes:

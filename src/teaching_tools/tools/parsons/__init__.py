@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from teaching_tools.core.export import export, to_text
+from teaching_tools.core.export import export, house_style_from, to_text
 from teaching_tools.core.panel import PanelSpec
 from teaching_tools.core.plugin import Inputs, RunContext, RunResult, ToolError
 from teaching_tools.tools.parsons import logic
@@ -59,7 +59,13 @@ class ParsonsPlugin:
         doc = build_document(problem, name, options)
         ctx.progress(0.6, "Writing files")
         stem = f"{name}_parsons_s{problem.seed}"
-        files = export(doc, ctx.output_dir, stem, formats_for(options.formats))
+        files = export(
+            doc,
+            ctx.output_dir,
+            stem,
+            formats_for(options.formats),
+            style=house_style_from(ctx.config),
+        )
         ctx.progress(1.0, "Done")
         preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
         return RunResult(

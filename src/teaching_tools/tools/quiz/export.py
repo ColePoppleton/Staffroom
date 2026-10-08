@@ -7,7 +7,7 @@ from pathlib import Path
 
 from openpyxl import Workbook
 
-from teaching_tools.core.export import Document, Numbered, Paragraph, export
+from teaching_tools.core.export import Document, HouseStyle, Numbered, Paragraph, export
 from teaching_tools.tools.quiz.logic import (
     KAHOOT_HEADERS,
     Question,
@@ -99,5 +99,7 @@ def donow_document(questions: list[Question], title: str, today: date | None = N
     return doc
 
 
-def write_donow(questions: list[Question], out_dir: Path, stem: str, title: str) -> list[Path]:
-    return export(donow_document(questions, title), out_dir, f"{stem}_donow")
+def write_donow(
+    questions: list[Question], out_dir: Path, stem: str, title: str, style: HouseStyle | None = None
+) -> list[Path]:
+    return export(donow_document(questions, title), out_dir, f"{stem}_donow", style=style)

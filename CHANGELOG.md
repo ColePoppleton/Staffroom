@@ -1,5 +1,25 @@
 # Changelog
 
+## Phase 7 — polish and packaging (2026-10-08)
+
+- App icon (drawn by `scripts/make_icon.py`, `just icon`): icon.png for the
+  window and Dock, icon.icns for the bundle.
+- Theme check: every panel rendered in dark and light offscreen; no fixes
+  were needed beyond what earlier phases already settled.
+- Shortcuts: ⌘K jumps to the Resources search box, ⌘O opens the classroom
+  tool with the library picker, ⌘1–⌘9 switch tools, ⌘L toggles the log,
+  ⌘, opens Settings. Sidebar tooltips show them.
+- Settings now covers the resources folder, the sessions folder, the editor
+  command, the exam board (sets the default marks preset and tags) and the
+  house-style header and footer text printed on every worksheet and key.
+- `just app` builds `dist/Teaching Tools.app` with PyInstaller from
+  `packaging/tt-gui.spec` (tools, assets, spec files and the tracer are
+  collected explicitly because discovery is dynamic).
+- `tt usage`: run counts and last-used dates per tool, recorded by the
+  launcher and nothing else, so the "which tools were actually used in a
+  month" review in PHASES.md can be done from evidence. The review itself
+  is a decision for after a month of use.
+
 ## Phase 6 — quiz (2026-10-08)
 
 - `core/spec/`: OCR J277 and AQA 8525 content maps as TOML data files with a

@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from teaching_tools import __version__
@@ -72,6 +73,9 @@ def main(argv: list[str] | None = None) -> int:
         app = QApplication(sys.argv[:1])
     app.setApplicationName("Teaching Tools")
     app.setOrganizationName("teaching-tools")
+    icon = Path(__file__).with_name("assets") / "icon.png"
+    if icon.exists():
+        app.setWindowIcon(QIcon(str(icon)))
     window = build_window(args)
 
     if args.screenshot:

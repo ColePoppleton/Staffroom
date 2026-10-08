@@ -59,13 +59,17 @@ def write_docx(doc: Document, path: Path) -> Path:
 def _header_footer(d: DocxDocument, doc: Document) -> None:
     section = d.sections[0]
     header = section.header.paragraphs[0]
-    header.text = "   ·   ".join(x for x in (doc.title, doc.topic, doc.date_text) if x)
+    header.text = doc.header_text
     header.alignment = WD_ALIGN_PARAGRAPH.LEFT
     for r in header.runs:
         r.font.size = Pt(9)
         r.font.color.rgb = MUTED
     footer = section.footer.paragraphs[0]
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if doc.footer_text:
+        lead = footer.add_run(doc.footer_text + "   ·   ")
+        lead.font.size = Pt(9)
+        lead.font.color.rgb = MUTED
     run = footer.add_run("Page ")
     run.font.size = Pt(9)
     run.font.color.rgb = MUTED

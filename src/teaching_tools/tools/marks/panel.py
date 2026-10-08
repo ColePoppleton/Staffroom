@@ -15,11 +15,13 @@ from teaching_tools.core.panel import (
     TablePreview,
 )
 from teaching_tools.tools.marks.logic import Options
-from teaching_tools.tools.marks.presets import DEFAULT_PRESET, all_presets
+from teaching_tools.tools.marks.presets import all_presets, default_preset_for
 
 
 def panel_spec() -> PanelSpec:
-    presets = all_presets(load_config())
+    config = load_config()
+    presets = all_presets(config)
+    default = default_preset_for(config.general.board)
     return PanelSpec(
         title="Marks",
         description=(
@@ -40,7 +42,7 @@ def panel_spec() -> PanelSpec:
                 help="Lowest mark for each grade, as % of the paper or raw marks (see options). "
                 "Presets are starting points: edit them to the published boundaries.",
                 columns=(Column("Grade", "text", 90), Column("Minimum", "float", 110)),
-                rows=presets[DEFAULT_PRESET],
+                rows=presets.get(default, next(iter(presets.values()))),
                 presets=tuple(presets.items()),
                 preset_action="save_preset",
             ),

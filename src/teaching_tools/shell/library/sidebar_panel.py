@@ -34,7 +34,7 @@ class ResourcesPanel(QWidget):
         layout.setSpacing(8)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search names and text…")
+        self.search.setPlaceholderText("Search names and text…  (⌘K)")
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self.search_changed.emit)
         layout.addWidget(self.search)

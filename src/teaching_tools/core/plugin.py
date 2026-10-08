@@ -47,6 +47,13 @@ class RunContext:
     log: Callable[[str], None] = lambda _m: None
     resources: ResourceService | None = None  # the Resource Library, when the host has one
 
+    def note_run(self, tool: str) -> None:
+        """Record that ``tool`` ran (for the usage review). Hosts call this;
+        the shell does it in its worker, CLIs after a successful run."""
+        from teaching_tools.core.usage import record_run
+
+        record_run(tool)
+
 
 @runtime_checkable
 class ToolPlugin(Protocol):

@@ -105,7 +105,8 @@ def _esc(text: str) -> str:
 def write_pdf(doc: Document, path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     st = _styles()
-    header_text = "   ·   ".join(x for x in (doc.title, doc.topic, doc.date_text) if x)
+    header_text = doc.header_text
+    footer_text = doc.footer_text
 
     def decorate(canvas: Any, _doc: Any) -> None:
         canvas.saveState()
@@ -115,7 +116,10 @@ def write_pdf(doc: Document, path: Path) -> Path:
         canvas.drawString(MARGIN, height - 12 * mm, header_text)
         canvas.setStrokeColor(RULE)
         canvas.line(MARGIN, height - 14 * mm, width - MARGIN, height - 14 * mm)
-        canvas.drawCentredString(width / 2, 10 * mm, f"Page {canvas.getPageNumber()}")
+        page = f"Page {canvas.getPageNumber()}"
+        canvas.drawCentredString(
+            width / 2, 10 * mm, f"{footer_text}   ·   {page}" if footer_text else page
+        )
         canvas.restoreState()
 
     template = SimpleDocTemplate(

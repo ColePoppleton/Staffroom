@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from teaching_tools.core.codeinput import code_from_inputs
-from teaching_tools.core.export import export, to_text
+from teaching_tools.core.export import export, house_style_from, to_text
 from teaching_tools.core.panel import PanelSpec
 from teaching_tools.core.plugin import Inputs, RunContext, RunResult, ToolError
 from teaching_tools.tools.fade import logic
@@ -46,7 +46,13 @@ class FadePlugin:
         )
         doc = build_document(name, source, versions)
         ctx.progress(0.6, "Writing files")
-        files = export(doc, ctx.output_dir, f"{name}_faded", formats_for(options.formats))
+        files = export(
+            doc,
+            ctx.output_dir,
+            f"{name}_faded",
+            formats_for(options.formats),
+            style=house_style_from(ctx.config),
+        )
         ctx.progress(1.0, "Done")
         return RunResult(
             texts={"preview": to_text(doc.sheet()) + "\n\n" + to_text(doc.key())},

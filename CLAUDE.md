@@ -110,7 +110,8 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
 
 ## Working here
 
-* `just setup`, `just test`, `just lint`, `just gui`, `just new <name>`.
+* `just setup`, `just test`, `just lint`, `just gui`, `just new <name>`,
+  `just app` (PyInstaller bundle), `just icon`, `just screenshots`.
 * `uv` manages the environment; Python 3.12+; src layout.
 * ruff (line length 100), pytest (+ pytest-qt, offscreen), mypy (strict on
   `core`, normal elsewhere), import-linter, pre-commit.
@@ -125,7 +126,8 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
   show the house-style export; `trace`, `bugs` and `fade` show the sandboxed runner; `pseudocode` is an AST → IR → text translator.
 * Screenshots for docs: `just screenshots` (renders offscreen via `tt-gui
   --screenshot`).
-* Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db).
+* Config lives at `~/.config/teaching-tools/` (config.toml, logs/, library.db,
+  usage.toml). Worksheets read the house-style header/footer from config.
 * Lesson copies live in `~/TeachingSessions` by default (`sessions_root`).
   Never default to, or detect, any cloud folder: the school does not use
   OneDrive and the OneDrives on this Mac are personal.

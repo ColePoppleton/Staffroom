@@ -69,6 +69,23 @@ def version() -> None:
     typer.echo(__version__)
 
 
+@app.command("usage")
+def usage_() -> None:
+    """Which tools have been used, how often, and when last (for the monthly review)."""
+    from teaching_tools.core.usage import summary, usage_file
+
+    rows = summary()
+    if not rows:
+        typer.echo(f"nothing recorded yet ({usage_file()})")
+        return
+    for u in rows:
+        typer.echo(f"{u.name:<12} {u.runs:>4} run(s)   last {u.last_used}")
+    known = {p.name for p in discover_plugins()}
+    unused = sorted(known - {u.name for u in rows})
+    if unused:
+        typer.echo("never run: " + ", ".join(unused))
+
+
 app.add_typer(library_app, name="library")
 
 

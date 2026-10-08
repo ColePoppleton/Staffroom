@@ -113,9 +113,11 @@ class Sidebar(QWidget):
         self.list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list.setSpacing(0)
-        for plugin in plugins:
+        for n, plugin in enumerate(plugins, 1):
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, plugin.name)
+            if n <= 9:
+                item.setToolTip(f"{plugin.description}  (⌘{n})")
             item.setSizeHint(QSize(SIDEBAR_WIDTH - 16, 52))
             self.list.addItem(item)
             self.list.setItemWidget(item, ToolItem(plugin))
@@ -132,6 +134,7 @@ class Sidebar(QWidget):
         bottom_layout.setSpacing(2)
         self.log_button = QPushButton("Log")
         self.log_button.setObjectName("SidebarButton")
+        self.log_button.setToolTip("Show the log drawer  (⌘L)")
         self.log_button.setCheckable(True)
         self.log_button.toggled.connect(self.log_toggled.emit)
         self.theme_button = QPushButton("Toggle theme")
@@ -139,6 +142,7 @@ class Sidebar(QWidget):
         self.theme_button.clicked.connect(self.theme_toggle_requested.emit)
         self.settings_button = QPushButton("Settings")
         self.settings_button.setObjectName("SidebarButton")
+        self.settings_button.setToolTip("Settings  (⌘,)")
         self.settings_button.setCheckable(True)
         self.settings_button.clicked.connect(self._on_settings)
         for b in (self.log_button, self.theme_button, self.settings_button):

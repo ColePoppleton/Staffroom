@@ -16,7 +16,9 @@ from teaching_tools.core.export.model import (
 
 def to_text(doc: Document, width: int = 78) -> str:
     out: list[str] = [doc.title, "=" * min(len(doc.title), width)]
-    meta = "   ·   ".join(x for x in (doc.topic, doc.date_text, doc.subtitle) if x)
+    meta = "   ·   ".join(
+        x for x in (doc.style.header, doc.topic, doc.date_text, doc.subtitle) if x
+    )
     if meta:
         out.append(meta)
     out.append("")

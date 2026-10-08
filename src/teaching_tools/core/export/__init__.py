@@ -18,6 +18,7 @@ from teaching_tools.core.export.model import (
     Document,
     Heading,
     HintBox,
+    HouseStyle,
     Numbered,
     PageBreak,
     Paragraph,
@@ -36,17 +37,29 @@ __all__ = [
     "Document",
     "Heading",
     "HintBox",
+    "HouseStyle",
     "Numbered",
     "PageBreak",
     "Paragraph",
     "Section",
     "TableBlock",
     "export",
+    "house_style_from",
     "render",
     "to_text",
     "write_docx",
     "write_pdf",
 ]
+
+
+def house_style_from(config: object) -> HouseStyle:
+    """The teacher's house style from a Config (duck-typed to keep export
+    free of a config import)."""
+    general = getattr(config, "general", None)
+    return HouseStyle(
+        header=str(getattr(general, "house_header", "") or ""),
+        footer=str(getattr(general, "house_footer", "") or ""),
+    )
 
 
 def render(doc: Document, path: Path) -> Path:
@@ -70,10 +83,14 @@ def export(
     formats: Sequence[str] = FORMATS,
     *,
     split_key: bool = True,
+    style: HouseStyle | None = None,
 ) -> list[Path]:
     """Write ``<stem>.<fmt>`` and, when the document has answer sections,
-    ``<stem>_key.<fmt>`` for each format. Returns the paths written."""
+    ``<stem>_key.<fmt>`` for each format. Returns the paths written.
+    ``style`` (header prefix, footer text) overrides the document's own."""
     out_dir.mkdir(parents=True, exist_ok=True)
+    if style is not None:
+        doc.style = style
     written: list[Path] = []
     sheet, key = (doc.sheet(), doc.key()) if split_key else (doc, None)
     for fmt in formats:

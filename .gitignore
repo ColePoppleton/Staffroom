@@ -8,6 +8,7 @@ __pycache__/
 .ruff_cache/
 dist/
 build/
+# PyInstaller work dirs (the spec in packaging/ is kept)
 
 # Project
 data/
@@ -15,6 +16,7 @@ data/
 *.png
 .idea/
 !docs/*.png
+!src/teaching_tools/shell/assets/*.png
 .idea/
 .DS_Store
 

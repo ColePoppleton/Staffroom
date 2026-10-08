@@ -43,5 +43,14 @@ screenshots:
     QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/marks_10x.csv --run --theme dark --screenshot docs/launcher-dark.png
     QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/marks_10x.csv --run --theme light --screenshot docs/launcher-light.png
 
+# Build the macOS app bundle into dist/Teaching Tools.app (PyInstaller)
+app:
+    uv run pyinstaller packaging/tt-gui.spec --noconfirm --clean
+    @echo "built: dist/Teaching Tools.app  (drag it to /Applications, or: open 'dist/Teaching Tools.app')"
+
+# Redraw the app icon from scripts/make_icon.py
+icon:
+    uv run python scripts/make_icon.py
+
 # Everything CI would do
 check: lint test

@@ -112,6 +112,12 @@ class MainWindow(QMainWindow):
         self.refresh_resources()
         QShortcut(QKeySequence("Ctrl+L"), self, self.sidebar.log_button.toggle)
         QShortcut(QKeySequence("Ctrl+,"), self, self.sidebar.settings_button.click)
+        QShortcut(QKeySequence("Ctrl+K"), self, self.focus_library_search)
+        QShortcut(QKeySequence("Ctrl+O"), self, self.open_for_class)
+        for n, plugin in enumerate(self.plugins[:9], 1):
+            QShortcut(
+                QKeySequence(f"Ctrl+{n}"), self, lambda name=plugin.name: self.go_to_tool(name)
+            )
 
         self.apply_theme(config.general.theme)
         names = [p.name for p in self.plugins]
@@ -144,6 +150,28 @@ class MainWindow(QMainWindow):
 
     def show_settings(self) -> None:
         self.stack.setCurrentWidget(self.settings)
+
+    # -- shortcuts -------------------------------------------------------
+    def focus_library_search(self) -> None:
+        """⌘K: jump to the Resources search box."""
+        self.sidebar.set_mode("resources")
+        self.stack.setCurrentWidget(self.library_page)
+        self.sidebar.resources.search.setFocus()
+        self.sidebar.resources.search.selectAll()
+
+    def go_to_tool(self, name: str) -> None:
+        self.sidebar.set_mode("tools")
+        self.sidebar.select(name)
+
+    def open_for_class(self) -> None:
+        """⌘O: the classroom tool with the library picker open, when installed."""
+        if not any(p.name == "classroom" for p in self.plugins):
+            return
+        self.go_to_tool("classroom")
+        panel = self.panel_for("classroom")
+        picker = panel.resource_pickers.get("resource")
+        if picker is not None:
+            picker.pick_from_library()
 
     # -- resources -------------------------------------------------------
     def _on_mode(self, mode: str) -> None:

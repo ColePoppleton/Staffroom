@@ -113,6 +113,30 @@ class SettingsPage(QWidget):
         classroom.body.addLayout(form2)
         layout.addWidget(classroom)
 
+        house = Card(
+            "Worksheets",
+            "Exam board for presets and tags, and the house style printed on every sheet.",
+        )
+        form3 = QFormLayout()
+        form3.setHorizontalSpacing(16)
+        form3.setVerticalSpacing(10)
+        self.board = QComboBox()
+        self.board.addItem("OCR J277", "ocr")
+        self.board.addItem("AQA 8525", "aqa")
+        self.board.setCurrentIndex(max(self.board.findData(config.general.board), 0))
+        self.board.currentIndexChanged.connect(self._on_board)
+        form3.addRow(self._label("Exam board"), self.board)
+        self.house_header = QLineEdit(config.general.house_header)
+        self.house_header.setPlaceholderText("e.g. Example High School · Computing")
+        self.house_header.editingFinished.connect(self._on_house)
+        form3.addRow(self._label("Header text"), self.house_header)
+        self.house_footer = QLineEdit(config.general.house_footer)
+        self.house_footer.setPlaceholderText("e.g. Computing Department")
+        self.house_footer.editingFinished.connect(self._on_house)
+        form3.addRow(self._label("Footer text"), self.house_footer)
+        house.body.addLayout(form3)
+        layout.addWidget(house)
+
         logging_card = Card("Logging")
         log_form = QFormLayout()
         log_form.setHorizontalSpacing(16)
@@ -156,6 +180,17 @@ class SettingsPage(QWidget):
             self.config.general.resources_root = text
             self.config.save()
             self.resources_root_changed.emit(text)
+
+    def _on_board(self, index: int) -> None:
+        self.config.general.board = str(self.board.itemData(index))
+        self.config.save()
+
+    def _on_house(self) -> None:
+        header, footer = self.house_header.text().strip(), self.house_footer.text().strip()
+        if (header, footer) != (self.config.general.house_header, self.config.general.house_footer):
+            self.config.general.house_header = header
+            self.config.general.house_footer = footer
+            self.config.save()
 
     def _on_sessions_root(self, path: object) -> None:
         self.config.general.sessions_root = str(path) if path else ""
