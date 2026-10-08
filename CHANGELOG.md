@@ -16,6 +16,13 @@ with every change; `just release <part>` turns it into a version.
   the end of the file or below 1, ranges typed without choosing the `ranges`
   order, and listed lines that are headers, comments or blank (skipped with
   a log note, or an explanation when nothing is left to fade).
+- `staff update` and Settings › Updates compare the checkout with the released
+  branch (`origin/main`, or `release_branch` in config) whatever branch it is
+  on, and name the newest release tag when one is ahead (#25). A checkout on
+  another branch ("on dev; releases are on main"), with no upstream, or
+  detached gets one plain line instead of git's "ambiguous argument" error;
+  the release is reported but never pulled from there, and the update never
+  switches branch.
 
 ## [0.4.0] - 2026-10-08
 ### Added

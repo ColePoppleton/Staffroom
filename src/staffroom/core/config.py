@@ -32,6 +32,10 @@ class GeneralSettings:
     house_footer: str = ""  # e.g. "Computing Department", shown beside the page number
     show_hidden: bool = False
     sidebar_mode: str = "tools"
+    # The released branch the installed app follows: `staff update` and the
+    # Updates card compare HEAD with origin/<release_branch>, whatever branch
+    # the checkout is on.
+    release_branch: str = "main"
     # Folders and files under the resources root the library must not index or
     # list: names (any depth, * and ? allowed) or paths from the root.
     library_exclude: list[str] = field(default_factory=list)

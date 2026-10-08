@@ -183,10 +183,13 @@ class SettingsPage(QWidget):
         house.body.addLayout(form3)
         layout.addWidget(house)
 
+        release = config.general.release_branch or "main"
         updates = Card(
             "Updates",
-            "The app runs straight from the git checkout, so an update is a pull plus a "
-            "dependency sync. Restart afterwards.",
+            f"The app runs straight from the git checkout and follows the released "
+            f"branch ({release}). An update is a fast-forward pull plus a dependency "
+            f"sync; nothing is pulled while the checkout is on another branch, has local "
+            f"edits or has diverged. Restart afterwards.",
         )
         update_row = QHBoxLayout()
         self.update_status = make_label("Checking…", "muted")
@@ -275,7 +278,16 @@ class SettingsPage(QWidget):
         self.update_status.setProperty("role", "danger" if status.error else "muted")
         self.update_status.style().unpolish(self.update_status)
         self.update_status.style().polish(self.update_status)
-        self.update_button.setEnabled(status.available and not status.dirty)
+        self.update_button.setEnabled(status.can_apply)
+        if status.available and not status.can_apply:
+            why = status.note or (
+                "local edits would be overwritten"
+                if status.dirty
+                else "this copy has diverged from the release branch"
+            )
+            self.update_button.setToolTip(f"Not updating: {why}.")
+        else:
+            self.update_button.setToolTip("")
         self.update_available.emit(status.available)
 
     def apply_update(self) -> None:

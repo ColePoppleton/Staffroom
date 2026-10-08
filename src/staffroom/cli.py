@@ -82,12 +82,18 @@ def version() -> None:
 def update_(
     check: Annotated[bool, typer.Option("--check", help="Only report; do not pull")] = False,
 ) -> None:
-    """Pull the latest code from the git remote and sync dependencies."""
+    """Compare this checkout with the released branch (origin/main unless
+    ``release_branch`` is set in config), then fast-forward to it and sync
+    dependencies. Never switches branch or overwrites local edits."""
     from staffroom.core import update
 
     st = update.status()
     typer.echo(st.describe())
     if check or not st.available:
+        raise typer.Exit(0)
+    if not st.on_release:
+        release = st.remote.partition("/")[2]
+        typer.echo(f"Not updating: this copy is {st.note}. Switch to {release} to update.")
         raise typer.Exit(0)
     try:
         typer.echo(update.apply())
