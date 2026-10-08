@@ -8,9 +8,8 @@ from typing import Annotated
 import typer
 
 from staffroom.core.config import load_config
-from staffroom.core.paths import default_output_dir
 from staffroom.core.plugin import RunContext, ToolError
-from staffroom.tools.worksheet.logic import GENERATORS, TOPIC_TITLES, Options
+from staffroom.tools.worksheet.logic import GENERATORS, LAW_FAMILIES, TOPIC_TITLES, Options
 
 
 def register(app: typer.Typer) -> None:
@@ -24,6 +23,22 @@ def register(app: typer.Typer) -> None:
         difficulty: Annotated[
             str, typer.Option("--difficulty", help="easy, medium, hard")
         ] = "medium",
+        level: Annotated[
+            str,
+            typer.Option(
+                "--level",
+                help="gcse or a_level (A-level truth tables add XOR, and NAND/NOR at hard)",
+            ),
+        ] = "gcse",
+        laws: Annotated[
+            str,
+            typer.Option(
+                "--laws", help="Simplification laws: absorption, de_morgan, identities, all"
+            ),
+        ] = "absorption",
+        board: Annotated[
+            str | None, typer.Option("--board", help="ocr or aqa; defaults to the config setting")
+        ] = None,
         fmt: Annotated[str, typer.Option("--format", "-f", help="both, docx or pdf")] = "both",
         out: Annotated[Path | None, typer.Option("--out", "-o", help="Output folder")] = None,
         preview: Annotated[
@@ -39,14 +54,32 @@ def register(app: typer.Typer) -> None:
         if difficulty not in ("easy", "medium", "hard") or fmt not in ("both", "docx", "pdf"):
             typer.secho("--difficulty easy|medium|hard, --format both|docx|pdf", fg="red", err=True)
             raise typer.Exit(1)
+        if level not in ("gcse", "a_level") or laws not in LAW_FAMILIES:
+            typer.secho(
+                f"--level gcse|a_level, --laws {'|'.join(LAW_FAMILIES)}", fg="red", err=True
+            )
+            raise typer.Exit(1)
         config = load_config()
+        if board is not None:
+            if board.lower() not in ("ocr", "aqa"):
+                typer.secho("--board ocr|aqa", fg="red", err=True)
+                raise typer.Exit(1)
+            config.general.board = board.lower()  # this run only; the config file is not saved
         ctx = RunContext(
             config=config,
-            output_dir=out or default_output_dir(None, config.general.output_dir),
+            output_dir=out or config.output_dir_for(None, "worksheet"),
             progress=lambda _f, msg: typer.secho(msg, dim=True, err=True),
             log=lambda msg: typer.echo(msg, err=True),
         )
-        options = Options(topic=topic, count=count, seed=seed, difficulty=difficulty, formats=fmt)  # type: ignore[arg-type]
+        options = Options(
+            topic=topic,  # type: ignore[arg-type]
+            count=count,
+            seed=seed,
+            difficulty=difficulty,  # type: ignore[arg-type]
+            level=level,  # type: ignore[arg-type]
+            laws=laws,  # type: ignore[arg-type]
+            formats=fmt,  # type: ignore[arg-type]
+        )
         try:
             result = plugin.run({"options": options}, ctx)
         except ToolError as exc:

@@ -6,6 +6,119 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Added
+- First run asks for the resources folder (#18). With no folder set, the
+  launcher opens on one card, "Choose your resources folder": Choose… opens a
+  folder dialog (at the home folder; the app never suggests a folder, cloud or
+  otherwise), the sessions-folder default is shown as text, and a sentence
+  points at Settings and the privacy guide's "What the Resource Library
+  stores". Choosing a folder saves it, runs the first index with progress on
+  the card and lands on Classroom; "Not now" lands there too and leaves the
+  "No folder chosen: set it in Settings" hint in the Resources sidebar.
+  `FirstRunCard` joins the widget kit; `staffroom --first-run` shows the card
+  for screenshots. `staff library index` / `search` with no folder set now say
+  where to set it (the Settings page and the `resources_root` key) instead of
+  "resources root not found: ".
+- Library privacy (#17): an exclusion list for the resources folder (Settings,
+  `staff library exclude`, or `<root>/.staffroom/ignore`) whose paths are
+  neither indexed nor listed and whose changes re-index; files whose text
+  looks like pupil details (candidate number, surname, UPN, date of birth
+  next to a value) are indexed by name only, counted in the index summary,
+  the sidebar status and `staff library status`, and flagged in the preview;
+  Settings and `docs/guide/privacy.md` state what is indexed, where the
+  database lives, that the folder is only read, and how to delete the index.
+  `StringListEditor` joins the widget kit; `staffroom --settings` opens
+  Settings for screenshots.
+- First product audit (`docs/audits/2026-10-08.md`): ten personas, 23 issues
+  on the "Phase 8: Ready for other teachers" milestone, and the not-doing list.
+- `examples/marks_messy.csv`: a fake marks file on which every `marks`
+  warning fires, for trying the tool and for the tests.
+
+### Changed
+- Parsons and bugs sheets print on fewer pages (#22): Parsons blocks are
+  numbered cut-out boxes, two across, with dashed cut lines and the answer
+  grid on the same page (`year9.py`, 15 blocks: 2 pages → 1); the bugs sheet
+  puts two versions on a page (4 versions: 4 pages → 2). `core.export` gains
+  `BoxedBlocks` and `AnswerGrid` for every tool, rendered to docx, PDF and
+  text; `examples/year9.py` is the program the page-count tests measure.
+- `marks`: the saved distribution chart is always print-friendly: white
+  background and the light palette's ink, whatever `general.theme` is.
+  The panel shows the same file (#13).
+- The sidebar lists tools in workflow order (classroom, marks, worksheet,
+  parsons, quiz, trace, bugs, fade, pseudocode) instead of A–Z, and ⌘1–⌘9
+  follow it, so a fresh install opens on Classroom and ⌘1 is Classroom.
+  `hello`, the developer reference tool, is hidden from the launcher: it
+  keeps its CLI, its tests and its place as the `staff new` model, and
+  `staff list` shows it marked `[hidden]`. Plugins may declare optional
+  `order` and `hidden` attributes (`docs/adding-a-tool.md`); tools without
+  them need no change. `just screenshots` now renders the marks tool. (#15)
+- Input mistakes are one-line messages for the teacher, never tracebacks
+  (#14). `read_table` raises `ToolError` for the wrong kind of file, a missing
+  file, a CSV that is really a binary file or a damaged workbook, naming the
+  file and what is accepted, so every tool, the CLI and the launcher show the
+  sentence; `code_from_inputs` does the same for code files; every tool CLI
+  command turns a `ToolError` into a red line and exit 1 without per-command
+  `try` blocks. `fade --ranges abc`, `marks --max 4,6,x` and the quiz "as of"
+  date say what was expected instead of `invalid literal for int()`.
+- Outputs never land in the code checkout or the shell's current directory.
+  With no output folder set and no input file, tools write to
+  `<sessions folder>/outputs/<tool>/` (created on first write); the run bar
+  names the folder before Run and "Open output folder" works at any time;
+  Settings explains the default. Screenshot runs (`just screenshots`) write
+  to a throwaway folder, so `git status` stays clean. (#11, #10)
+- A docs page, *Running pupil code*, that says what a trace / bugs run is
+  limited to and what it does not stop (`os.system`, file writes, computed
+  import names); the Trace, Bugs and Fade panels point to it (#16).
+- Docs for a teacher who is not the owner (#19): the Privacy page lists the
+  identifier filter's header words and what passes through (per-pupil flag
+  columns such as SEN/PP/EAL reach the preview and are never saved), what the
+  run log and the app log file hold and where the file is, the full table of
+  what is stored where (including `.origin.json`), and how to delete
+  everything; a new *Outputs* page gives the output-folder rule and every
+  tool's file names; a new *Glossary* covers facility, discrimination, seed,
+  ERL, Parsons problem, faded example, do-now, retrieval windows and the rest;
+  the launcher page shows the workflow-order shortcuts and the tool pages
+  name their files and link across. The nav puts *Adding a tool* and
+  *Roadmap* back under Contributing.
+
+### Fixed
+- Worksheet truth tables never set a degenerate question: every input the
+  table lists is used, no gate is fed the same input twice, and Q is neither
+  constant nor just one input. Gates follow the exam board (OCR J277: AND, OR,
+  NOT; AQA 8525 adds XOR); a new **Level** option, `a_level`, adds XOR and,
+  at hard only, NAND and NOR. Boolean simplification wraps one letter at a
+  time so questions read like a textbook, no longer sets `X AND X`,
+  `NOT NOT X` or `0`/`1` unless the new **Boolean laws** option is
+  `identities`, and every key step is written in the question's own letters
+  (`absorption: B AND (B OR NOT C) = B, leaving A AND B`). The header states
+  the gate set or the law family so a sheet is self-describing, and an
+  A-level sheet carries `alevel` in its file name (#20).
+- `trace`: a program that calls `input()` with the Inputs box empty (or
+  short) stops with "`<file>.py` asked for input but the Inputs box is empty:
+  add one line per input() call" and writes nothing, instead of a green
+  status and a one-row sheet. The tracer records the `EOFError` that
+  `input()` itself raised, so a program that catches the EOF, or raises its
+  own, is not mistaken for it. Any other runtime error still produces the
+  sheet, and the status line now says "ended with <Error>" as the log did
+  (#21).
+- `marks` finds the `MAX` row of a markbook export even when the flag sits in
+  the name column: `core.csvio.read_table(path, flag=...)` decides which rows
+  carry the word on the raw file and passes only the row indices on
+  (`Table.flagged_rows`); the identifier filter itself is unchanged and still
+  unconditional. The tool now warns, in the CLI and the panel log, on a mark
+  above its max (question, count, highest), a max of 0, blank or non-numeric
+  cells (`ab`), and grade boundaries above the paper total (a percent preset
+  applied as raw marks). Blank cells count as 0 in a script's total but are
+  left out of facility and discrimination instead of dragging them down, and
+  the distribution gains an "Incomplete scripts" row saying how many scripts
+  had one. The run still succeeds; the summary says how many warnings to read.
+- The runner caps captured stdout and stderr at 1 MB each and drains the
+  rest, so a `while True: print(i)` no longer captures hundreds of megabytes
+  before the timeout kills it; capped output ends with
+  `[output truncated at 1024 KB]` and the trace and bugs keys say so. The
+  tracer caps the program's output inside the run too. The import check now
+  also catches `__import__("socket")` and `importlib.import_module("socket")`
+  with a literal name (#16).
 
 ## [0.3.0] - 2026-10-08
 ### Changed

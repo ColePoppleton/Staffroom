@@ -9,6 +9,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Literal
 
+TIMEOUT = 4.0  # seconds each variant may run; the panel description quotes it
+
 Kind = Literal[
     "comparison_flip",
     "off_by_one",

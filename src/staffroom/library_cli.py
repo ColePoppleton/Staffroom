@@ -9,14 +9,37 @@ from typing import Annotated
 import typer
 
 from staffroom.core.config import load_config
-from staffroom.core.library.model import Kind
+from staffroom.core.library.model import Kind, withheld_message
 from staffroom.core.library.service import LibraryService
 
-library_app = typer.Typer(help="The Resource Library: index, search, tags.", no_args_is_help=True)
+library_app = typer.Typer(
+    help="The Resource Library: index, search, tags, exclusions.", no_args_is_help=True
+)
 
 
 def _service() -> LibraryService:
-    return LibraryService(Path(load_config().general.resources_root))
+    general = load_config().general
+    return LibraryService(Path(general.resources_root), exclude=general.library_exclude)
+
+
+def _where_to_set_it() -> str:
+    return (
+        "choose it in Staffroom › Settings › Resources folder, or set resources_root "
+        f"under [general] in {load_config().path}"
+    )
+
+
+def _require_root(svc: LibraryService) -> None:
+    """Exit 1 with a sentence that says what to do when there is no usable
+    folder: none chosen yet (a fresh install), or the chosen one is gone."""
+    if svc.root_exists:
+        return
+    if not svc.root_set:
+        message = f"no resources folder set yet: {_where_to_set_it()}"
+    else:
+        message = f"resources root not found: {svc.root} ({_where_to_set_it()})"
+    typer.secho(message, fg=typer.colors.RED, err=True)
+    raise typer.Exit(1)
 
 
 @library_app.command()
@@ -27,10 +50,7 @@ def index(
 ) -> None:
     """Index (or incrementally re-index) the resources root."""
     svc = _service()
-    if not svc.root_exists:
-        where = svc.root or "(not set: staffroom › Settings › Resources folder)"
-        typer.secho(f"resources root not found: {where}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(1)
+    _require_root(svc)
     typer.echo(f"indexing {svc.root}")
 
     def progress(done: int, total: int, rel: str) -> None:
@@ -39,6 +59,11 @@ def index(
 
     stats = svc.index(full=full, progress=progress)
     typer.echo(stats.summary())
+    if stats.withheld_paths:
+        for rel in stats.withheld_paths:
+            typer.secho(f"  name only: {rel}", dim=True)
+    if stats.excluded:
+        typer.secho(f"{stats.excluded} exclusion pattern(s) in force", dim=True)
 
 
 @library_app.command()
@@ -52,6 +77,7 @@ def search(
     """Search file names and extracted text."""
     svc = _service()
     if svc.count() == 0:
+        _require_root(svc)  # a fresh install hears where the folder is set, not "empty"
         typer.secho("index is empty; run  staff library index", fg=typer.colors.YELLOW, err=True)
         raise typer.Exit(1)
     kinds = [k for k in (kind or []) if k]  # validated loosely; unknown kinds match nothing
@@ -96,11 +122,69 @@ def status() -> None:
     svc = _service()
     last = svc.last_indexed()
     when = datetime.fromisoformat(last).astimezone().strftime("%Y-%m-%d %H:%M") if last else "never"
-    typer.echo(f"root:        {svc.root} ({'exists' if svc.root_exists else 'MISSING'})")
+    if svc.root_set:
+        typer.echo(f"root:        {svc.root} ({'exists' if svc.root_exists else 'MISSING'})")
+    else:
+        typer.echo(f"root:        (not set: {_where_to_set_it()})")
     typer.echo(f"database:    {svc.db.path}")
     typer.echo(f"files:       {svc.count()}")
     typer.echo(f"last index:  {when}")
     typer.echo(f"tags file:   {svc.tags.path} ({len(svc.tags.all_tags())} tags)")
+    excl = svc.exclusions()
+    typer.echo(f"excluded:    {', '.join(excl.patterns) if excl else '-'}")
+    typer.echo(
+        f"ignore file: {svc.ignore_file} ({'present' if svc.ignore_file.exists() else 'none'})"
+    )
+    withheld = svc.withheld_count()
+    typer.echo(f"name only:   {withheld} file{'s' if withheld != 1 else ''}")
+    if withheld:
+        typer.secho(withheld_message(withheld), fg=typer.colors.YELLOW)
+    typer.secho(
+        "Stored: file names and the text of .py/.txt/.md/.csv/.pdf files only, in the database "
+        "above. The resources folder is only read. Delete the database or change the root "
+        "(a full re-index drops the old entries) to remove the index.",
+        dim=True,
+    )
+
+
+@library_app.command()
+def exclude(
+    add: Annotated[
+        list[str] | None,
+        typer.Option("--add", "-a", help="Folder name, glob or path from the root to exclude"),
+    ] = None,
+    remove: Annotated[
+        list[str] | None, typer.Option("--remove", "-r", help="Pattern to stop excluding")
+    ] = None,
+) -> None:
+    """Show or change the exclusion list (folders the library never indexes or lists).
+
+    Names match at any depth ("Pupil work", "*assessment*"); paths match from the
+    root ("Year 11/Mocks"). Patterns in <root>/.staffroom/ignore are also honoured.
+    Re-index afterwards: staff library index."""
+    from staffroom.core.library.exclude import normalise_patterns
+
+    cfg = load_config()
+    patterns = list(cfg.general.library_exclude)
+    changed = False
+    for pattern in normalise_patterns(add or []):
+        if pattern not in patterns:
+            patterns.append(pattern)
+            changed = True
+    for pattern in normalise_patterns(remove or []):
+        if pattern in patterns:
+            patterns.remove(pattern)
+            changed = True
+        else:
+            typer.secho(f"not in the list: {pattern}", fg=typer.colors.YELLOW, err=True)
+    if changed:
+        cfg.general.library_exclude = patterns
+        cfg.save()
+        typer.echo(f"saved to {cfg.path}; run  staff library index  to apply")
+    svc = LibraryService(Path(cfg.general.resources_root), exclude=patterns)
+    typer.echo("configured:  " + (", ".join(patterns) or "-"))
+    from_file = svc.ignore_file_patterns()
+    typer.echo(f"ignore file: {', '.join(from_file) or '-'}  ({svc.ignore_file})")
 
 
 def _relative(svc: LibraryService, path: str) -> str:

@@ -21,7 +21,7 @@ Theme = Literal["dark", "light"]
 @dataclass
 class GeneralSettings:
     theme: Theme = "dark"
-    output_dir: str = ""  # empty means "next to the input file"
+    output_dir: str = ""  # empty: next to the input, else <sessions_root>/outputs/<tool>
     log_level: str = "INFO"
     last_tool: str = ""
     resources_root: str = ""  # the teacher's resources folder; set in Settings
@@ -32,6 +32,9 @@ class GeneralSettings:
     house_footer: str = ""  # e.g. "Computing Department", shown beside the page number
     show_hidden: bool = False
     sidebar_mode: str = "tools"
+    # Folders and files under the resources root the library must not index or
+    # list: names (any depth, * and ? allowed) or paths from the root.
+    library_exclude: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -43,6 +46,17 @@ class Config:
 
     def tool(self, name: str) -> dict[str, Any]:
         return self.tools.setdefault(name, {})
+
+    def output_dir_for(self, input_path: Path | None, tool: str) -> Path:
+        """Where ``tool`` should write for this input; see
+        :func:`staffroom.core.paths.default_output_dir`."""
+        return paths.default_output_dir(
+            input_path,
+            self.general.output_dir,
+            resources_root=self.general.resources_root,
+            sessions_root=self.general.sessions_root,
+            tool=tool,
+        )
 
     def save(self) -> Path:
         if self.read_only:

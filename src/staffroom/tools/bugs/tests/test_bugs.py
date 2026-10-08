@@ -4,15 +4,21 @@ described mutation, and the key says what each one does."""
 from pathlib import Path
 
 import pytest
+from pypdf import PdfReader
 from typer.testing import CliRunner
 
 from staffroom.cli import app
+from staffroom.core import paths
 from staffroom.core.config import load_config
+from staffroom.core.export import render, to_text
 from staffroom.core.plugin import RunContext
-from staffroom.tools.bugs import logic, plugin
+from staffroom.core.runner import RunOutcome
+from staffroom.tools.bugs import classify, logic, plugin
 from staffroom.tools.bugs.logic import KIND_LABELS, Options
+from staffroom.tools.bugs.sheet import build_document
 
 runner = CliRunner()
+YEAR9 = paths.examples_dir() / "year9.py"
 
 PROGRAM = """total = 0
 count = 1
@@ -120,3 +126,38 @@ def test_cli(tmp_path: Path) -> None:
     assert r.exit_code == 0 and "indentation_slip" in r.output
     r = runner.invoke(app, ["bugs", "make", str(src), "--kinds", "nope"])
     assert r.exit_code == 1
+
+
+def test_classify_says_when_a_variant_prints_past_the_cap() -> None:
+    original = RunOutcome(stdout="1\n", returncode=0)
+    flood = RunOutcome(stdout="1\n1\n", returncode=0, stdout_truncated=True)
+    assert classify(original, flood) == "runs, but the output is wrong; output capped at 1024 KB"
+    assert classify(original, RunOutcome(stdout="1\n", returncode=0)).startswith("no visible")
+
+
+def _pages(doc_variants: int, tmp_path: Path) -> int:
+    source = YEAR9.read_text()
+    variants = logic.make_variants(source, Options(count=doc_variants, seed=1))
+    assert len(variants) == doc_variants
+    doc = build_document("year9", source, variants)
+    path = render(doc.sheet(), tmp_path / f"bugs{doc_variants}.pdf")
+    return len(PdfReader(str(path)).pages)
+
+
+def test_two_variants_per_printed_page(tmp_path: Path) -> None:
+    """The audit's measured failure (#22): four 13-line variants printed on
+    four pages. Two per page, with the answer line under each."""
+    assert _pages(4, tmp_path) == 2
+    assert _pages(1, tmp_path) == 1
+    assert _pages(5, tmp_path) == 3
+
+
+def test_page_break_only_between_pairs() -> None:
+    source = YEAR9.read_text()
+    variants = logic.make_variants(source, Options(count=4, seed=1))
+    text = to_text(build_document("year9", source, variants))
+    assert text.count("page break") == 1
+    v1 = text.index("Version 1")
+    v2 = text.index("Version 2")
+    assert text.index("Line: ______", v1) < v2  # the answer line sits under its version
+    assert text.index("page break") > text.index("Line: ______", v2)

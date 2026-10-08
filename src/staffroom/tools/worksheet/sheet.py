@@ -5,18 +5,21 @@ from __future__ import annotations
 from datetime import date
 
 from staffroom.core.export import Document, Numbered, Paragraph, TableBlock
-from staffroom.tools.worksheet.logic import TOPIC_TITLES, Options, Question
+from staffroom.tools.worksheet.logic import TOPIC_TITLES, Options, Question, header_note
 
 
 def build_document(
-    questions: list[Question], options: Options, today: date | None = None
+    questions: list[Question], options: Options, today: date | None = None, *, board: str = "ocr"
 ) -> Document:
     title = TOPIC_TITLES.get(options.topic, options.topic)
+    subtitle = f"seed {options.seed} · {options.difficulty} · {len(questions)} questions"
+    if note := header_note(options, board):
+        subtitle += f" · {note}"  # the gate set or law family, so the sheet is self-describing
     doc = Document(
         title=f"Worksheet: {title}",
         topic="Computer Science",
         date=today or date.today(),
-        subtitle=f"seed {options.seed} · {options.difficulty} · {len(questions)} questions",
+        subtitle=subtitle,
     )
     sheet = doc.section()
     sheet.add(

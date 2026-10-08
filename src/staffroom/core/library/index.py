@@ -10,10 +10,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from staffroom.core.library.db import LibraryDB
+from staffroom.core.library.exclude import ExclusionList
 from staffroom.core.library.extract import CloudOnlyError, extract_text
 from staffroom.core.library.model import IndexStats, Resource
 from staffroom.core.library.scan import scan
 from staffroom.core.log import get_logger
+from staffroom.core.privacy import find_identifier_text
 
 log = get_logger(__name__)
 
@@ -21,16 +23,22 @@ Progress = Callable[[int, int, str], None]  # done, total, current rel_path
 
 
 class Indexer:
-    def __init__(self, root: Path, db: LibraryDB) -> None:
+    """``exclude`` keeps folders and files out of the scan entirely; entries
+    for paths that are now excluded disappear on the next run like deleted
+    files do. A searchable file whose text looks like pupil details is stored
+    by name only (``text_withheld``) and counted."""
+
+    def __init__(self, root: Path, db: LibraryDB, exclude: ExclusionList | None = None) -> None:
         self.root = root
         self.db = db
+        self.exclude = exclude or ExclusionList()
 
     def run(self, *, full: bool = False, progress: Progress | None = None) -> IndexStats:
         started = time.perf_counter()
-        stats = IndexStats()
+        stats = IndexStats(excluded=len(self.exclude))
         known = {} if full else self.db.signatures()
         seen: set[str] = set()
-        found = list(scan(self.root))
+        found = list(scan(self.root, self.exclude.matches if self.exclude else None))
         total = len(found)
         self.db.begin()
         try:
@@ -66,6 +74,13 @@ class Indexer:
                 stats.unchanged += 1
                 continue
             res, text = self._extract(res)
+            if text is not None and (labels := find_identifier_text(text)):
+                log.info(
+                    "name only, looks like pupil details (%s): %s", ", ".join(labels), res.rel_path
+                )
+                res, text = replace(res, text_withheld=True), None
+                stats.text_withheld += 1
+                stats.withheld_paths.append(res.rel_path)
             self.db.upsert(res, text)
             if res.cloud_only:
                 stats.cloud_only += 1

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from staffroom.core.export.model import (
+    AnswerGrid,
+    BoxedBlocks,
     Code,
     Document,
     Heading,
@@ -58,6 +60,24 @@ def _block(block: object) -> list[str]:
         return [head, rule, *body, ""]
     if isinstance(block, HintBox):
         return [f"[{block.title}] {block.text}", ""]
+    if isinstance(block, BoxedBlocks):
+        boxes: list[str] = []
+        for i, item in enumerate(block.items, block.start):
+            lines = item.splitlines() or [""]
+            inner = max(len(str(i)) + 2, *(len(ln) for ln in lines))
+            boxes.append(f"+- {i} " + "-" * (inner - len(str(i)) - 1) + "+")
+            boxes += [f"| {ln.ljust(inner)} |" for ln in lines]
+            boxes.append("+" + "-" * (inner + 2) + "+")
+        return [*boxes, ""]
+    if isinstance(block, AnswerGrid):
+        per_row = max(1, block.per_row)
+        positions = list(range(block.start, block.start + block.count))
+        grid: list[str] = []
+        for i in range(0, len(positions), per_row):
+            chunk = positions[i : i + per_row]
+            grid.append(" ".join(str(p).center(6) for p in chunk))
+            grid.append(" ".join("[____]" for _ in chunk))
+        return [*grid, ""]
     if isinstance(block, PageBreak):
         return ["", "- - - - - page break - - - - -", ""]
     return []

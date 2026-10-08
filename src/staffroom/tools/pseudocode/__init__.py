@@ -26,10 +26,7 @@ class PseudocodePlugin:
 
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
-        try:
-            text, name = code_from_inputs(inputs)
-        except ValueError as exc:
-            raise ToolError(str(exc)) from exc
+        text, name = code_from_inputs(inputs)
         src, dst = logic.split_direction(options.direction)
         ctx.progress(0.3, f"{logic.LANGUAGE_LABELS[src]} → {logic.LANGUAGE_LABELS[dst]}")
         try:

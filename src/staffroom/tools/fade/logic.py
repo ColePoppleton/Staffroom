@@ -32,18 +32,25 @@ class Options:
     formats: Literal["both", "docx", "pdf"] = field(default="both", metadata={"label": "Output"})
 
 
+RANGES_HINT = "Line ranges like 3-5, 8"
+
+
 def parse_ranges(text: str) -> list[int]:
-    """``"3-5, 8"`` -> [3, 4, 5, 8]."""
+    """``"3-5, 8"`` -> [3, 4, 5, 8]. Raises ValueError saying what was expected."""
     out: list[int] = []
     for part in re.split(r"[,\s]+", text.strip()):
         if not part:
             continue
-        if "-" in part:
-            a, b = part.split("-", 1)
-            lo, hi = int(a), int(b)
-            out.extend(range(min(lo, hi), max(lo, hi) + 1))
-        else:
-            out.append(int(part))
+        try:
+            if "-" in part:
+                a, b = part.split("-", 1)
+                lo, hi = int(a), int(b)
+                out.extend(range(min(lo, hi), max(lo, hi) + 1))
+            else:
+                out.append(int(part))
+        except ValueError:
+            msg = f"{RANGES_HINT} (line numbers), not {part!r}."
+            raise ValueError(msg) from None
     seen: dict[int, None] = {}
     for n in out:
         seen.setdefault(n, None)
@@ -93,6 +100,9 @@ def blank_line(line: str) -> str:
 def fade_versions(source: str, options: Options) -> list[str]:
     """Version j of K blanks the first round(j * n / K) lines of the fade
     order, so the last version has every chosen line blanked."""
+    if options.order == "ranges" and not options.ranges.strip():
+        msg = f"Fade order is 'ranges' but no lines are listed. {RANGES_HINT}."
+        raise ValueError(msg)
     order = fadeable_lines(source, options)
     n = len(order)
     if n == 0:

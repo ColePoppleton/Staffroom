@@ -111,3 +111,92 @@ def test_analyse_errors() -> None:
         logic.analyse(Table(["mark"], [[3]]), OCR)
     with pytest.raises(ValueError, match="No scripts"):
         logic.analyse(Table(["q1"], []), OCR)
+
+
+# ---------------------------------------------------------------- sanity warnings (#12)
+RAW_AB = Table(["Grade", "Minimum"], [["A", 8], ["B", 5]])
+
+
+def test_split_max_row_uses_flag_decided_before_identifier_columns_were_dropped() -> None:
+    # The MAX word lived in a dropped name column; only the row index survives.
+    t = Table(["q1", "q2"], [[4, 6], [3, 5], [4, 6]], fake_data=True, flagged_rows=[0])
+    data, maxes = logic.split_max_row(t)
+    assert maxes == {"q1": 4, "q2": 6}
+    assert data.rows == [[3, 5], [4, 6]] and data.fake_data
+    assert data.flagged_rows == []
+
+
+def test_mark_or_none_distinguishes_blank_and_text_from_zero() -> None:
+    assert logic.mark_or_none(0) == 0.0
+    assert logic.mark_or_none("3") == 3.0
+    assert logic.mark_or_none(None) is None
+    assert logic.mark_or_none("") is None
+    assert logic.mark_or_none("ab") is None
+    assert logic.mark_or_none(True) is None
+    assert logic.as_mark("ab") == 0.0  # totals still count a blank as 0
+
+
+def test_mark_above_max_warns_but_still_grades() -> None:
+    t = Table(["row", "q1", "q2"], [["MAX", 5, 5], [1, 7, 3], [2, 5, 2], [3, 6, 1]])
+    a = logic.analyse(t, RAW_AB, logic.Options(unit="raw"))
+    assert a.warnings == [
+        "q1: 2 scripts scored above the max of 5 (highest 7). Check the marks or the max."
+    ]
+    assert a.grades.column("Total") == [10, 7, 7]
+    assert a.grades.column("Grade") == ["A", "B", "B"]
+    assert a.grades.column("Percent")[0] == 100.0
+
+
+def test_max_of_zero_warns_once() -> None:
+    t = Table(["row", "q1", "q2"], [["MAX", 4, 0], [1, 3, 2], [2, 4, 0]])
+    bounds = Table(["Grade", "Minimum"], [["A", 4], ["B", 2]])  # within the 4-mark total
+    a = logic.analyse(t, bounds, logic.Options(unit="raw"))
+    assert len(a.warnings) == 1  # the 2 > 0 marks on q2 are not reported twice
+    assert a.warnings[0].startswith("q2 has a max of 0:")
+    q = {row[0]: row for row in a.questions.rows}
+    assert q["q2"][3] == 0.0 and q["q2"][4] == 0.0  # facility, discrimination reported as 0
+    assert a.total_max == 4
+
+
+def test_blank_and_text_cells_are_left_out_of_facility_and_counted() -> None:
+    # q1: 4, blank, 2, ab -> mean of the two present marks is 3 (not 1.5 as if blanks were 0)
+    # q2: 6, 3, ab, blank -> mean 4.5. Totals 10, 3, 2, 0; three of four scripts incomplete.
+    t = Table(
+        ["row", "q1", "q2"],
+        [["MAX", 4, 6], [1, 4, 6], [2, None, 3], [3, 2, "ab"], [4, "ab", None]],
+    )
+    bounds = Table(["Grade", "Minimum"], [["A", 8], ["U", 0]])
+    a = logic.analyse(t, bounds, logic.Options(unit="raw"))
+    assert a.warnings == [
+        "4 blank or non-numeric cells (q1: 2, q2: 2) counted as 0 in totals and left out of "
+        "facility and discrimination; 3 of 4 scripts incomplete."
+    ]
+    assert a.incomplete_scripts == 3
+    assert a.grades.column("Total") == [10, 3, 2, 0]
+    q = {row[0]: row for row in a.questions.rows}
+    assert q["q1"][2] == 3.0 and q["q1"][3] == 0.75
+    assert q["q2"][2] == 4.5 and q["q2"][3] == 0.75
+    # n=4 -> thirds of 1: top is script 1 (q1=4), bottom is script 4 (q1 blank -> no marks, 0)
+    assert q["q1"][4] == 1.0
+    assert a.distribution.rows == [
+        ["A", 1, 25.0],
+        ["U", 3, 75.0],
+        [logic.INCOMPLETE_LABEL, 3, 75.0],
+    ]
+    assert logic.without_incomplete_row(a.distribution).rows == [["A", 1, 25.0], ["U", 3, 75.0]]
+
+
+def test_boundaries_above_paper_total_warn(marks: Table) -> None:
+    # The percent preset applied as raw marks: 80, 72, 64, 56, 48 are all above 40.
+    a = logic.analyse(marks, OCR, logic.Options(unit="raw"))
+    assert a.warnings == [
+        "5 grade boundaries are above the paper total of 40 (highest: 9 at 80 marks), so no "
+        "script can reach them. Check the boundary unit (percent or raw)."
+    ]
+    assert len(a.grades) == 10 and a.grades.column("Grade")[1] == "4"  # 40 marks -> grade 4
+
+
+def test_clean_file_has_no_warnings(marks: Table) -> None:
+    a = logic.analyse(marks, OCR)
+    assert a.warnings == [] and a.incomplete_scripts == 0
+    assert a.distribution.column("Grade")[-1] == "U"  # no incomplete row

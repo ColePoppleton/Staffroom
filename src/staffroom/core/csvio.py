@@ -8,6 +8,22 @@ identify a pupil are removed before the data reaches a tool, a preview or an
 output; the names of the dropped columns are kept on ``Table.dropped_columns``
 and logged as a warning. There is no way to opt out.
 
+A tool may need to know which row carried a flag word (``marks`` looks for a
+``MAX`` row) even when that word sits in an identifier column, as it does in
+a markbook export. ``read_table(path, flag="MAX")`` decides that on the raw
+table, before the filter runs, and hands the tool only the row indices on
+``Table.flagged_rows``; the filter itself is unchanged and the identifier
+cells never leave this module.
+
+Input mistakes
+--------------
+A wrong kind of file, a missing file, a CSV that is really a binary file or a
+damaged workbook are the teacher's everyday mistakes, not bugs.
+:func:`read_table` turns each into a :class:`~staffroom.core.plugin.ToolError`
+whose one-line message names the file and says what would have worked, so
+every tool, the CLI and the launcher show a sentence rather than a traceback.
+Anything else that escapes is a genuine bug and stays one.
+
 Fake-data marker
 ----------------
 Real pupil data must never be committed. Every example file carries a marker
@@ -23,12 +39,15 @@ that the pre-commit hook looks for:
 from __future__ import annotations
 
 import csv
+import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
+from openpyxl.utils.exceptions import InvalidFileException
 
 from staffroom.core.log import get_logger
+from staffroom.core.plugin import ToolError
 from staffroom.core.privacy import drop_identifier_columns
 from staffroom.core.table import Row, Table, coerce
 
@@ -45,16 +64,60 @@ def is_marker_line(line: str) -> bool:
     return line.strip().upper().startswith(FAKE_DATA_MARKER)
 
 
-def read_table(path: Path) -> Table:
+def read_table(path: Path, *, flag: str | None = None) -> Table:
     """Read a CSV or XLSX file, dispatching on suffix. Identifier columns are
-    dropped (see module docstring)."""
+    dropped (see module docstring). With ``flag``, the indices of rows where any
+    cell equals it (case-insensitive, whitespace ignored) are recorded on
+    ``Table.flagged_rows``; the decision is made before the columns are dropped.
+
+    Raises :class:`ToolError` with a one-line, teacher-facing message for the
+    wrong kind of file, a missing or unreadable file, a CSV that is not text
+    and a damaged or mis-named workbook."""
     suffix = path.suffix.lower()
-    if suffix == ".csv":
-        return _privacy_filter(read_csv(path), path)
-    if suffix == ".xlsx":
-        return _privacy_filter(read_xlsx(path), path)
-    msg = f"unsupported table file {path.name!r}; expected one of {TABLE_EXTENSIONS}"
-    raise ValueError(msg)
+    if suffix not in TABLE_EXTENSIONS:
+        raise ToolError(unsupported_table_message(path))
+    try:
+        raw = read_csv(path) if suffix == ".csv" else read_xlsx(path)
+    except FileNotFoundError:
+        raise ToolError(f"Could not find {path.name} (looked in {path.parent}).") from None
+    except OSError as exc:
+        reason = exc.strerror or exc.__class__.__name__
+        raise ToolError(f"Could not read {path.name}: {reason}.") from exc
+    except UnicodeDecodeError as exc:
+        raise ToolError(
+            f"Could not read {path.name} as text: it is not a plain CSV file. "
+            "Save it from Excel or Sheets as CSV (UTF-8), or pick the .xlsx instead."
+        ) from exc
+    except (zipfile.BadZipFile, InvalidFileException, KeyError, ValueError) as exc:
+        # openpyxl's complaints about a file that is not (or no longer) a workbook.
+        # A CSV reader raising one of these is a bug, not a damaged spreadsheet.
+        if suffix != ".xlsx":
+            raise
+        raise ToolError(
+            f"Could not open {path.name} as a spreadsheet: it is damaged or not really "
+            "an Excel file. Re-save it from Excel as .xlsx, or export a CSV."
+        ) from exc
+    flagged = flagged_rows(raw, flag) if flag else []
+    clean = _privacy_filter(raw, path)
+    clean.flagged_rows = flagged
+    return clean
+
+
+def unsupported_table_message(path: Path) -> str:
+    """One line for a file whose type no table reader accepts."""
+    kind = f"a {path.suffix} file" if path.suffix else "a file with no file extension"
+    accepted = " or ".join(TABLE_EXTENSIONS)
+    return f"{path.name} is {kind}: choose a {accepted} table."
+
+
+def flagged_rows(table: Table, flag: str) -> list[int]:
+    """Indices of rows where any cell is the word ``flag`` (case-insensitive)."""
+    want = flag.strip().upper()
+    return [
+        i
+        for i, row in enumerate(table.rows)
+        if any(isinstance(c, str) and c.strip().upper() == want for c in row)
+    ]
 
 
 def _privacy_filter(table: Table, path: Path) -> Table:
@@ -65,7 +128,9 @@ def _privacy_filter(table: Table, path: Path) -> Table:
 
 
 def write_table(table: Table, path: Path) -> Path:
+    """Write ``table`` as CSV or XLSX by extension, creating the folder first."""
     suffix = path.suffix.lower()
+    path.parent.mkdir(parents=True, exist_ok=True)
     if suffix == ".csv":
         return write_csv(table, path)
     if suffix == ".xlsx":

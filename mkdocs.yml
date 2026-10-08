@@ -39,6 +39,7 @@ extra_css:
 
 markdown_extensions:
   - admonition
+  - def_list
   - tables
   - toc:
       permalink: true
@@ -51,6 +52,8 @@ nav:
   - Install: guide/install.md
   - Using the launcher: guide/launcher.md
   - Privacy: guide/privacy.md
+  - Running pupil code: guide/running-code.md
+  - Outputs: guide/outputs.md
   - Updating: guide/updating.md
   - Tools:
       - Classroom: tools/classroom.md
@@ -67,8 +70,11 @@ nav:
       - Question banks: guide/question-banks.md
       - Marks files: guide/marks-files.md
       - House style: guide/house-style.md
+  - Glossary: guide/glossary.md
   - Contributing:
       - Process: process.md
       - Adding a tool: adding-a-tool.md
       - Roadmap: ROADMAP.md
+  - Audits:
+      - 2026-10-08: audits/2026-10-08.md
   - Changelog: changelog.md

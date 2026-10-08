@@ -10,13 +10,13 @@ from staffroom.core.codeinput import code_from_inputs
 from staffroom.core.export import export, house_style_from, to_text
 from staffroom.core.panel import PanelSpec
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
-from staffroom.core.runner import blocked_imports, run_source
+from staffroom.core.runner import MAX_OUTPUT_BYTES, blocked_imports, run_source
 from staffroom.tools.trace import logic
 from staffroom.tools.trace.panel import panel_spec
 from staffroom.tools.trace.sheet import build_document
 
 TRACER = Path(__file__).with_name("tracer_script.py").read_text(encoding="utf-8")
-TIMEOUT = 10.0
+TIMEOUT = logic.TIMEOUT
 
 
 def formats_for(choice: str) -> tuple[str, ...]:
@@ -38,9 +38,17 @@ def run_trace(
         argv=["program.py", str(max_steps)],
         stdin=stdin,
         timeout=timeout,
+        # The tracer caps the program's own output at MAX_OUTPUT_BYTES characters
+        # itself; its JSON payload (rows + escaped output) needs headroom above that.
+        output_limit=4 * MAX_OUTPUT_BYTES,
     )
     if outcome.timed_out:
         raise ToolError(f"The program did not finish within {timeout:.0f}s (infinite loop?).")
+    if outcome.stdout_truncated:
+        raise ToolError(
+            "The trace is too large to read back (over "
+            f"{outcome.output_limit // 1024} KB). Lower Max steps or trim the program's output."
+        )
     if outcome.returncode != 0 or not outcome.stdout.strip():
         detail = outcome.stderr.strip().splitlines()[-1] if outcome.stderr.strip() else "no output"
         raise ToolError(f"Could not trace the program: {detail}")
@@ -66,15 +74,16 @@ class TracePlugin:
 
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
-        try:
-            source, name = code_from_inputs(inputs)
-        except ValueError as exc:
-            raise ToolError(str(exc)) from exc
+        source, name = code_from_inputs(inputs)
         stdin = str(inputs.get("stdin") or "")
         if stdin and not stdin.endswith("\n"):
             stdin += "\n"
         ctx.progress(0.2, "Running in the sandbox")
         result = run_trace(source, stdin, options.max_steps)
+        if result.input_eof:
+            # Nothing is written: a one-row sheet for a program that never got
+            # its input is not a worksheet, it is a mistake to fix and rerun.
+            raise ToolError(logic.missing_input_message(name, stdin, result.inputs_read))
         steps = logic.select_steps(result, source, options.kinds())
         variables = logic.chosen_variables(result, options.variables)
         completed = logic.trace_table(steps, variables)
@@ -110,7 +119,9 @@ class TracePlugin:
             texts={"preview": to_text(doc.sheet()) + "\n\n" + to_text(doc.key())},
             files=files,
             summary=(
-                f"{len(steps)} rows; wrote {', '.join(f.name for f in files)} to {ctx.output_dir}"
+                f"{len(steps)} rows"
+                + (f"; ended with {result.error}" if result.error else "")
+                + f"; wrote {', '.join(f.name for f in files)} to {ctx.output_dir}"
             ),
         )
 

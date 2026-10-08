@@ -7,7 +7,7 @@ from typer.testing import CliRunner
 
 from staffroom.cli import app
 from staffroom.core.config import load_config
-from staffroom.core.csvio import read_table
+from staffroom.core.csvio import read_table, write_table
 from staffroom.core.panel import EditableTable
 from staffroom.core.plugin import RunContext
 from staffroom.core.table import Table
@@ -85,3 +85,81 @@ def test_cli_run_and_presets(example_marks_max: Path, tmp_path: Path) -> None:
     assert r.exit_code == 0, (
         r.output
     )  # raw boundaries from a percent preset: everything scores high
+
+
+def test_markbook_max_row_in_name_column_is_found(tmp_path: Path) -> None:
+    # An .xlsx markbook export: MAX sits in the surname column, which the filter drops.
+    src = write_table(
+        Table(
+            ["Surname", "Forename", "q1", "q2"],
+            [["MAX", None, 4, 6], ["s1", "f1", 3, 5], ["s2", "f2", 4, 6], ["s3", "f3", 1, 2]],
+            fake_data=True,
+        ),
+        tmp_path / "markbook.xlsx",
+    )
+    logs: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path / "out", log=logs.append)
+    result = plugin.run({"marks": src, "options": Options()}, ctx)
+    assert any("Dropped identifier column(s), never used: Surname, Forename" in m for m in logs)
+    assert any("3 scripts, paper total 10 (q1=4, q2=6)" in m for m in logs)
+    assert not any("highest mark seen" in m for m in logs)
+    assert len(result.tables["grades"]) == 3
+    for p in (tmp_path / "out").glob("*.csv"):
+        saved = read_table(p)
+        assert not {"s1", "f1", "MAX"} & {str(v) for row in saved.rows for v in row}
+
+
+def test_warnings_reach_the_log_and_cli_and_nothing_per_row_is_saved(
+    example_marks_messy: Path, tmp_path: Path
+) -> None:
+    logs: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path / "gui", log=logs.append)
+    result = plugin.run({"marks": example_marks_messy, "options": Options()}, ctx)
+    joined = "\n".join(logs)
+    assert "Warning: q3 has a max of 0" in joined
+    assert "Warning: q1: 1 script scored above the max of 4 (highest 5)" in joined
+    assert "Warning: 6 blank or non-numeric cells (q1: 1, q2: 2, q3: 1, q4: 2)" in joined
+    assert "3 of 5 scripts incomplete" in joined
+    assert "3 warnings" in result.summary
+    assert result.tables["distribution"].rows[-1][:2] == ["Incomplete scripts", 3]
+    # The over-max script (row 2: 5,3,1,blank) is in no saved file.
+    for p in (tmp_path / "gui").glob("*.csv"):
+        text = p.read_text()
+        assert "5,3,1" not in text and "ab" not in text
+    r = runner.invoke(
+        app, ["marks", "run", str(example_marks_messy), "--out", str(tmp_path / "cli")]
+    )
+    assert r.exit_code == 0, r.output
+    assert "Warning: q3 has a max of 0" in r.output
+    assert "Warning: q1: 1 script scored above the max of 4" in r.output
+    assert "5 scripts graded; 3 warnings" in r.output
+    r = runner.invoke(
+        app,
+        ["marks", "run", str(example_marks_messy), "--unit", "raw", "--out", str(tmp_path / "raw")],
+    )
+    assert r.exit_code == 0
+    assert "above the paper total of 20" in r.output
+
+
+def _corner_luminance(png: Path) -> float:
+    from PIL import Image
+
+    with Image.open(png) as img:
+        pixel = img.convert("RGB").getpixel((3, 3))
+    assert isinstance(pixel, tuple)
+    r, g, b = pixel
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+
+def test_saved_chart_is_light_whatever_the_theme(example_marks_max: Path, tmp_path: Path) -> None:
+    # The PNG goes into reports and slides; the UI theme must not reach it (#13).
+    for theme in ("dark", "light"):
+        config = load_config()
+        config.general.theme = theme
+        out = tmp_path / theme
+        plugin.run({"marks": example_marks_max, "options": Options()}, RunContext(config, out))
+        png = out / "marks_10x_max_distribution.png"
+        assert _corner_luminance(png) > 0.9, f"{theme}: chart background is not light"
+    assert (tmp_path / "dark" / "marks_10x_max_distribution.png").read_bytes() == (
+        tmp_path / "light" / "marks_10x_max_distribution.png"
+    ).read_bytes()

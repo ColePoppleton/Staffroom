@@ -73,3 +73,61 @@ def test_read_table_always_drops(tmp_path: Path) -> None:
     assert table.dropped_columns == ["Candidate Number"]
     xlsx = write_table(Table(["email", "q1"], [["a@b", 5]]), tmp_path / "ids.xlsx")
     assert read_table(xlsx).columns == ["q1"]
+
+
+# ---------------------------------------------------------------- free text
+@pytest.mark.parametrize(
+    ("text", "label"),
+    [
+        ("Candidate number: 4021", "candidate number"),
+        ("candidate no 400123", "candidate number"),
+        ("CANDIDATE ID = 9001", "candidate number"),
+        ("UPN: A123456789012", "UPN"),
+        ("upn 123456789", "UPN"),
+        ("ULN: 1234567890", "ULN"),
+        ("Admission number 12345", "admission number"),
+        ("Adm No: 4567", "admission number"),
+        ("Date of birth: 01/09/2009", "date of birth"),
+        ("DOB 1.9.09", "date of birth"),
+        ("Surname: Redacted", "surname"),
+        ("last name - Withheld", "surname"),
+        ("Forename: Anon", "forename"),
+        ("Pupil name: Someone", "pupil name"),
+        ("Student Name = Anybody", "pupil name"),
+        ("email: someone@example.com", "email address"),
+        ("E-mail address: a.b@school.example", "email address"),
+    ],
+)
+def test_find_identifier_text_positive(text: str, label: str) -> None:
+    from staffroom.core.privacy import find_identifier_text, looks_like_pupil_details
+
+    assert label in find_identifier_text("# header\n" + text + "\nprint(1)\n")
+    assert looks_like_pupil_details(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "while count < 10:\n    print(count)\n",
+        "# Candidate number: ________\n# Surname: ________",  # blank template
+        "Write a program that asks for the candidate number and prints it.",
+        "The surname field should be validated for length.",
+        "Date of birth is a common field in a database design task.",
+        "UPN stands for Unique Pupil Number.",
+        "email = input('Enter an email: ')",
+        "forename = row[0]  # read the forename column",
+        "candidate_number = int(input())",
+    ],
+)
+def test_find_identifier_text_negative(text: str) -> None:
+    from staffroom.core.privacy import find_identifier_text
+
+    assert find_identifier_text(text) == []
+
+
+def test_find_identifier_text_reports_each_label_once() -> None:
+    from staffroom.core.privacy import find_identifier_text
+
+    text = "Candidate number: 1111\nCandidate number: 2222\nUPN: 999999\nSurname: Redacted"
+    assert find_identifier_text(text) == ["candidate number", "UPN", "surname"]

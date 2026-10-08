@@ -28,7 +28,9 @@ saved can be traced to a pupil. See [Privacy](guide/privacy.md).
 | [Resource Library](tools/library.md) | Index, search, preview and tag your resources folder |
 
 Every tool has a command-line twin (`staff <tool> ...`), so anything you can
-click you can script.
+click you can script. [Outputs](guide/outputs.md) says where every file goes
+and what it is called; the [Glossary](guide/glossary.md) explains the words
+the panels use (seed, facility, ERL, do-now).
 
 ## Install in one line
 

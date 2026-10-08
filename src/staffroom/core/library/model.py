@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePath
 from typing import Literal
 
@@ -128,6 +128,9 @@ class Resource:
     mtime: float
     cloud_only: bool = False
     hidden: bool = False
+    #: Text deliberately left out of the index because it looked like pupil
+    #: details (see :func:`staffroom.core.privacy.find_identifier_text`).
+    text_withheld: bool = False
 
     def absolute(self, root: Path) -> Path:
         return root / Path(self.rel_path)
@@ -157,11 +160,28 @@ class IndexStats:
     removed: int = 0
     cloud_only: int = 0
     text_indexed: int = 0
+    #: Files whose text was left out because it looked like pupil details.
+    text_withheld: int = 0
+    withheld_paths: list[str] = field(default_factory=list)
+    excluded: int = 0  #: patterns in force during this run
     seconds: float = 0.0
 
     def summary(self) -> str:
-        return (
+        line = (
             f"{self.scanned} files scanned: {self.added} added, {self.updated} updated, "
             f"{self.unchanged} unchanged, {self.removed} removed; {self.cloud_only} cloud-only; "
             f"{self.text_indexed} with text; {self.seconds:.1f}s"
         )
+        if self.text_withheld:
+            line += "\n" + withheld_message(self.text_withheld)
+        return line
+
+
+def withheld_message(count: int) -> str:
+    """The sentence shown wherever a count of name-only files is reported."""
+    files = "file" if count == 1 else "files"
+    return (
+        f"{count} {files} skipped for text: they look like they hold pupil details "
+        "(candidate number, surname, UPN, date of birth near a value). Only the file "
+        "name was indexed. Exclude the folder or keep them out of the resources root."
+    )

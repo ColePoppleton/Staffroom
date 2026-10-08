@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 from pytestqt.qtbot import QtBot
 
 from staffroom.core.config import load_config
+from staffroom.core.discovery import WORKFLOW_ORDER
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.tool_panel import ToolPanel
 
@@ -22,17 +23,46 @@ def window(qtbot: QtBot, tmp_path: Path) -> MainWindow:
     win = MainWindow(config, auto_index=False)
     qtbot.addWidget(win)
     win.show()
-    win.sidebar.select("hello")
+    win.go_to_tool("hello")  # hidden: not in the sidebar, opened by name
     return win
 
 
-def test_sidebar_lists_hello_and_opens_its_panel(window: MainWindow) -> None:
-    assert window.sidebar.list.count() >= 1
+def test_fresh_config_opens_on_the_first_workflow_tool(qtbot: QtBot, tmp_path: Path) -> None:
+    config = load_config()
+    config.general.resources_root = str(tmp_path / "resources")
+    assert config.general.last_tool == ""
+    win = MainWindow(config, auto_index=False)
+    qtbot.addWidget(win)
+    panel = win.stack.currentWidget()
+    assert isinstance(panel, ToolPanel) and panel.plugin.name == "classroom"
+    assert win.config.general.last_tool == "classroom"
+
+
+def test_sidebar_is_in_workflow_order_without_hello(window: MainWindow) -> None:
+    listed = window.sidebar.tool_names()
+    assert listed == list(WORKFLOW_ORDER)
+    assert "hello" not in listed
+    assert [p.name for p in window.visible_plugins] == listed
+    assert any(p.name == "hello" for p in window.plugins)
+    # The ⌘n tooltips are numbered top to bottom, so ⌘1 is classroom, not hello.
+    assert "(⌘1)" in window.sidebar.list.item(0).toolTip()
+    assert "(⌘2)" in window.sidebar.list.item(1).toolTip()
+
+
+def test_hidden_hello_opens_by_name_and_keeps_its_panel(window: MainWindow) -> None:
+    assert window.sidebar.select("hello") is False
+    assert window.sidebar.list.currentRow() == -1
     panel = window.stack.currentWidget()
     assert isinstance(panel, ToolPanel)
     assert panel.plugin.name == "hello"
     assert panel.spec.title == "Hello"
     assert window.config.general.last_tool == "hello"
+
+
+def test_go_to_unknown_tool_does_nothing(window: MainWindow) -> None:
+    before = window.stack.currentWidget()
+    window.go_to_tool("nope")
+    assert window.stack.currentWidget() is before
 
 
 def test_preview_fills_when_file_chosen(window: MainWindow, example_marks: Path) -> None:

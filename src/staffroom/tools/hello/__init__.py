@@ -1,6 +1,10 @@
 """Hello: the reference tool. Reads a marks file (one row per script, q1..qn,
 no identifiers), previews it, writes it back with a Total column. Exists to
-prove the plugin contract end to end."""
+prove the plugin contract end to end and as the model for ``staff new``.
+
+It is ``hidden``: not a teaching tool, so it stays out of the launcher
+sidebar and the number shortcuts. ``staff hello run`` and
+``staffroom --tool hello`` still work, and ``staff list`` shows it marked."""
 
 from __future__ import annotations
 
@@ -18,6 +22,7 @@ class HelloPlugin:
     name = "hello"
     description = "Add a Total column to a marks file (reference tool)."
     version = "0.2.0"
+    hidden = True  # the reference for developers, not a tool for teachers
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.hello.cli import register

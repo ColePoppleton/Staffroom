@@ -16,6 +16,9 @@ from staffroom.core.table import Cell, Row, Table
 
 QUESTION_RE = re.compile(r"^q\d+[a-z]?$", re.IGNORECASE)
 MAX_FLAG = "MAX"
+#: Grade column of the extra distribution row that counts scripts with a blank
+#: or non-numeric cell. It is not a grade: leave it out of the chart.
+INCOMPLETE_LABEL = "Incomplete scripts"
 Unit = Literal["percent", "raw"]
 
 
@@ -50,6 +53,7 @@ class Analysis:
     worst: Table
     max_marks: dict[str, float]
     warnings: list[str] = field(default_factory=list)
+    incomplete_scripts: int = 0  # scripts with at least one blank or non-numeric cell
 
     @property
     def total_max(self) -> float:
@@ -61,28 +65,50 @@ def question_columns(columns: list[str]) -> list[str]:
     return [c for c in columns if QUESTION_RE.match(c.strip())]
 
 
-def as_mark(value: Cell) -> float:
-    if isinstance(value, bool) or value is None:
-        return 0.0
+def mark_or_none(value: Cell) -> float | None:
+    """A numeric mark, or ``None`` for a blank or non-numeric cell such as
+    ``ab`` (absent) or ``-``. Blanks count as 0 in a script's total but are
+    left out of facility and discrimination, where a 0 would mean "attempted
+    and got nothing"."""
+    if value is None or isinstance(value, bool):
+        return None
     if isinstance(value, int | float):
         return float(value)
     try:
         return float(str(value).strip())
     except ValueError:
-        return 0.0
+        return None
+
+
+def as_mark(value: Cell) -> float:
+    mark = mark_or_none(value)
+    return 0.0 if mark is None else mark
+
+
+def _mean(values: list[float | None]) -> float:
+    present = [v for v in values if v is not None]
+    return sum(present) / len(present) if present else 0.0
 
 
 def split_max_row(table: Table) -> tuple[Table, dict[str, float] | None]:
-    """Remove the row flagged ``MAX`` (any cell equal to ``MAX``) and return
-    its question values as max marks. Returns ``(table, None)`` if absent."""
+    """Remove the row flagged ``MAX`` and return its question values as max
+    marks. Returns ``(table, None)`` if absent.
+
+    A row counts if any cell equals ``MAX`` or if the reader flagged it
+    (``Table.flagged_rows``): a markbook export puts ``MAX`` in the name
+    column, which is dropped before the table reaches this tool, so the
+    decision is made in ``core.csvio`` on the raw file and only the row index
+    arrives here."""
     qcols = question_columns(table.columns)
+    flagged = set(table.flagged_rows)
     for i, row in enumerate(table.rows):
-        if any(isinstance(c, str) and c.strip().upper() == MAX_FLAG for c in row):
+        if i in flagged or any(isinstance(c, str) and c.strip().upper() == MAX_FLAG for c in row):
             record = dict(zip(table.columns, row, strict=True))
             maxes = {q: as_mark(record[q]) for q in qcols}
             rest = Table(list(table.columns), [r for j, r in enumerate(table.rows) if j != i])
             rest.fake_data = table.fake_data
             rest.dropped_columns = list(table.dropped_columns)
+            rest.flagged_rows = [j - (j > i) for j in table.flagged_rows if j != i]
             return rest, maxes
     return table, None
 
@@ -92,7 +118,12 @@ def parse_max_text(text: str, qcols: list[str]) -> dict[str, float] | None:
     parts = [p.strip() for p in text.replace(";", ",").split(",") if p.strip()]
     if not parts:
         return None
-    values = [float(p) for p in parts]
+    try:
+        values = [float(p) for p in parts]
+    except ValueError:
+        bad = next(p for p in parts if not _is_number(p))
+        msg = f"Max marks should be numbers like 4,6,8 (one per question) or 10, not {bad!r}."
+        raise ValueError(msg) from None
     if len(values) == 1:
         return dict.fromkeys(qcols, values[0])
     if len(values) != len(qcols):
@@ -101,8 +132,72 @@ def parse_max_text(text: str, qcols: list[str]) -> dict[str, float] | None:
     return dict(zip(qcols, values, strict=True))
 
 
+def _is_number(text: str) -> bool:
+    try:
+        float(text)
+    except ValueError:
+        return False
+    return True
+
+
 def observed_max(table: Table, qcols: list[str]) -> dict[str, float]:
     return {q: max((as_mark(v) for v in table.column(q)), default=0.0) for q in qcols}
+
+
+# ---------------------------------------------------------------- sanity checks
+def _plural(n: int, word: str) -> str:
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
+
+
+def check_marks(table: Table, qcols: list[str], maxes: dict[str, float]) -> tuple[list[str], int]:
+    """Warnings a teacher needs before trusting the numbers, and how many
+    scripts have a blank or non-numeric cell. Nothing here stops the run."""
+    warnings: list[str] = []
+    blanks: dict[str, int] = {}
+    incomplete = 0
+    for row in table.rows:
+        record = dict(zip(table.columns, row, strict=True))
+        missing = [q for q in qcols if mark_or_none(record[q]) is None]
+        for q in missing:
+            blanks[q] = blanks.get(q, 0) + 1
+        incomplete += bool(missing)
+    for q in qcols:
+        if maxes[q] <= 0:
+            warnings.append(
+                f"{q} has a max of 0: its facility and discrimination are reported as 0. "
+                "Check the MAX row or the Max marks option."
+            )
+            continue
+        over = [m for m in (mark_or_none(v) for v in table.column(q)) if m is not None]
+        over = [m for m in over if m > maxes[q] + 1e-9]
+        if over:
+            warnings.append(
+                f"{q}: {_plural(len(over), 'script')} scored above the max of {maxes[q]:g} "
+                f"(highest {max(over):g}). Check the marks or the max."
+            )
+    if blanks:
+        detail = ", ".join(f"{q}: {blanks[q]}" for q in qcols if q in blanks)
+        warnings.append(
+            f"{_plural(sum(blanks.values()), 'blank or non-numeric cell')} ({detail}) counted as 0 "
+            "in totals and left out of facility and discrimination; "
+            f"{incomplete} of {len(table)} scripts incomplete."
+        )
+    return warnings, incomplete
+
+
+def check_boundaries(boundaries: list[Boundary], total_max: float) -> list[str]:
+    """Warn when a boundary is above the paper total, which is what applying a
+    percent preset with the unit set to raw marks looks like."""
+    above = [b for b in boundaries if b.minimum > total_max + 1e-9]
+    if not above:
+        return []
+    top = above[0]
+    noun = "1 grade boundary is" if len(above) == 1 else f"{len(above)} grade boundaries are"
+    return [
+        f"{noun} above the paper total of {total_max:g} (highest: {top.grade} at "
+        f"{top.minimum:g} marks), so no script can reach them. "
+        "Check the boundary unit (percent or raw)."
+    ]
 
 
 # ---------------------------------------------------------------- totals and grades
@@ -149,23 +244,33 @@ def grade_rows(
     return Table([*qcols, "Total", "Percent", "Grade"], rows)
 
 
-def distribution(grades: list[str], order: list[str]) -> Table:
+def distribution(grades: list[str], order: list[str], incomplete: int = 0) -> Table:
+    """Count per grade. With ``incomplete`` > 0 a last row (:data:`INCOMPLETE_LABEL`)
+    says how many scripts had a blank or non-numeric cell; those scripts are
+    also counted under their grade, so the row is a note, not a grade."""
     n = len(grades)
     counts = {g: 0 for g in order}
     for g in grades:
         counts[g] = counts.get(g, 0) + 1
     rows: list[Row] = [[g, c, round(100.0 * c / n, 1) if n else 0.0] for g, c in counts.items()]
+    if incomplete:
+        rows.append([INCOMPLETE_LABEL, incomplete, round(100.0 * incomplete / n, 1) if n else 0.0])
     return Table(["Grade", "Count", "Percent"], rows)
+
+
+def without_incomplete_row(dist: Table) -> Table:
+    """The distribution with the incomplete-scripts note removed, for the chart."""
+    return Table(list(dist.columns), [r for r in dist.rows if r[0] != INCOMPLETE_LABEL])
 
 
 # ---------------------------------------------------------------- per question
 def facility(table: Table, qcols: list[str], maxes: dict[str, float]) -> dict[str, float]:
-    """Mean mark as a fraction of the max: 1.0 means everyone got full marks."""
-    n = len(table)
+    """Mean mark as a fraction of the max: 1.0 means everyone got full marks.
+    Blank and non-numeric cells are left out of the mean."""
     out: dict[str, float] = {}
     for q in qcols:
-        mean = sum(as_mark(v) for v in table.column(q)) / n if n else 0.0
-        out[q] = mean / maxes[q] if maxes[q] else 0.0
+        mean = _mean([mark_or_none(v) for v in table.column(q)])
+        out[q] = mean / maxes[q] if maxes[q] > 0 else 0.0
     return out
 
 
@@ -176,23 +281,23 @@ def discrimination(table: Table, qcols: list[str], maxes: dict[str, float]) -> d
     if n < 2:
         return dict.fromkeys(qcols, 0.0)
     k = max(1, n // 3)
-    order = sorted(range(n), key=lambda i: totals(table, qcols)[i], reverse=True)
+    tot = totals(table, qcols)
+    order = sorted(range(n), key=lambda i: tot[i], reverse=True)
     top, bottom = order[:k], order[-k:]
     out: dict[str, float] = {}
     for q in qcols:
-        col = [as_mark(v) for v in table.column(q)]
-        diff = sum(col[i] for i in top) / k - sum(col[i] for i in bottom) / k
-        out[q] = diff / maxes[q] if maxes[q] else 0.0
+        col = [mark_or_none(v) for v in table.column(q)]
+        diff = _mean([col[i] for i in top]) - _mean([col[i] for i in bottom])
+        out[q] = diff / maxes[q] if maxes[q] > 0 else 0.0
     return out
 
 
 def question_analysis(table: Table, qcols: list[str], maxes: dict[str, float]) -> Table:
     fac = facility(table, qcols, maxes)
     disc = discrimination(table, qcols, maxes)
-    n = len(table)
     rows: list[Row] = []
     for q in qcols:
-        mean = sum(as_mark(v) for v in table.column(q)) / n if n else 0.0
+        mean = _mean([mark_or_none(v) for v in table.column(q)])
         rows.append([q, maxes[q], r2(mean), r2(fac[q]), r2(disc[q]), _verdict(fac[q], disc[q])])
     return Table(["Question", "Max", "Mean", "Facility", "Discrimination", "Note"], rows)
 
@@ -239,12 +344,15 @@ def analyse(table: Table, boundaries: Table, options: Options | None = None) -> 
         warnings.append(
             "No max marks given (no MAX row, no option): using the highest mark seen per question."
         )
+    checks, incomplete = check_marks(data, qcols, maxes)
+    warnings.extend(checks)
     bounds = parse_boundaries(boundaries, options.unit, sum(maxes.values()))
+    warnings.extend(check_boundaries(bounds, sum(maxes.values())))
     grades = grade_rows(data, qcols, maxes, bounds)
     order = [b.grade for b in bounds]
     if "U" not in order:
         order.append("U")
-    dist = distribution([str(g) for g in grades.column("Grade")], order)
+    dist = distribution([str(g) for g in grades.column("Grade")], order, incomplete)
     questions = question_analysis(data, qcols, maxes)
     return Analysis(
         grades=grades,
@@ -253,4 +361,5 @@ def analyse(table: Table, boundaries: Table, options: Options | None = None) -> 
         worst=worst_questions(questions, options.worst_n),
         max_marks=maxes,
         warnings=warnings,
+        incomplete_scripts=incomplete,
     )

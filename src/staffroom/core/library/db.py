@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS files (
     mtime      REAL NOT NULL,
     cloud_only INTEGER NOT NULL DEFAULT 0,
     hidden     INTEGER NOT NULL DEFAULT 0,
-    has_text   INTEGER NOT NULL DEFAULT 0
+    has_text   INTEGER NOT NULL DEFAULT 0,
+    text_withheld INTEGER NOT NULL DEFAULT 0
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(
     rel_path UNINDEXED, name, text, tokenize = 'unicode61'
@@ -51,7 +52,16 @@ class LibraryDB:
             self.conn.execute("PRAGMA journal_mode = WAL")
             self.conn.execute("PRAGMA synchronous = NORMAL")
         self.conn.executescript(SCHEMA)
+        self._migrate()
         self._depth = 0
+
+    def _migrate(self) -> None:
+        """Add columns that older databases lack; nothing is dropped."""
+        have = {r["name"] for r in self.conn.execute("PRAGMA table_info(files)").fetchall()}
+        if "text_withheld" not in have:
+            self.conn.execute(
+                "ALTER TABLE files ADD COLUMN text_withheld INTEGER NOT NULL DEFAULT 0"
+            )
 
     # -- transactions ----------------------------------------------------
     def begin(self) -> None:
@@ -93,12 +103,14 @@ class LibraryDB:
         try:
             self.conn.execute(
                 """INSERT INTO files
-                     (rel_path, name, ext, kind, size, mtime, cloud_only, hidden, has_text)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     (rel_path, name, ext, kind, size, mtime, cloud_only, hidden, has_text,
+                      text_withheld)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(rel_path) DO UPDATE SET
                      name=excluded.name, ext=excluded.ext, kind=excluded.kind,
                      size=excluded.size, mtime=excluded.mtime, cloud_only=excluded.cloud_only,
-                     hidden=excluded.hidden, has_text=excluded.has_text""",
+                     hidden=excluded.hidden, has_text=excluded.has_text,
+                     text_withheld=excluded.text_withheld""",
                 (
                     res.rel_path,
                     res.name,
@@ -109,6 +121,7 @@ class LibraryDB:
                     int(res.cloud_only),
                     int(res.hidden),
                     int(text is not None),
+                    int(res.text_withheld),
                 ),
             )
             self.conn.execute("DELETE FROM fts WHERE rel_path = ?", (res.rel_path,))
@@ -154,6 +167,17 @@ class LibraryDB:
 
     def count(self) -> int:
         return cast(int, self.conn.execute("SELECT COUNT(*) FROM files").fetchone()[0])
+
+    def withheld_count(self) -> int:
+        """How many indexed files have their text withheld (name only)."""
+        row = self.conn.execute("SELECT COUNT(*) FROM files WHERE text_withheld = 1").fetchone()
+        return cast(int, row[0])
+
+    def withheld_paths(self) -> list[str]:
+        rows = self.conn.execute(
+            "SELECT rel_path FROM files WHERE text_withheld = 1 ORDER BY rel_path"
+        ).fetchall()
+        return [cast(str, r["rel_path"]) for r in rows]
 
     def get(self, rel_path: str) -> Resource | None:
         row = self.conn.execute("SELECT * FROM files WHERE rel_path = ?", (rel_path,)).fetchone()
@@ -215,4 +239,5 @@ def _to_resource(row: sqlite3.Row) -> Resource:
         mtime=row["mtime"],
         cloud_only=bool(row["cloud_only"]),
         hidden=bool(row["hidden"]),
+        text_withheld=bool(row["text_withheld"]),
     )

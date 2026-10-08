@@ -9,7 +9,6 @@ import typer
 
 from staffroom.core.config import load_config
 from staffroom.core.csvio import read_table
-from staffroom.core.paths import default_output_dir
 from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.hello.logic import Options
 
@@ -30,10 +29,7 @@ def register(app: typer.Typer) -> None:
         config = load_config()
         ctx = RunContext(
             config=config,
-            output_dir=out
-            or default_output_dir(
-                source, config.general.output_dir, resources_root=config.general.resources_root
-            ),
+            output_dir=out or config.output_dir_for(source, "hello"),
             progress=lambda _f, msg: typer.secho(msg, dim=True, err=True),
             log=lambda msg: typer.echo(msg, err=True),
         )

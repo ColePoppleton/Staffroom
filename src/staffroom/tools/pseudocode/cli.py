@@ -8,7 +8,6 @@ from typing import Annotated
 import typer
 
 from staffroom.core.config import load_config
-from staffroom.core.paths import default_output_dir
 from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.pseudocode.logic import Options
 
@@ -38,10 +37,7 @@ def _run(source: Path, src: str, dst: str, out: Path | None, save: bool) -> None
     config = load_config()
     ctx = RunContext(
         config=config,
-        output_dir=out
-        or default_output_dir(
-            source, config.general.output_dir, resources_root=config.general.resources_root
-        ),
+        output_dir=out or config.output_dir_for(source, "pseudocode"),
         log=lambda msg: typer.echo(msg, err=True),
     )
     options = Options(direction=f"{src}_to_{dst}", formats="txt" if save else "none")  # type: ignore[arg-type]

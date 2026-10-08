@@ -24,8 +24,7 @@ from staffroom.core.panel import (
     TextArea,
     TextField,
 )
-from staffroom.core.paths import default_output_dir
-from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolPlugin
+from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolError, ToolPlugin
 from staffroom.shell.widgets import (
     Card,
     EditableTableWidget,
@@ -105,6 +104,11 @@ class ToolPanel(QWidget):
         self.run_bar.run_requested.connect(self.start_run)
         footer_layout.addWidget(self.run_bar)
         root.addWidget(footer)
+        for picker in self.pickers.values():
+            picker.changed.connect(self._show_output_folder)
+        for rpicker in self.resource_pickers.values():
+            rpicker.changed.connect(self._show_output_folder)
+        self._show_output_folder()
 
     # -- building --------------------------------------------------------
     def _build_header(self) -> None:
@@ -188,6 +192,9 @@ class ToolPanel(QWidget):
                     f"Dropped identifier column(s) from {path.name}: "
                     + ", ".join(table.dropped_columns)
                 )
+        except ToolError as exc:  # already a one-line message naming the file
+            log.warning("could not preview %s: %s", path, exc)
+            preview.set_error(str(exc))
         except Exception as exc:
             log.warning("could not preview %s: %s", path, exc)
             preview.set_error(f"Could not read {path.name}: {exc}")
@@ -246,11 +253,11 @@ class ToolPanel(QWidget):
     def output_dir(self, inputs: dict[str, Any]) -> Path:
         first = self.first_file_key()
         anchor = inputs.get(first) if first else None
-        return default_output_dir(
-            anchor,
-            self.config.general.output_dir,
-            resources_root=self.config.general.resources_root,
-        )
+        return self.config.output_dir_for(anchor, self.plugin.name)
+
+    def _show_output_folder(self, *_: object) -> None:
+        """Tell the run bar where the next run will write, before it starts."""
+        self.run_bar.set_output_folder(self.output_dir(self.collect_inputs()))
 
     # -- running ---------------------------------------------------------
     def start_run(self) -> None:

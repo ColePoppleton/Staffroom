@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from staffroom.core.config import Config
-from staffroom.core.library.model import IndexStats, Kind
+from staffroom.core.library.model import IndexStats, Kind, withheld_message
 from staffroom.core.library.service import LibraryService
 from staffroom.core.log import get_logger
 from staffroom.shell.library.preview import PreviewPane
@@ -89,10 +89,19 @@ class LibraryPage(QWidget):
             if last
             else "never"
         )
-        self.index_status.setText(f"{self.service.count()} files indexed  ·  last index {when}")
-        self.subtitle.setText(
-            str(self.service.root) + ("" if self.service.root_exists else "   (folder not found)")
-        )
+        text = f"{self.service.count()} files indexed  ·  last index {when}"
+        withheld = self.service.withheld_count()
+        if withheld:
+            text += f"  ·  {withheld} name only"
+        self.index_status.setText(text)
+        self.index_status.setToolTip(withheld_message(withheld) if withheld else "")
+        if not self.service.root_set:
+            self.subtitle.setText("No folder chosen yet: set it in Settings")
+        else:
+            self.subtitle.setText(
+                str(self.service.root)
+                + ("" if self.service.root_exists else "   (folder not found)")
+            )
 
     def set_theme(self, theme: str) -> None:
         self.preview.set_theme(theme)

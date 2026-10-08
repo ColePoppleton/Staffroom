@@ -27,6 +27,18 @@ def load_bank(path: Path) -> logic.Bank:
     return bank
 
 
+def _as_of(text: str) -> date:
+    """The retrieval date from the option, today when blank."""
+    if not text.strip():
+        return date.today()
+    try:
+        return date.fromisoformat(text.strip())
+    except ValueError:
+        raise ToolError(
+            f"The 'as of' date should look like 2026-10-08 (YYYY-MM-DD), not {text!r}."
+        ) from None
+
+
 class QuizPlugin:
     name = "quiz"
     description = (
@@ -59,11 +71,21 @@ class QuizPlugin:
                 raise ToolError("Retrieval mode needs a taught log (date,topic CSV).")
             try:
                 entries, errors = logic.parse_taught_log(log_path.read_text(encoding="utf-8"))
+            except FileNotFoundError:
+                raise ToolError(
+                    f"Could not find {log_path.name} (looked in {log_path.parent})."
+                ) from None
             except OSError as exc:
-                raise ToolError(f"Could not read {log_path}: {exc}") from exc
+                reason = exc.strerror or exc.__class__.__name__
+                raise ToolError(f"Could not read {log_path.name}: {reason}.") from exc
+            except UnicodeDecodeError as exc:
+                raise ToolError(
+                    f"Could not read {log_path.name} as text: the taught log is a plain CSV "
+                    "with date,topic columns."
+                ) from exc
             for err in errors:
                 ctx.log("Log: " + err)
-            today = date.fromisoformat(options.today) if options.today else date.today()
+            today = _as_of(options.today)
             chosen, windows = logic.retrieval_pick(
                 pool, entries, today, options.count, options.seed
             )

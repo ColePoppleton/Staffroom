@@ -49,11 +49,44 @@ class HintBox:
 
 
 @dataclass(frozen=True)
+class BoxedBlocks:
+    """Numbered cut-out cells: each item in its own box with its number
+    beside the first line, laid out ``columns`` across with dashed cut lines.
+    ``code`` sets the items in monospace with indentation kept. A renderer
+    uses fewer columns when the longest line would not fit."""
+
+    items: tuple[str, ...]
+    start: int = 1
+    columns: int = 2
+    code: bool = True
+
+
+@dataclass(frozen=True)
+class AnswerGrid:
+    """A row of empty boxes to write answers in, headed by their position
+    (``start`` .. ``start + count - 1``), wrapping every ``per_row``."""
+
+    count: int
+    start: int = 1
+    per_row: int = 8
+
+
+@dataclass(frozen=True)
 class PageBreak:
     pass
 
 
-Block = Heading | Paragraph | Code | Numbered | TableBlock | HintBox | PageBreak
+Block = (
+    Heading
+    | Paragraph
+    | Code
+    | Numbered
+    | TableBlock
+    | HintBox
+    | BoxedBlocks
+    | AnswerGrid
+    | PageBreak
+)
 
 
 @dataclass

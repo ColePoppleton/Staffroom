@@ -13,7 +13,9 @@ from pathlib import Path
 
 from staffroom.core.export.docx import write_docx
 from staffroom.core.export.model import (
+    AnswerGrid,
     Block,
+    BoxedBlocks,
     Code,
     Document,
     Heading,
@@ -32,7 +34,9 @@ FORMATS = ("docx", "pdf")
 
 __all__ = [
     "FORMATS",
+    "AnswerGrid",
     "Block",
+    "BoxedBlocks",
     "Code",
     "Document",
     "Heading",

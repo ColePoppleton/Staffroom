@@ -90,9 +90,21 @@ def test_shifts(seed: int) -> None:
             assert result == (signed >> places) & 0xFF
 
 
-@pytest.mark.parametrize("seed", SEEDS)
-@pytest.mark.parametrize("difficulty", ["easy", "hard"])
-def test_truth_tables(seed: int, difficulty: str) -> None:
+def test_gate_set_follows_the_board_and_the_level() -> None:
+    # OCR J277 2.4.1 is AND/OR/NOT; AQA 8525 3.4.2 adds XOR. Neither GCSE board has NAND/NOR.
+    assert logic.gate_set("ocr") == ("AND", "OR", "NOT")
+    assert logic.gate_set("aqa") == ("AND", "OR", "NOT", "XOR")
+    assert logic.gate_set("OCR", "gcse", "hard") == ("AND", "OR", "NOT")
+    assert logic.gate_set("aqa", "gcse", "hard") == ("AND", "OR", "NOT", "XOR")
+    # A-level adds XOR for every board, and NAND/NOR only at hard.
+    assert logic.gate_set("ocr", "a_level", "medium") == ("AND", "OR", "NOT", "XOR")
+    assert logic.gate_set("ocr", "a_level", "hard") == ("AND", "OR", "NOT", "XOR", "NAND", "NOR")
+    # An unknown board gets the smaller set, never the larger one.
+    assert logic.gate_set("edexcel") == logic.gate_set("ocr")
+
+
+def evaluate_gates(expr: str, env: dict[str, bool]) -> bool:
+    """Independent evaluator: a tiny recursive-descent parser over the printed expression."""
     ops: dict[str, Callable[[bool, bool], bool]] = {
         "AND": lambda a, b: a and b,
         "OR": lambda a, b: a or b,
@@ -100,66 +112,123 @@ def test_truth_tables(seed: int, difficulty: str) -> None:
         "NAND": lambda a, b: not (a and b),
         "NOR": lambda a, b: not (a or b),
     }
+    py = expr
+    for name in ops:
+        py = re.sub(rf"\b{name}\b", f"__{name}__", py)
+    py = py.replace("NOT ", " not ")
+    tokens = re.split(r"(\(|\)|__\w+__|\bnot\b|\b[ABC]\b)", py)
+    toks = [t.strip() for t in tokens if t.strip()]
+    pos = 0
 
-    def evaluate(expr: str, env: dict[str, bool]) -> bool:
-        # Independent evaluator: rewrite to Python and eval.
-        py = expr
-        for name in ops:
-            py = re.sub(rf"\b{name}\b", f"__{name}__", py)
-        py = py.replace("NOT ", " not ")
-        tokens = re.split(r"(\(|\)|__\w+__|\bnot\b|\b[ABC]\b)", py)
-        # Evaluate with a tiny recursive-descent parser over tokens.
-        toks = [t.strip() for t in tokens if t.strip()]
-        pos = 0
-
-        def primary() -> bool:
-            nonlocal pos
-            t = toks[pos]
+    def primary() -> bool:
+        nonlocal pos
+        t = toks[pos]
+        pos += 1
+        if t == "(":
+            v = binary()
+            assert toks[pos] == ")"
             pos += 1
-            if t == "(":
-                v = binary()
-                assert toks[pos] == ")"
-                pos += 1
-                return v
-            if t == "not":
-                return not primary()
-            return env[t]
+            return v
+        if t == "not":
+            return not primary()
+        return env[t]
 
-        def binary() -> bool:
-            nonlocal pos
-            left = primary()
-            while pos < len(toks) and toks[pos].startswith("__"):
-                op = toks[pos].strip("_")
-                pos += 1
-                right = primary()
-                left = bool(ops[op](left, right))
-            return left
+    def binary() -> bool:
+        nonlocal pos
+        left = primary()
+        while pos < len(toks) and toks[pos].startswith("__"):
+            op = toks[pos].strip("_")
+            pos += 1
+            right = primary()
+            left = bool(ops[op](left, right))
+        return left
 
-        return binary()
+    return binary()
 
-    for q in logic.truth_tables(seed, 15, difficulty):  # type: ignore[arg-type]
-        assert q.table is not None
-        expr = q.prompt.split("Q = ")[1].rstrip(".")
-        names = list(q.table[0][:-1])
-        answers = q.answer.split("  ")[0].split(" ")
-        for row, expected in zip(q.table[1:], answers, strict=True):
-            env = {n: v == "1" for n, v in zip(names, row[:-1], strict=True)}
-            assert evaluate(expr, env) == (expected == "1"), (expr, env)
+
+GATE_WORD = re.compile(r"\b(AND|OR|XOR|NAND|NOR|NOT)\b")
+SAME_INPUT_BOTH_SIDES = re.compile(r"\b([ABC]) (?:AND|OR|XOR|NAND|NOR) (?:NOT )?\1\b")
 
 
 @pytest.mark.parametrize("seed", SEEDS)
-def test_boolean_simplification_is_equivalent(seed: int) -> None:
-    def truth(expr: str) -> list[bool]:
-        py = expr.replace("AND", "and").replace("OR", "or").replace("NOT", "not")
-        rows = []
-        for a, b, c in itertools.product([False, True], repeat=3):
-            rows.append(bool(eval(py, {}, {"A": a, "B": b, "C": c})))
-        return rows
+@pytest.mark.parametrize("difficulty", DIFFS)
+@pytest.mark.parametrize(
+    ("board", "level"), [("ocr", "gcse"), ("aqa", "gcse"), ("ocr", "a_level"), ("aqa", "a_level")]
+)
+def test_truth_tables(seed: int, difficulty: str, board: str, level: str) -> None:
+    gates = set(logic.gate_set(board, level, difficulty))  # type: ignore[arg-type]
+    qs = logic.generate("truth_tables", seed, 15, difficulty, board=board, level=level)  # type: ignore[arg-type]
+    exprs = []
+    for q in qs:
+        assert q.table is not None
+        expr = q.prompt.split("Q = ")[1].rstrip(".")
+        exprs.append(expr)
+        names = list(q.table[0][:-1])
+        answers = q.answer.split("  ")[0].split(" ")
+        # Operators follow the board and level; no NAND/NOR at GCSE.
+        assert set(GATE_WORD.findall(expr)) <= gates, expr
+        # Every input the table lists is used by the expression.
+        assert set(re.findall(r"\b[ABC]\b", expr)) == set(names), expr
+        # No gate is fed the same input on both sides (C XOR C, NOT B AND B).
+        assert not SAME_INPUT_BOTH_SIDES.search(expr), expr
+        # Q is not constant and is not simply an input or its NOT.
+        assert set(answers) == {"0", "1"}, expr
+        for i in range(len(names)):
+            column = [row[i] for row in q.table[1:]]
+            flipped = ["1" if v == "0" else "0" for v in column]
+            assert answers not in (column, flipped), expr
+        # And the key is right, by independent computation.
+        for row, expected in zip(q.table[1:], answers, strict=True):
+            env = {n: v == "1" for n, v in zip(names, row[:-1], strict=True)}
+            assert evaluate_gates(expr, env) == (expected == "1"), (expr, env)
+    if difficulty != "easy":  # 3 inputs: plenty of room, so a sheet never repeats a question
+        assert len(set(exprs)) == len(exprs)
 
-    for q in logic.boolean_simplification(seed, 20, "hard"):
+
+def truth(expr: str) -> list[bool]:
+    py = expr.replace("AND", "and").replace("OR", "or").replace("NOT", "not")
+    rows = []
+    for a, b, c in itertools.product([False, True], repeat=3):
+        rows.append(bool(eval(py, {}, {"A": a, "B": b, "C": c})))
+    return rows
+
+
+LETTER = re.compile(r"\b[ABC]\b")
+TRIVIAL = re.compile(r"\b([ABC]) (?:AND|OR) \1\b|NOT NOT|\b[01]\b")
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+@pytest.mark.parametrize("difficulty", DIFFS)
+@pytest.mark.parametrize("laws", ["absorption", "de_morgan", "identities", "all"])
+def test_boolean_simplification(seed: int, difficulty: str, laws: str) -> None:
+    steps_n = {"easy": 1, "medium": 2, "hard": 3}[difficulty]
+    for q in logic.boolean_simplification(seed, 15, difficulty, laws):  # type: ignore[arg-type]
         expr = q.prompt.removeprefix("Simplify: ")
         assert truth(expr) == truth(q.answer)
-        assert q.working.count("\n") == 2  # three laws listed for hard
+        assert len(q.steps) == steps_n and q.working.count("\n") == steps_n - 1
+        letters = set(LETTER.findall(expr))
+        assert letters, expr
+        state = expr
+        for step in q.steps:
+            # Each step is written in the question's own letters and is a true rewrite
+            # of something that is actually there, leaving an equivalent expression.
+            assert set(LETTER.findall(step.before + step.after)) <= letters, (expr, step)
+            assert truth(step.before) == truth(step.after), step
+            assert step.before in state, (state, step)
+            assert truth(step.result) == truth(expr), step
+            assert step.law in q.working and step.before in q.working and step.result in q.working
+            state = step.result
+        assert state == q.answer
+        if laws in ("absorption", "de_morgan"):
+            # X AND X, NOT NOT and constants only when the identities are being practised.
+            assert not TRIVIAL.search(expr), expr
+
+
+def test_simplification_laws_are_named_for_the_header() -> None:
+    assert set(logic.LAW_FAMILIES) == {"absorption", "de_morgan", "identities", "all"}
+    assert "identity" not in logic.LAW_FAMILIES["absorption"]
+    assert "De Morgan" in logic.LAW_FAMILIES["de_morgan"]
+    assert {"identity", "idempotent", "double negation"} <= set(logic.LAW_FAMILIES["identities"])
 
 
 @pytest.mark.parametrize("seed", SEEDS)

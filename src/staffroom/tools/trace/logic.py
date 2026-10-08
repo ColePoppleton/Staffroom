@@ -9,6 +9,7 @@ from typing import Any, Literal
 from staffroom.core.table import Row, Table
 
 Kind = Literal["assign", "loop", "if", "call", "other"]
+TIMEOUT = 10.0  # seconds a traced run may take; the panel description quotes it
 
 
 @dataclass
@@ -58,6 +59,8 @@ class TraceResult:
     truncated: bool
     error: str | None
     stdout: str
+    input_eof: bool = False  # the run ended because input() found nothing left to read
+    inputs_read: int = 0  # values input() had read by then
 
 
 def line_kinds(source: str) -> dict[int, Kind]:
@@ -109,7 +112,33 @@ def parse_payload(payload: dict[str, Any]) -> TraceResult:
         truncated=bool(payload.get("truncated")),
         error=payload.get("error"),
         stdout=str(payload.get("stdout", "")),
+        input_eof=bool(payload.get("input_eof")),
+        inputs_read=int(payload.get("inputs_read", 0)),
     )
+
+
+def program_label(name: str) -> str:
+    """How a message refers to the program: its file name, or the pasted code."""
+    return "The pasted code" if name == "pasted_code" else f"{name}.py"
+
+
+def missing_input_message(name: str, stdin: str, inputs_read: int) -> str:
+    """The teacher-facing sentence for a run that hit ``input()`` with nothing
+    left to read. ``stdin`` is what the Inputs box held."""
+    given = len(stdin.splitlines())
+    fix = "add one line per input() call."
+    if given == 0:
+        return f"{program_label(name)} asked for input but the Inputs box is empty: {fix}"
+    lines = "line" if given == 1 else "lines"
+    return (
+        f"{program_label(name)} asked for a {_ordinal(inputs_read + 1)} input but the "
+        f"Inputs box has only {given} {lines}: {fix}"
+    )
+
+
+def _ordinal(n: int) -> str:
+    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
 
 
 def select_steps(result: TraceResult, source: str, kinds: set[Kind]) -> list[Step]:

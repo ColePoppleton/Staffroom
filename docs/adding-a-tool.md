@@ -23,6 +23,32 @@ uv run staff list
 uv run staff my_tool run examples/marks_10x.csv
 ```
 
+`hello` is the reference tool: read `src/staffroom/tools/hello/` before
+writing your own. It is `hidden`, so it is not in the launcher sidebar, but
+`staff hello run` works and its tests run with everything else.
+
+## Where it sits in the sidebar
+
+The sidebar, and the `⌘1`–`⌘9` shortcuts that follow it top to bottom, list
+the shipped tools in the order a teacher meets them (`WORKFLOW_ORDER` in
+`core/discovery.py`): classroom, marks, worksheet, parsons, quiz, trace,
+bugs, fade, pseudocode. Two optional class attributes on the plugin change
+where a tool goes; both are read with `getattr`, so a tool that sets
+neither needs no change and lands after the shipped tools, alphabetically.
+
+```python
+class MyToolPlugin:
+    name = "my_tool"
+    ...
+    order = 15  # lower comes first; the shipped tools use 0, 10, 20, …
+    hidden = True  # not in the sidebar or on a shortcut; still a CLI tool
+```
+
+`order` places the tool among the shipped ones (15 puts it between marks
+and worksheet). `hidden` is for reference and developer tools: `staff list`
+still shows them, marked `[hidden]`, and `staffroom --tool <name>` still
+opens them for a screenshot.
+
 ## 2. Write the logic
 
 Put the real work in `logic.py` as functions over `Table` (see
@@ -89,7 +115,9 @@ def run(self, inputs, ctx):
     )
 ```
 
-`ctx.output_dir` is the configured output folder, or the input's folder.
+`ctx.output_dir` is the configured output folder, the input's folder, or
+`<sessions root>/outputs/<tool>/` when there is no input; never the current
+directory. In a CLI resolve it with `config.output_dir_for(source, "<tool>")`.
 `ctx.resources` is the Resource Library (`None` under a bare CLI run): use
 `ctx.resources.search("while")` or `ctx.resources.pick(".py")` to let the
 teacher choose a file from the indexed resources instead of a raw file
@@ -115,9 +143,15 @@ The pre-commit hook refuses any CSV/XLSX without a `# FAKE DATA` first line.
 
 Never `exec` it in the app. Use `core.runner.run_source(source, stdin=...,
 timeout=...)` (or `run_file`), which runs it in a subprocess with a hard
-timeout and a temp working directory and returns stdout, stderr, exit code
-and whether it timed out. `tools/trace` shows how to ship a helper script
-alongside the program with `extra_files`.
+timeout, a temp working directory and a 1 MB cap on each of stdout and
+stderr (`MAX_OUTPUT_BYTES`; the rest is drained and discarded, the text ends
+with `truncation_marker()` and the outcome's `stdout_truncated` /
+`stderr_truncated` say so). It returns stdout, stderr, exit code and whether
+it timed out. `tools/trace` shows how to ship a helper script alongside the
+program with `extra_files`. Put `core.runner.limits_note(timeout)` in the
+panel description so the teacher sees the limits, and keep
+`docs/guide/running-code.md` true: it is a fence against accidents, not a
+sandbox.
 
 ## Producing worksheets and keys
 
@@ -126,7 +160,11 @@ Build a `core.export.Document`, add blocks to `doc.section()` and to
 `export(doc, ctx.output_dir, stem, formats)`. That writes the sheet and a
 separate key in each format with the house header and footer. `to_text(doc)`
 gives a preview for a `TextView`. `tools/worksheet` and `tools/parsons` are
-the references.
+the references. The blocks are `Heading`, `Paragraph`, `Code`, `Numbered`,
+`TableBlock`, `HintBox`, `BoxedBlocks` (numbered cut-out cells with dashed
+cut lines, laid out in columns), `AnswerGrid` (empty boxes headed by
+position) and `PageBreak`. A new block goes in `core/export/model.py` with a
+rendering in each of `pdf.py`, `docx.py` and `text.py`, so every tool gets it.
 
 ## Presets for an editable table
 

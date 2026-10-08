@@ -9,6 +9,8 @@ from docx import Document as DocxReader
 from pypdf import PdfReader
 
 from staffroom.core.export import (
+    AnswerGrid,
+    BoxedBlocks,
     Code,
     Document,
     Heading,
@@ -21,6 +23,7 @@ from staffroom.core.export import (
     render,
     to_text,
 )
+from staffroom.core.export.pdf import box_columns
 
 
 @pytest.fixture
@@ -35,6 +38,8 @@ def doc() -> Document:
     s.add(Code("while x < 3:\n    x += 1", caption="Listing 1"))
     s.add(TableBlock(("A", "B", "Q"), (("0", "0", ""), ("0", "1", "")), monospace=True))
     s.add(HintBox("Count from zero."))
+    s.add(BoxedBlocks(("x = 1", "while x < 3:\n    x += 1"), columns=2))
+    s.add(AnswerGrid(10, per_row=8))
     s.add(PageBreak())
     k = d.section("Answer key", answers=True)
     k.add(Numbered(("Repetition.", "see listing")))
@@ -59,6 +64,16 @@ def test_text_rendering(doc: Document) -> None:
     assert "ANSWER KEY" in text
 
 
+def test_text_boxes_and_answer_grid(doc: Document) -> None:
+    text = to_text(doc)
+    assert "+- 1 ---+\n| x = 1 |\n+-------+" in text
+    assert "+- 2 ----------+\n| while x < 3: |\n|     x += 1   |\n+--------------+" in text
+    grid = text[text.index("+--------------+") :]
+    head = " ".join(str(p).center(6) for p in range(1, 9))
+    assert f"{head}\n" + " ".join(["[____]"] * 8) in grid
+    assert f"{'9'.center(6)} {'10'.center(6)}\n[____] [____]" in grid
+
+
 def test_docx_round_trip(doc: Document, tmp_path: Path) -> None:
     path = render(doc.sheet(), tmp_path / "sheet.docx")
     read = DocxReader(str(path))
@@ -71,6 +86,13 @@ def test_docx_round_trip(doc: Document, tmp_path: Path) -> None:
     footer_xml = read.sections[0].footer.paragraphs[0]._p.xml
     assert "PAGE" in footer_xml and "NUMPAGES" in footer_xml
     assert read.tables and read.tables[0].rows[0].cells[2].text == "Q"
+    boxes = read.tables[2]
+    assert boxes.cell(0, 0).text == "1  x = 1"
+    assert boxes.cell(0, 1).text == "2  while x < 3:\n    x += 1"
+    assert 'w:val="dashed"' in boxes.cell(0, 0)._tc.xml
+    grid = read.tables[3]
+    assert [c.text for c in grid.rows[0].cells] == [str(n) for n in range(1, 9)]
+    assert [c.text for c in read.tables[4].rows[0].cells] == ["9", "10"]
 
 
 def test_pdf_round_trip(doc: Document, tmp_path: Path) -> None:
@@ -81,6 +103,24 @@ def test_pdf_round_trip(doc: Document, tmp_path: Path) -> None:
     assert "Worksheet: Loops" in text and "What is a loop?" in text
     assert "while x < 3:" in text and "Count from zero." in text
     assert "Page 1" in text and "Answer key" in text
+    assert "x += 1" in text  # the boxed block's second line
+
+
+def test_boxes_use_fewer_columns_when_a_line_is_wide() -> None:
+    short = BoxedBlocks(("x = 1", "y = 2", "z = 3"), columns=3)
+    assert box_columns(short) == 3
+    assert box_columns(BoxedBlocks(("x = 1",), columns=2)) == 2
+    wide = BoxedBlocks(("print(" + "a, " * 20 + "a)", "y = 2"), columns=2)
+    assert box_columns(wide) == 1
+
+
+def test_empty_boxes_and_grid_render_nothing(tmp_path: Path) -> None:
+    d = Document(title="Empty")
+    d.section().add(BoxedBlocks(())).add(AnswerGrid(0))
+    assert to_text(d) == "Empty\n=====\n"
+    path = render(d, tmp_path / "empty.pdf")
+    assert len(PdfReader(str(path)).pages) == 1
+    render(d, tmp_path / "empty.docx")
 
 
 def test_export_writes_sheet_and_key_per_format(doc: Document, tmp_path: Path) -> None:

@@ -19,13 +19,26 @@ from PySide6.QtWidgets import (
 from staffroom.core import paths
 from staffroom.core.config import Config
 from staffroom.core.launch import EDITOR_PRESETS, preset_for
+from staffroom.core.library.exclude import IGNORE_FILE
+from staffroom.core.library.service import library_db_path
+from staffroom.core.library.tags import SIDECAR_DIR
 from staffroom.core.panel import FolderPicker
-from staffroom.shell.widgets import Card, PathPickerWidget, make_label
+from staffroom.shell.widgets import Card, PathPickerWidget, StringListEditor, make_label
+
+LIBRARY_STORED_STATEMENT = (
+    "What is stored: the index keeps file names and the text of .py, .txt, .md, .csv and "
+    ".pdf files from this folder, nothing else, in a database at {db}. The folder is only "
+    "ever read. Tags live in {sidecar}/tags.json inside it. A file whose text looks like it "
+    "holds pupil details (candidate number, surname, UPN, date of birth near a value) is "
+    "indexed by name only and counted in the status line. To remove the index, delete the "
+    "database or change the folder: a full re-index drops the old entries."
+)
 
 
 class SettingsPage(QWidget):
     theme_changed = Signal(str)
     resources_root_changed = Signal(str)
+    library_exclude_changed = Signal(object)  # list[str]
     update_available = Signal(bool)
 
     def __init__(self, config: Config, parent: QWidget | None = None) -> None:
@@ -61,9 +74,12 @@ class SettingsPage(QWidget):
 
         output = Card(
             "Output folder",
-            "Where tools write their results. Leave empty to write next to the input file.",
+            "Where tools write their results. Leave empty to write next to the input file, "
+            f"or to {paths.fallback_output_dir(config.general.sessions_root, '<tool>')} "
+            "when a tool has no input file.",
         )
         self.output_dir = PathPickerWidget(FolderPicker(key="output_dir", label="Output folder"))
+        self.output_dir.edit.setPlaceholderText("next to the input  (default)")
         if config.general.output_dir:
             self.output_dir.edit.setText(config.general.output_dir)
         self.output_dir.changed.connect(self._on_output_dir)
@@ -72,8 +88,7 @@ class SettingsPage(QWidget):
 
         resources = Card(
             "Resources folder",
-            "The folder the Resource Library indexes. It is only ever read; tags live in a "
-            "sidecar file inside it. Changing it triggers a full re-index.",
+            "The folder the Resource Library indexes. Changing it triggers a full re-index.",
         )
         self.resources_root = PathPickerWidget(
             FolderPicker(key="resources_root", label="Resources folder")
@@ -81,6 +96,36 @@ class SettingsPage(QWidget):
         self.resources_root.edit.setText(config.general.resources_root)
         self.resources_root.changed.connect(self._on_resources_root)
         resources.add(self.resources_root)
+        self.library_statement = make_label(
+            LIBRARY_STORED_STATEMENT.format(db=library_db_path(), sidecar=SIDECAR_DIR),
+            "muted",
+            wrap=True,
+        )
+        self.library_statement.setObjectName("LibraryStatement")
+        resources.add(self.library_statement)
+        reveal_row = QHBoxLayout()
+        reveal_db = QPushButton("Reveal index database")
+        reveal_db.setProperty("role", "ghost")
+        reveal_db.clicked.connect(lambda: self._reveal(library_db_path().parent))
+        reveal_row.addWidget(reveal_db)
+        reveal_row.addStretch(1)
+        resources.body.addLayout(reveal_row)
+        resources.add(make_label("Exclude from the library", "section"))
+        resources.add(
+            make_label(
+                "Folders and files that are neither indexed nor listed, for pupil work or "
+                "anything else that should stay out. A name matches at any depth (Pupil work, "
+                "*assessment*); a path matches from the root (Year 11/Mocks). Patterns in "
+                f"{SIDECAR_DIR}/{IGNORE_FILE} inside the folder are honoured too. "
+                "Changing the list re-indexes.",
+                "muted",
+                wrap=True,
+            )
+        )
+        self.library_exclude = StringListEditor("Folder name, pattern or path…")
+        self.library_exclude.set_values(config.general.library_exclude)
+        self.library_exclude.changed.connect(self._on_library_exclude)
+        resources.add(self.library_exclude)
         layout.addWidget(resources)
 
         classroom = Card(
@@ -201,6 +246,13 @@ class SettingsPage(QWidget):
             self.config.general.resources_root = text
             self.config.save()
             self.resources_root_changed.emit(text)
+
+    def _on_library_exclude(self, values: object) -> None:
+        patterns = [str(v) for v in values] if isinstance(values, list) else []
+        if patterns != self.config.general.library_exclude:
+            self.config.general.library_exclude = patterns
+            self.config.save()
+            self.library_exclude_changed.emit(patterns)
 
     # -- updates ---------------------------------------------------------
     def check_updates(self, *, fetch: bool = True) -> None:

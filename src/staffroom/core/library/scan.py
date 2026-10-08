@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 
 from staffroom.core.library.model import (
@@ -14,13 +14,19 @@ from staffroom.core.library.model import (
     real_name_from_placeholder,
 )
 
+Excluder = Callable[[str], bool]  # POSIX rel path -> leave it out?
 
-def scan(root: Path) -> Iterator[Resource]:
+
+def scan(root: Path, exclude: Excluder | None = None) -> Iterator[Resource]:
     """Yield a Resource for each regular file under ``root``. Never raises for
     a single unreadable entry; iCloud placeholders become cloud-only entries
-    under their real name."""
+    under their real name. Folders and files for which ``exclude`` returns
+    True are skipped, and excluded folders are not descended into."""
     root = root.resolve()
     for dirpath, dirnames, filenames in os.walk(root, onerror=lambda _e: None):
+        rel_dir = PurePosixPath(Path(dirpath).relative_to(root).as_posix())
+        if exclude is not None:
+            dirnames[:] = [d for d in dirnames if not exclude(_join(rel_dir, d))]
         dirnames.sort()
         for filename in sorted(filenames):
             full = Path(dirpath) / filename
@@ -35,6 +41,8 @@ def scan(root: Path) -> Iterator[Resource]:
                 rel = rel.with_name(real)
                 filename = real
                 cloud = True
+            if exclude is not None and exclude(str(rel)):
+                continue
             yield Resource(
                 rel_path=str(rel),
                 name=filename,
@@ -45,3 +53,7 @@ def scan(root: Path) -> Iterator[Resource]:
                 cloud_only=cloud,
                 hidden=is_hidden(rel),
             )
+
+
+def _join(rel_dir: PurePosixPath, name: str) -> str:
+    return name if str(rel_dir) == "." else f"{rel_dir}/{name}"

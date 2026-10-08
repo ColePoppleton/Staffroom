@@ -33,6 +33,11 @@ def example_marks_max() -> Path:
     return EXAMPLES / "marks_10x_max.csv"
 
 
+@pytest.fixture
+def example_marks_messy() -> Path:
+    return EXAMPLES / "marks_messy.csv"
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _offscreen_qt() -> None:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

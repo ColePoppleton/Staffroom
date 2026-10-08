@@ -9,6 +9,7 @@ recorded; everything the program prints is captured, not shown.
 
 from __future__ import annotations
 
+import builtins
 import io
 import json
 import sys
@@ -17,6 +18,25 @@ from types import FrameType
 from typing import Any
 
 MAX_REPR = 48
+MAX_OUTPUT = 1024 * 1024  # characters of program output kept; core.runner caps bytes the same
+TRUNCATION_MARKER = f"[output truncated at {MAX_OUTPUT // 1024} KB]\n"  # same text as core.runner
+
+
+class CappedOutput(io.StringIO):
+    """Keeps the first ``MAX_OUTPUT`` characters the program prints and counts
+    the rest, so a print flood traced for ten seconds does not grow without
+    bound inside this process."""
+
+    dropped = 0
+
+    def write(self, s: str, /) -> int:
+        room = MAX_OUTPUT - self.tell()
+        if len(s) > room:
+            self.dropped += len(s) - max(room, 0)
+            s = s[: max(room, 0)]
+        if s:
+            super().write(s)
+        return len(s)
 
 
 def show(value: Any) -> str | None:
@@ -36,13 +56,32 @@ def main() -> None:
         source = fh.read()
     code = compile(source, program, "exec")
     real_stdout = sys.stdout
-    captured = io.StringIO()
+    captured = CappedOutput()
     sys.stdout = captured
     rows: list[dict[str, Any]] = []
     pending: dict[int, dict[str, Any]] = {}  # id(frame) -> row awaiting its "after" state
     variables: list[str] = []
     state = {"steps": 0, "truncated": False}
+    inputs_read = 0
+    eof_from_input: list[EOFError] = []  # the EOFError input() raised, if any
     last_output_pos = 0
+
+    real_input = builtins.input
+
+    def traced_input(prompt: object = "") -> str:
+        """input() that remembers how many values it read and keeps hold of the
+        EOFError it raises when there is nothing left, so the app can tell
+        "the Inputs box ran dry" from any other way the program ended."""
+        nonlocal inputs_read
+        try:
+            value = real_input(prompt)
+        except EOFError as exc:
+            eof_from_input.append(exc)
+            raise
+        inputs_read += 1
+        return value
+
+    builtins.input = traced_input
 
     def take_output() -> str:
         nonlocal last_output_pos
@@ -91,15 +130,20 @@ def main() -> None:
         return tracer
 
     error = None
+    input_eof = False
     namespace: dict[str, Any] = {"__name__": "__main__", "__file__": program}
     sys.settrace(tracer)
     try:
         exec(code, namespace)
-    except BaseException:
+    except BaseException as exc:
         error = traceback.format_exc(limit=-1).strip().splitlines()[-1]
+        # Only the very exception input() raised counts: one the program caught
+        # and dealt with, or raised itself, is its own business.
+        input_eof = any(exc is raised for raised in eof_from_input)
     finally:
         sys.settrace(None)
         sys.stdout = real_stdout
+        builtins.input = real_input
     # Any rows still pending (e.g. after an exception) get the final state.
     for row in list(pending.values()):
         row["output"] = take_output()
@@ -108,7 +152,11 @@ def main() -> None:
         "variables": variables,
         "truncated": state["truncated"],
         "error": error,
-        "stdout": captured.getvalue(),
+        "input_eof": input_eof,
+        "inputs_read": inputs_read,
+        "stdout": captured.getvalue()
+        + (("\n" if not captured.getvalue().endswith("\n") else "") + TRUNCATION_MARKER)
+        * bool(captured.dropped),
     }
     print(json.dumps(payload))
 
