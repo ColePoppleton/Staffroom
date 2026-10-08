@@ -69,6 +69,17 @@ with every change; `just release <part>` turns it into a version.
 - A docs page, *Running pupil code*, that says what a trace / bugs run is
   limited to and what it does not stop (`os.system`, file writes, computed
   import names); the Trace, Bugs and Fade panels point to it (#16).
+- Docs for a teacher who is not the owner (#19): the Privacy page lists the
+  identifier filter's header words and what passes through (per-pupil flag
+  columns such as SEN/PP/EAL reach the preview and are never saved), what the
+  run log and the app log file hold and where the file is, the full table of
+  what is stored where (including `.origin.json`), and how to delete
+  everything; a new *Outputs* page gives the output-folder rule and every
+  tool's file names; a new *Glossary* covers facility, discrimination, seed,
+  ERL, Parsons problem, faded example, do-now, retrieval windows and the rest;
+  the launcher page shows the workflow-order shortcuts and the tool pages
+  name their files and link across. The nav puts *Adding a tool* and
+  *Roadmap* back under Contributing.
 
 ### Fixed
 - Worksheet truth tables never set a degenerate question: every input the

@@ -15,6 +15,14 @@ See [Question banks](../guide/question-banks.md) for the file format.
 | forms | numbered text with lettered options and a separate answers block |
 | donow | house-style docx and PDF with the key split off |
 
+Files are named after the bank: `<bank>_kahoot.xlsx` and `.csv`,
+`<bank>_forms.txt`, `<bank>_donow.docx` / `.pdf` and `<bank>_donow_key`
+([Outputs](../guide/outputs.md)). Retrieval mode looks at the topics taught
+one, three and six weeks ago, each with three days' leeway, and draws
+questions round-robin across the three windows; the run log lists what fell
+in each. *Do-now*, *spec point* and *retrieval windows* are in the
+[Glossary](../guide/glossary.md#quiz).
+
 ```bash
 staff quiz export --bank bank.md --format kahoot --topics binary,cpu --n 10
 staff quiz retrieval --bank bank.md --log taught.csv --date 2026-10-08

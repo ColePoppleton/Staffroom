@@ -17,6 +17,12 @@ promote the edited version back beside the original as `name_v2.py`.
 *Re-open* or *Promote* (copies back next to the original under a new
 versioned name; never overwrites).
 
+Each session folder also holds a `.origin.json` with the lesson label and,
+for each copy, the absolute path of the original it came from: that is how
+*Diff* and *Promote* find their way back. The label is at most 60
+characters, and the app cannot check what you put in it, so keep it to the
+lesson ([Privacy](../guide/privacy.md#where-things-live)).
+
 ## On the command line
 
 ```bash

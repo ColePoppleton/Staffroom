@@ -35,6 +35,11 @@ so pupil work should not be under the resources folder at all. Two guards help:
   `staff library status` show the count; the preview carries a banner. This is
   a warning to act on, not a filter to rely on.
 
+![A file indexed by name only, with the banner that says why](../library-name-only.png)
+
+Exactly what the index holds, where it lives and how to delete it is in
+[Privacy](../guide/privacy.md#what-the-resource-library-stores).
+
 ![Settings: the resources folder, what is stored, and the exclusion list](../settings.png)
 
 ```bash

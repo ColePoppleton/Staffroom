@@ -12,8 +12,14 @@ with optional distractors, and a key.
 - **Show indentation** off makes pupils decide the indents.
 - The sheet prints the blocks as numbered cut-out boxes, two across, with
   dashed cut lines and an answer grid underneath; a 15-block problem fits on
-  one A4 page. The key reconstructs the program; the tests prove it is
-  equivalent to the input.
+  one A4 page.
+- The key reconstructs the program; the tests prove it is equivalent to the input.
+- The seed is in the file name and on the sheet, so the same shuffle can be
+  made again.
+
+Files: `<stem>_parsons_s<seed>.docx` / `.pdf` and `…_key`
+([Outputs](../guide/outputs.md)). *Parsons problem*, *distractor* and *seed*
+are in the [Glossary](../guide/glossary.md#sheets).
 
 ```bash
 staff parsons make program.py --seed 7 --distractors 2 [--lines] [--no-indent]

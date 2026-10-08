@@ -52,4 +52,6 @@ staff worksheet topics
 ```
 
 Output: `<topic>_<difficulty>_s<seed>.docx/.pdf` plus a `_key` file, in the
-[house style](../guide/house-style.md).
+[house style](../guide/house-style.md), in `~/TeachingSessions/outputs/worksheet/`
+unless Settings names an output folder ([Outputs](../guide/outputs.md)).
+*Seed*, *level* and *Boolean laws* are in the [Glossary](../guide/glossary.md).
