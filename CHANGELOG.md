@@ -6,6 +6,8 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+
+## [0.4.0] - 2026-10-08
 ### Added
 - First run asks for the resources folder (#18). With no folder set, the
   launcher opens on one card, "Choose your resources folder": Choose… opens a
