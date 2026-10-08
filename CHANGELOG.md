@@ -2,6 +2,16 @@
 
 ## Phase 7 — polish and packaging (2026-10-08)
 
+- Installed as a thin launcher: `just install` builds `Teaching Tools.app`
+  whose executable runs the checkout with uv, and copies it into
+  /Applications. Nothing to rebuild on a code change.
+- Self-update: `tt update` (and `--check`), an Updates card in Settings
+  (check / update now), a startup check with an "Update available" notice
+  in the sidebar. Fast-forward only; a dirty tree or diverged branch is
+  reported, never overwritten. Tested against a local bare remote.
+- The PyInstaller bundle is still available as `just bundle` for a machine
+  without the repo.
+- Code now lives at github.com/ColePoppleton/Teaching-Tools (private).
 - App icon (drawn by `scripts/make_icon.py`, `just icon`): icon.png for the
   window and Dock, icon.icns for the bundle.
 - Theme check: every panel rendered in dark and light offscreen; no fixes

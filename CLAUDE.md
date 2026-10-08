@@ -111,7 +111,10 @@ Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
 ## Working here
 
 * `just setup`, `just test`, `just lint`, `just gui`, `just new <name>`,
-  `just app` (PyInstaller bundle), `just icon`, `just screenshots`.
+  `just install` (thin launcher app in /Applications), `just bundle`
+  (PyInstaller), `just icon`, `just screenshots`, `just update`.
+* The installed app runs this checkout via uv: commit and push to
+  github.com/ColePoppleton/Teaching-Tools and the app offers the update.
 * `uv` manages the environment; Python 3.12+; src layout.
 * ruff (line length 100), pytest (+ pytest-qt, offscreen), mypy (strict on
   `core`, normal elsewhere), import-linter, pre-commit.

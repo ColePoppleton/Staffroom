@@ -143,9 +143,17 @@ class Sidebar(QWidget):
         self.settings_button = QPushButton("Settings")
         self.settings_button.setObjectName("SidebarButton")
         self.settings_button.setToolTip("Settings  (⌘,)")
+        self.update_button = QPushButton("Update available")
+        self.update_button.setObjectName("SidebarButton")
+        self.update_button.setProperty("role", "accent")
+        self.update_button.setToolTip(
+            "A newer version is on the git remote. Open Settings to update."
+        )
+        self.update_button.clicked.connect(self._on_settings)
+        self.update_button.hide()
         self.settings_button.setCheckable(True)
         self.settings_button.clicked.connect(self._on_settings)
-        for b in (self.log_button, self.theme_button, self.settings_button):
+        for b in (self.update_button, self.log_button, self.theme_button, self.settings_button):
             bottom_layout.addWidget(b)
         layout.addWidget(bottom)
 
@@ -169,6 +177,9 @@ class Sidebar(QWidget):
         self.pages.setCurrentIndex(index)
         self.settings_button.setChecked(False)
         self.mode_changed.emit("resources" if index == 1 else "tools")
+
+    def set_update_available(self, available: bool) -> None:
+        self.update_button.setVisible(available)
 
     def set_theme_label(self, theme: str) -> None:
         self.theme_button.setText("Light theme" if theme == "dark" else "Dark theme")

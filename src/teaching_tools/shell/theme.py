@@ -97,6 +97,9 @@ QPushButton#SidebarButton {{
 }}
 QPushButton#SidebarButton:hover {{ background: {p.surface}; color: {p.text}; }}
 QPushButton#SidebarButton:checked {{ background: {p.accent_soft}; color: {p.accent}; }}
+QPushButton#SidebarButton[role="accent"] {{
+    background: {p.accent_soft}; color: {p.accent}; font-weight: 600;
+}}
 QWidget#SidebarTabs {{
     background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
 }}

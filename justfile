@@ -43,10 +43,21 @@ screenshots:
     QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/marks_10x.csv --run --theme dark --screenshot docs/launcher-dark.png
     QT_QPA_PLATFORM=offscreen uv run tt-gui --tool hello --open examples/marks_10x.csv --run --theme light --screenshot docs/launcher-light.png
 
-# Build the macOS app bundle into dist/Teaching Tools.app (PyInstaller)
+# Build the thin launcher app (runs this checkout via uv; updates need no reinstall)
 app:
+    uv run python packaging/make_launcher.py
+
+# Build the thin launcher app and install it into /Applications
+install:
+    uv run python packaging/make_launcher.py --install
+
+# Build a frozen, self-contained bundle with PyInstaller (for a machine without the repo)
+bundle:
     uv run pyinstaller packaging/tt-gui.spec --noconfirm --clean
-    @echo "built: dist/Teaching Tools.app  (drag it to /Applications, or: open 'dist/Teaching Tools.app')"
+
+# Pull the latest code and sync dependencies (what the app's Update button does)
+update:
+    uv run tt update
 
 # Redraw the app icon from scripts/make_icon.py
 icon:

@@ -69,6 +69,24 @@ def version() -> None:
     typer.echo(__version__)
 
 
+@app.command("update")
+def update_(
+    check: Annotated[bool, typer.Option("--check", help="Only report; do not pull")] = False,
+) -> None:
+    """Pull the latest code from the git remote and sync dependencies."""
+    from teaching_tools.core import update
+
+    st = update.status()
+    typer.echo(st.describe())
+    if check or not st.available:
+        raise typer.Exit(0)
+    try:
+        typer.echo(update.apply())
+    except (RuntimeError, OSError) as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(1) from None
+
+
 @app.command("usage")
 def usage_() -> None:
     """Which tools have been used, how often, and when last (for the monthly review)."""

@@ -26,6 +26,7 @@ from teaching_tools.shell.widgets import Card, PathPickerWidget, make_label
 class SettingsPage(QWidget):
     theme_changed = Signal(str)
     resources_root_changed = Signal(str)
+    update_available = Signal(bool)
 
     def __init__(self, config: Config, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -137,6 +138,26 @@ class SettingsPage(QWidget):
         house.body.addLayout(form3)
         layout.addWidget(house)
 
+        updates = Card(
+            "Updates",
+            "The app runs straight from the git checkout, so an update is a pull plus a "
+            "dependency sync. Restart afterwards.",
+        )
+        update_row = QHBoxLayout()
+        self.update_status = make_label("Checking…", "muted")
+        self.check_button = QPushButton("Check for updates")
+        self.check_button.setProperty("role", "ghost")
+        self.check_button.clicked.connect(lambda: self.check_updates(fetch=True))
+        self.update_button = QPushButton("Update now")
+        self.update_button.setProperty("role", "primary")
+        self.update_button.setEnabled(False)
+        self.update_button.clicked.connect(self.apply_update)
+        update_row.addWidget(self.update_status, 1)
+        update_row.addWidget(self.check_button)
+        update_row.addWidget(self.update_button)
+        updates.body.addLayout(update_row)
+        layout.addWidget(updates)
+
         logging_card = Card("Logging")
         log_form = QFormLayout()
         log_form.setHorizontalSpacing(16)
@@ -180,6 +201,49 @@ class SettingsPage(QWidget):
             self.config.general.resources_root = text
             self.config.save()
             self.resources_root_changed.emit(text)
+
+    # -- updates ---------------------------------------------------------
+    def check_updates(self, *, fetch: bool = True) -> None:
+        from teaching_tools.shell.update_worker import UpdateWorker
+
+        self.check_button.setEnabled(False)
+        self.update_status.setText("Checking…")
+        worker = UpdateWorker(fetch=fetch)
+        worker.done.connect(self._on_update_status)
+        worker.finished.connect(worker.deleteLater)
+        self._update_worker = worker
+        worker.start()
+
+    def _on_update_status(self, status: object) -> None:
+        from teaching_tools.core.update import UpdateStatus
+
+        assert isinstance(status, UpdateStatus)
+        self.check_button.setEnabled(True)
+        self.update_status.setText(status.describe())
+        self.update_status.setProperty("role", "danger" if status.error else "muted")
+        self.update_status.style().unpolish(self.update_status)
+        self.update_status.style().polish(self.update_status)
+        self.update_button.setEnabled(status.available and not status.dirty)
+        self.update_available.emit(status.available)
+
+    def apply_update(self) -> None:
+        from teaching_tools.shell.update_worker import ApplyWorker
+
+        self.update_button.setEnabled(False)
+        self.update_status.setText("Updating…")
+        worker = ApplyWorker()
+        worker.done.connect(self._on_update_applied)
+        worker.finished.connect(worker.deleteLater)
+        self._apply_worker = worker
+        worker.start()
+
+    def _on_update_applied(self, message: str, ok: bool) -> None:
+        self.update_status.setText(message)
+        self.update_status.setProperty("role", "success" if ok else "danger")
+        self.update_status.style().unpolish(self.update_status)
+        self.update_status.style().polish(self.update_status)
+        if ok:
+            self.update_available.emit(False)
 
     def _on_board(self, index: int) -> None:
         self.config.general.board = str(self.board.itemData(index))

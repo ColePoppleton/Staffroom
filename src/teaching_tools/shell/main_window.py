@@ -99,6 +99,7 @@ class MainWindow(QMainWindow):
         self.sidebar.theme_toggle_requested.connect(self.toggle_theme)
         self.settings.theme_changed.connect(self.apply_theme)
         self.settings.resources_root_changed.connect(self.set_resources_root)
+        self.settings.update_available.connect(self.sidebar.set_update_available)
         self.sidebar.mode_changed.connect(self._on_mode)
         res = self.sidebar.resources
         res.search_changed.connect(self._on_search)
@@ -130,6 +131,8 @@ class MainWindow(QMainWindow):
             self.sidebar.set_mode("resources")
         if auto_index and self.library.root_exists and self.library.count() == 0:
             self.library_page.reindex()
+        if auto_index and not config.read_only:
+            self.settings.check_updates(fetch=True)
 
     # -- navigation ------------------------------------------------------
     def panel_for(self, name: str) -> ToolPanel:
