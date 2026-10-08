@@ -43,6 +43,7 @@ checklist, the areas it touches (`core/export`, `tools/marks`, …), a size and 
 
 - Tests for the change; `just check` green locally; CI green.
 - A line under `## [Unreleased]` in `CHANGELOG.md`.
-- A screenshot in the PR if the UI changed.
+- A screenshot in the PR if the UI changed. If a docs screenshot is affected, `just screenshots`
+  regenerates the whole set offscreen (`scripts/screenshots.sh`; never from the owner's real home).
 - The hard rules in `CLAUDE.md` still hold (no pupil data; tools never import Qt; logic never does I/O).
 - Anything noticed but out of scope became a new issue, not a bigger PR.

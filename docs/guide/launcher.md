@@ -7,6 +7,11 @@ Classroom, Marks, Worksheet, Parsons, Quiz, Trace, Bugs, Fade, Pseudocode.
 A fresh install opens on Classroom. (`hello`, the developers' reference
 tool, is not in the list; `staff hello` still works from the terminal.)
 
+The very first start shows a card asking for the resources folder; choose
+one or skip it and set it later in Settings.
+
+![The first-run card](../first-run-dark.png)
+
 Pick a tool, fill in its panel top to bottom, press the big button. Results
 appear below the inputs and files are written to the output folder, which the
 run bar names before you press Run: next to the input by default,

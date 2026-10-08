@@ -33,6 +33,8 @@ The run log warns, before you trust the numbers, when:
 Nothing in the list stops the run. `examples/marks_messy.csv` makes every
 warning fire if you want to see them.
 
+![Marks run on the messy example: every warning in the log](../marks-warnings-light.png)
+
 ## Boundaries
 
 An editable grid of grade and minimum (percent of the paper or raw marks).

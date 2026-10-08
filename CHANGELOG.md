@@ -48,6 +48,15 @@ with every change; `just release <part>` turns it into a version.
   an index stopped early keeps what it has done and finishes on the next
   launch. `ActionTable` ignores a refresh that arrives after its view is gone.
 
+### Changed
+- Docs screenshots redone after the sidebar reorder and the first-run card
+  (#46): every image the docs reference shows the workflow-ordered sidebar
+  without `hello`; `just screenshots` now runs `scripts/screenshots.sh`,
+  which renders the whole set offscreen from a throwaway `STAFFROOM_HOME`
+  and the invented fixture resources in `scripts/screenshots/resources/`.
+  Ten unreferenced PNGs are gone; the first-run card and the Marks warnings
+  run are now shown in the guide.
+
 ## [0.4.0] - 2026-10-08
 ### Added
 - First run asks for the resources folder (#18). With no folder set, the
