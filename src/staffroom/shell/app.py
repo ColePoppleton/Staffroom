@@ -36,6 +36,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--resource", help="open the Resources view on this path (relative to root)"
     )
     parser.add_argument("--settings", action="store_true", help="open the Settings page")
+    parser.add_argument(
+        "--first-run",
+        action="store_true",
+        help="show the first-run card as a fresh install would (the saved folder is kept)",
+    )
     parser.add_argument("--theme", choices=["dark", "light"], help="override the saved theme")
     parser.add_argument("--run", action="store_true", help="run the tool before --screenshot")
     parser.add_argument("--screenshot", type=Path, help="render, save a PNG, and exit")
@@ -53,7 +58,7 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         # A screenshot run must not leave files next to the example input or
         # in the checkout: send its outputs to a folder that dies with it.
         config.general.output_dir = screenshot_output_dir()
-    window = MainWindow(config)
+    window = MainWindow(config, first_run=True if args.first_run else None)
     if args.tool:
         window.go_to_tool(args.tool)
     if args.open and args.tool:

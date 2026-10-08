@@ -7,6 +7,18 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Added
+- First run asks for the resources folder (#18). With no folder set, the
+  launcher opens on one card, "Choose your resources folder": Choose… opens a
+  folder dialog (at the home folder; the app never suggests a folder, cloud or
+  otherwise), the sessions-folder default is shown as text, and a sentence
+  points at Settings and the privacy guide's "What the Resource Library
+  stores". Choosing a folder saves it, runs the first index with progress on
+  the card and lands on Classroom; "Not now" lands there too and leaves the
+  "No folder chosen: set it in Settings" hint in the Resources sidebar.
+  `FirstRunCard` joins the widget kit; `staffroom --first-run` shows the card
+  for screenshots. `staff library index` / `search` with no folder set now say
+  where to set it (the Settings page and the `resources_root` key) instead of
+  "resources root not found: ".
 - Library privacy (#17): an exclusion list for the resources folder (Settings,
   `staff library exclude`, or `<root>/.staffroom/ignore`) whose paths are
   neither indexed nor listed and whose changes re-index; files whose text

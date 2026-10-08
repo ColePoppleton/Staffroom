@@ -47,6 +47,34 @@ def test_index_missing_root(tmp_path: Path) -> None:
     cfg.save()
     r = runner.invoke(app, ["library", "index"])
     assert r.exit_code == 1 and "not found" in r.output
+    assert "Settings › Resources folder" in r.output and "resources_root" in r.output
+
+
+def test_no_root_set_says_where_to_set_it_and_indexes_nothing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A fresh install: the config has no folder. The CLI must not fall back to
+    the working directory (``Path("")`` is ``.``) and must name the Settings
+    page and the config key."""
+    cfg = load_config()
+    cfg.general.resources_root = ""
+    cfg.save()
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    (cwd / "not_a_resource.py").write_text("print(1)\n")
+    monkeypatch.chdir(cwd)
+
+    for command in (["library", "index"], ["library", "search", "print"]):
+        r = runner.invoke(app, command)
+        assert r.exit_code == 1, r.output
+        assert "no resources folder set yet" in r.output
+        assert "Settings › Resources folder" in r.output
+        assert "resources_root" in r.output and str(cfg.path) in r.output
+        assert "indexing" not in r.output
+
+    r = runner.invoke(app, ["library", "status"])
+    assert r.exit_code == 0, r.output
+    assert "root:        (not set" in r.output and "files:       0" in r.output
 
 
 def test_exclude_command_and_name_only_report(resources_root: Path) -> None:

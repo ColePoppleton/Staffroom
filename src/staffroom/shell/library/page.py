@@ -95,9 +95,13 @@ class LibraryPage(QWidget):
             text += f"  ·  {withheld} name only"
         self.index_status.setText(text)
         self.index_status.setToolTip(withheld_message(withheld) if withheld else "")
-        self.subtitle.setText(
-            str(self.service.root) + ("" if self.service.root_exists else "   (folder not found)")
-        )
+        if not self.service.root_set:
+            self.subtitle.setText("No folder chosen yet: set it in Settings")
+        else:
+            self.subtitle.setText(
+                str(self.service.root)
+                + ("" if self.service.root_exists else "   (folder not found)")
+            )
 
     def set_theme(self, theme: str) -> None:
         self.preview.set_theme(theme)

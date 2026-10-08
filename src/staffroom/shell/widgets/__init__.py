@@ -4,6 +4,7 @@ never into a tool package."""
 
 from staffroom.shell.widgets.action_table import ActionTableWidget
 from staffroom.shell.widgets.card import Card, Divider, make_label
+from staffroom.shell.widgets.first_run import FirstRunCard
 from staffroom.shell.widgets.image_view import ImageViewWidget
 from staffroom.shell.widgets.options_form import OptionsFormWidget
 from staffroom.shell.widgets.path_picker import PathPickerWidget
@@ -26,6 +27,7 @@ __all__ = [
     "Card",
     "Divider",
     "EditableTableWidget",
+    "FirstRunCard",
     "ImageViewWidget",
     "OptionsFormWidget",
     "PathPickerWidget",

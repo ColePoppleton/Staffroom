@@ -39,6 +39,17 @@ def _default_opener(args: Sequence[str]) -> None:
     subprocess.Popen(["open", *args])
 
 
+def _normalise_root(root: Path) -> tuple[bool, Path]:
+    """``(root_set, root)``. The config stores the folder as a string, and an
+    empty string becomes ``Path("")``, which pathlib spells ``.``: resolving
+    that would silently make the working directory the resources folder. An
+    unset root stays unset; a set one is expanded and, when present, resolved."""
+    if root == Path(""):
+        return False, root
+    expanded = root.expanduser()
+    return True, expanded.resolve() if expanded.exists() else expanded
+
+
 class LibraryService:
     """Owns the root, the database and the tag sidecar.
 
@@ -47,6 +58,8 @@ class LibraryService:
     ``exclude`` is the configured exclusion list; the root's own
     ``.staffroom/ignore`` file is added to it whenever it is consulted.
     """
+
+    root_set: bool  # False until a folder is chosen (config ``resources_root`` empty)
 
     def __init__(
         self,
@@ -57,7 +70,7 @@ class LibraryService:
         picker: Picker | None = None,
         exclude: Sequence[str] = (),
     ) -> None:
-        self.root = root.expanduser().resolve() if root.expanduser().exists() else root.expanduser()
+        self.root_set, self.root = _normalise_root(root)
         self.db = LibraryDB(db_path if db_path is not None else library_db_path())
         self.tags = TagStore(self.root)
         self._opener = opener
@@ -70,7 +83,7 @@ class LibraryService:
     def set_root(self, root: Path) -> None:
         """Point at a different folder. The next index run must be ``full``
         so entries from the old folder are dropped."""
-        self.root = root.expanduser().resolve() if root.expanduser().exists() else root.expanduser()
+        self.root_set, self.root = _normalise_root(root)
         self.tags = TagStore(self.root)
 
     # -- exclusions ------------------------------------------------------
@@ -94,7 +107,9 @@ class LibraryService:
     # -- index -----------------------------------------------------------
     @property
     def root_exists(self) -> bool:
-        return self.root.is_dir()
+        """True only for a chosen folder that is there. An unset root is never
+        the working directory, so nothing is indexed before the teacher picks."""
+        return self.root_set and self.root.is_dir()
 
     def index(self, *, full: bool = False, progress: Progress | None = None) -> IndexStats:
         if not self.root_exists:

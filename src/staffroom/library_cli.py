@@ -22,6 +22,26 @@ def _service() -> LibraryService:
     return LibraryService(Path(general.resources_root), exclude=general.library_exclude)
 
 
+def _where_to_set_it() -> str:
+    return (
+        "choose it in Staffroom › Settings › Resources folder, or set resources_root "
+        f"under [general] in {load_config().path}"
+    )
+
+
+def _require_root(svc: LibraryService) -> None:
+    """Exit 1 with a sentence that says what to do when there is no usable
+    folder: none chosen yet (a fresh install), or the chosen one is gone."""
+    if svc.root_exists:
+        return
+    if not svc.root_set:
+        message = f"no resources folder set yet: {_where_to_set_it()}"
+    else:
+        message = f"resources root not found: {svc.root} ({_where_to_set_it()})"
+    typer.secho(message, fg=typer.colors.RED, err=True)
+    raise typer.Exit(1)
+
+
 @library_app.command()
 def index(
     full: Annotated[
@@ -30,10 +50,7 @@ def index(
 ) -> None:
     """Index (or incrementally re-index) the resources root."""
     svc = _service()
-    if not svc.root_exists:
-        where = svc.root or "(not set: staffroom › Settings › Resources folder)"
-        typer.secho(f"resources root not found: {where}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(1)
+    _require_root(svc)
     typer.echo(f"indexing {svc.root}")
 
     def progress(done: int, total: int, rel: str) -> None:
@@ -60,6 +77,7 @@ def search(
     """Search file names and extracted text."""
     svc = _service()
     if svc.count() == 0:
+        _require_root(svc)  # a fresh install hears where the folder is set, not "empty"
         typer.secho("index is empty; run  staff library index", fg=typer.colors.YELLOW, err=True)
         raise typer.Exit(1)
     kinds = [k for k in (kind or []) if k]  # validated loosely; unknown kinds match nothing
@@ -104,7 +122,10 @@ def status() -> None:
     svc = _service()
     last = svc.last_indexed()
     when = datetime.fromisoformat(last).astimezone().strftime("%Y-%m-%d %H:%M") if last else "never"
-    typer.echo(f"root:        {svc.root} ({'exists' if svc.root_exists else 'MISSING'})")
+    if svc.root_set:
+        typer.echo(f"root:        {svc.root} ({'exists' if svc.root_exists else 'MISSING'})")
+    else:
+        typer.echo(f"root:        (not set: {_where_to_set_it()})")
     typer.echo(f"database:    {svc.db.path}")
     typer.echo(f"files:       {svc.count()}")
     typer.echo(f"last index:  {when}")

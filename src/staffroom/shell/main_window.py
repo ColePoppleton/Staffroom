@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from staffroom.core import paths
 from staffroom.core.config import Config, Theme
 from staffroom.core.discovery import discover_plugins, visible_plugins
 from staffroom.core.library.model import IndexStats, withheld_message
@@ -30,7 +31,7 @@ from staffroom.shell.settings_page import SettingsPage
 from staffroom.shell.sidebar import Sidebar
 from staffroom.shell.theme import stylesheet
 from staffroom.shell.tool_panel import ToolPanel
-from staffroom.shell.widgets import make_label
+from staffroom.shell.widgets import FirstRunCard, make_label
 
 log = get_logger(__name__)
 
@@ -61,7 +62,10 @@ class MainWindow(QMainWindow):
         library: LibraryService | None = None,
         *,
         auto_index: bool = True,
+        first_run: bool | None = None,
     ) -> None:
+        """``first_run`` forces the welcome card on or off; None (the default)
+        shows it exactly when no resources folder is set."""
         super().__init__()
         self.config = config
         # Every loadable tool; hidden ones can still be opened by name
@@ -91,6 +95,18 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.welcome)
         self.stack.addWidget(self.settings)
         self.stack.addWidget(self.library_page)
+        # The one-card welcome of a fresh install. None once a folder is set.
+        show_card = not config.general.resources_root if first_run is None else first_run
+        self.first_run: FirstRunCard | None = None
+        self._first_run_target = ""
+        self._first_run_pending = show_card
+        if show_card:
+            # The default is shown as written (~/TeachingSessions), not expanded.
+            sessions = config.general.sessions_root or paths.DEFAULT_SESSIONS_ROOT
+            self.first_run = FirstRunCard(sessions)
+            self.first_run.folder_chosen.connect(self._on_first_run_folder)
+            self.first_run.dismissed.connect(self.finish_first_run)
+            self.stack.addWidget(self.first_run)
         layout.addWidget(self.sidebar)
         layout.addWidget(self.stack, 1)
         self.setCentralWidget(root)
@@ -132,9 +148,13 @@ class MainWindow(QMainWindow):
         initial = config.general.last_tool if config.general.last_tool in names else ""
         if not initial and names:
             initial = names[0]  # a fresh config opens on the first workflow tool
-        if initial:
+        if self.first_run is not None:
+            # The card comes first; Choose… or Not now then lands on ``initial``.
+            self._first_run_target = initial
+            self.stack.setCurrentWidget(self.first_run)
+        elif initial:
             self.sidebar.select(initial)
-        if config.general.sidebar_mode == "resources":
+        if config.general.sidebar_mode == "resources" and self.first_run is None:
             self.sidebar.set_mode("resources")
         if auto_index and self.library.root_exists and self.library.count() == 0:
             self.library_page.reindex()
@@ -160,6 +180,29 @@ class MainWindow(QMainWindow):
 
     def show_settings(self) -> None:
         self.stack.setCurrentWidget(self.settings)
+
+    # -- first run -------------------------------------------------------
+    def _on_first_run_folder(self, root: str) -> None:
+        """The card's folder goes through the Settings picker, so saving, the
+        library root and the full first index follow the one existing path;
+        the card then shows that index's progress until it lands on a tool."""
+        self.settings.resources_root.set_path(Path(root))
+        worker = self.library_page.worker
+        if self.first_run is not None and worker is not None and worker.isRunning():
+            worker.progress.connect(self.first_run.show_progress)
+        else:
+            self.finish_first_run()  # nothing to wait for (same folder, or no index)
+
+    def finish_first_run(self) -> None:
+        """Leave the card for the first workflow tool. Runs once: the index
+        finishing and "Continue" / "Not now" may both get here."""
+        if not self._first_run_pending:
+            return
+        self._first_run_pending = False
+        if self._first_run_target:
+            self.go_to_tool(self._first_run_target)
+        else:
+            self.stack.setCurrentWidget(self.welcome)
 
     # -- shortcuts -------------------------------------------------------
     def focus_library_search(self) -> None:
@@ -199,7 +242,9 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentWidget(self.library_page)
         else:
             current = self.config.general.last_tool
-            if current in self.panels or any(p.name == current for p in self.plugins):
+            if self._first_run_pending and self.first_run is not None:
+                self.stack.setCurrentWidget(self.first_run)
+            elif current in self.panels or any(p.name == current for p in self.plugins):
                 self.show_tool(current)
             else:
                 self.stack.setCurrentWidget(self.welcome)
@@ -221,6 +266,9 @@ class MainWindow(QMainWindow):
     def _on_indexed(self, stats: IndexStats) -> None:
         self.refresh_resources()
         self.sidebar.resources.set_indexing(False)
+        if self.first_run is not None and self._first_run_pending:
+            self.first_run.finish_indexing(stats.summary())
+            self.finish_first_run()
 
     def refresh_resources(self) -> None:
         resources = self.library.resources(include_hidden=self.config.general.show_hidden)
@@ -230,7 +278,9 @@ class MainWindow(QMainWindow):
         if withheld:
             status += f"  ·  {withheld} name only"
             detail = withheld_message(withheld)
-        if not self.library.root_exists:
+        if not self.library.root_set:
+            status, detail = "No folder chosen: set it in Settings", ""
+        elif not self.library.root_exists:
             status, detail = "Folder not found: set it in Settings", ""
         self.sidebar.resources.set_resources(resources, status, detail)
         self.library_page.refresh_status()
