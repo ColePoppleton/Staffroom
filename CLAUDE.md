@@ -108,6 +108,13 @@ A tool package exposes `plugin`, an object with `name`, `description`,
 Discovery is `pkgutil` over `teaching_tools.tools`: a new folder appears in
 `tt list` with no reinstall. Broken tools are logged and skipped.
 
+## Process
+
+Branches, the Issues board, and the three skills (`/audit`, `/next-task`,
+`/merge-prs`) are described in `docs/process.md`. Task sessions work in a
+git worktree on a feature branch from `dev`; `main` is what the installed
+app runs. Nothing merges without a PR and green CI.
+
 ## Working here
 
 * `just setup`, `just test`, `just lint`, `just gui`, `just new <name>`,
