@@ -34,7 +34,7 @@ a name, a candidate number or a seating plan.
     `~/.config/staffroom/` and leaves the old folder alone. A
     `.teaching-tools/tags.json` sidecar in the resources folder is still
     read; the next edit writes `.staffroom/tags.json`.
-| Tool outputs | next to the input, or your output folder |
+| Tool outputs | next to the input, `~/TeachingSessions/outputs/<tool>/` when there is none, or your output folder |
 
 Nothing leaves the machine. The app checks its git remote for updates when
 started from a checkout, and that is the only network call it makes.

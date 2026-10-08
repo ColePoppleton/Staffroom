@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from staffroom.core import paths
 from staffroom.core.config import load_config
 
@@ -55,3 +57,41 @@ def test_outputs_never_land_in_the_resources_folder(tmp_path: Path) -> None:
         paths.default_output_dir(inside, str(tmp_path / "o"), resources_root=str(root))
         == tmp_path / "o"
     )
+
+
+def test_default_output_dir_never_uses_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No configured folder and no input: a stable place under the sessions
+    root, never wherever the process happens to be running from."""
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    monkeypatch.chdir(cwd)
+    sessions = tmp_path / "sessions"
+    out = paths.default_output_dir(None, "", sessions_root=str(sessions), tool="worksheet")
+    assert out == sessions / "outputs" / "worksheet"
+    assert out != Path.cwd()
+    # With everything left at its default the folder is under the default sessions root.
+    assert paths.default_output_dir(None, "", tool="worksheet") == (
+        paths.sessions_root("") / "outputs" / "worksheet"
+    )
+    assert paths.fallback_output_dir() == paths.sessions_root("") / "outputs"
+
+
+def test_config_output_dir_for(isolated_home: Path, tmp_path: Path) -> None:
+    cfg = load_config()
+    cfg.general.sessions_root = str(tmp_path / "sessions")
+    assert cfg.output_dir_for(None, "worksheet") == tmp_path / "sessions" / "outputs" / "worksheet"
+    assert cfg.output_dir_for(tmp_path / "marks.csv", "marks") == tmp_path
+    cfg.general.output_dir = str(tmp_path / "chosen")
+    assert cfg.output_dir_for(None, "worksheet") == tmp_path / "chosen"
+    assert cfg.output_dir_for(tmp_path / "marks.csv", "marks") == tmp_path / "chosen"
+
+
+def test_outputs_from_the_resources_folder_follow_the_sessions_root(tmp_path: Path) -> None:
+    root = tmp_path / "Resources"
+    root.mkdir()
+    inside = root / "9a.py"
+    inside.write_text("x = 1\n")
+    out = paths.default_output_dir(
+        inside, "", resources_root=str(root), sessions_root=str(tmp_path / "s"), tool="trace"
+    )
+    assert out == tmp_path / "s" / "outputs" / "trace"

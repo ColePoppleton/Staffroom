@@ -9,7 +9,6 @@ import typer
 
 from staffroom.core import spec
 from staffroom.core.config import load_config
-from staffroom.core.paths import default_output_dir
 from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.quiz.logic import Options
 
@@ -22,10 +21,7 @@ def _ctx(bank: Path, out: Path | None) -> RunContext:
     config = load_config()
     return RunContext(
         config=config,
-        output_dir=out
-        or default_output_dir(
-            bank, config.general.output_dir, resources_root=config.general.resources_root
-        ),
+        output_dir=out or config.output_dir_for(bank, "quiz"),
         progress=lambda _f, msg: typer.secho(msg, dim=True, err=True),
         log=lambda msg: typer.echo(msg, err=True),
     )

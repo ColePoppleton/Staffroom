@@ -8,7 +8,6 @@ from typing import Annotated
 import typer
 
 from staffroom.core.config import load_config
-from staffroom.core.paths import default_output_dir
 from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.marks import presets
 from staffroom.tools.marks.logic import Options
@@ -41,10 +40,7 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(1)
         ctx = RunContext(
             config=config,
-            output_dir=out
-            or default_output_dir(
-                source, config.general.output_dir, resources_root=config.general.resources_root
-            ),
+            output_dir=out or config.output_dir_for(source, "marks"),
             progress=lambda _f, msg: typer.secho(msg, dim=True, err=True),
             log=lambda msg: typer.echo(msg, err=True),
         )

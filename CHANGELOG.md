@@ -10,6 +10,14 @@ with every change; `just release <part>` turns it into a version.
 - First product audit (`docs/audits/2026-10-08.md`): ten personas, 23 issues
   on the "Phase 8: Ready for other teachers" milestone, and the not-doing list.
 
+### Changed
+- Outputs never land in the code checkout or the shell's current directory.
+  With no output folder set and no input file, tools write to
+  `<sessions folder>/outputs/<tool>/` (created on first write); the run bar
+  names the folder before Run and "Open output folder" works at any time;
+  Settings explains the default. Screenshot runs (`just screenshots`) write
+  to a throwaway folder, so `git status` stays clean. (#11, #10)
+
 ## [0.3.0] - 2026-10-08
 ### Changed
 - Renamed to **Staffroom**. The package is `staffroom`; the commands are

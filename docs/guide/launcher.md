@@ -3,9 +3,11 @@
 The window has two sidebar roots: **Tools** and **Resources**.
 
 Pick a tool, fill in its panel top to bottom, press the big button. Results
-appear below the inputs and files are written to the output folder (next to
-the input by default, or wherever Settings says). The log at the bottom of
-each panel says exactly what happened.
+appear below the inputs and files are written to the output folder, which the
+run bar names before you press Run: next to the input by default,
+`~/TeachingSessions/outputs/<tool>/` for tools with no input file, or
+wherever Settings says. **Open output folder** works before and after the
+run. The log at the bottom of each panel says exactly what happened.
 
 ## Shortcuts
 
@@ -22,7 +24,7 @@ each panel says exactly what happened.
 | Setting | Meaning |
 | --- | --- |
 | Theme | dark or light |
-| Output folder | where tools write; empty means next to the input |
+| Output folder | where tools write; empty means next to the input, or `<sessions folder>/outputs/<tool>` when there is none |
 | Resources folder | what the Resource Library indexes (read-only to every tool) |
 | Sessions folder | where Classroom puts lesson copies; local by default |
 | Editor | Thonny, IDLE, system default, or a custom `{file}` command |

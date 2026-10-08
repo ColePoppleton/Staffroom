@@ -65,7 +65,9 @@ def _privacy_filter(table: Table, path: Path) -> Table:
 
 
 def write_table(table: Table, path: Path) -> Path:
+    """Write ``table`` as CSV or XLSX by extension, creating the folder first."""
     suffix = path.suffix.lower()
+    path.parent.mkdir(parents=True, exist_ok=True)
     if suffix == ".csv":
         return write_csv(table, path)
     if suffix == ".xlsx":

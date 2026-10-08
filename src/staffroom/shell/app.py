@@ -9,8 +9,11 @@ Hidden flags make the launcher scriptable for docs and tests::
 from __future__ import annotations
 
 import argparse
+import atexit
 import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 from PySide6.QtCore import QTimer
@@ -46,6 +49,9 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         config.general.theme = args.theme
     if args.screenshot:
         config.read_only = True
+        # A screenshot run must not leave files next to the example input or
+        # in the checkout: send its outputs to a folder that dies with it.
+        config.general.output_dir = screenshot_output_dir()
     window = MainWindow(config)
     if args.tool:
         window.sidebar.select(args.tool)
@@ -59,6 +65,13 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         if args.resource:
             window.sidebar.resources.select(args.resource)
     return window
+
+
+def screenshot_output_dir() -> str:
+    """A fresh temporary output folder, removed when the process exits."""
+    folder = tempfile.mkdtemp(prefix="staffroom-screenshot-")
+    atexit.register(shutil.rmtree, folder, True)
+    return folder
 
 
 def main(argv: list[str] | None = None) -> int:

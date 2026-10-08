@@ -61,9 +61,12 @@ class SettingsPage(QWidget):
 
         output = Card(
             "Output folder",
-            "Where tools write their results. Leave empty to write next to the input file.",
+            "Where tools write their results. Leave empty to write next to the input file, "
+            f"or to {paths.fallback_output_dir(config.general.sessions_root, '<tool>')} "
+            "when a tool has no input file.",
         )
         self.output_dir = PathPickerWidget(FolderPicker(key="output_dir", label="Output folder"))
+        self.output_dir.edit.setPlaceholderText("next to the input  (default)")
         if config.general.output_dir:
             self.output_dir.edit.setText(config.general.output_dir)
         self.output_dir.changed.connect(self._on_output_dir)

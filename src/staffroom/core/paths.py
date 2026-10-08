@@ -75,22 +75,38 @@ def sessions_root(configured: str) -> Path:
 OUTPUTS_SUBDIR = "outputs"
 
 
-def default_output_dir(
-    input_path: Path | None, configured: str, *, resources_root: str = ""
-) -> Path:
-    """Resolve where a tool should write: the configured folder if set,
-    otherwise alongside the input, otherwise the current directory.
+def fallback_output_dir(sessions_root_setting: str = "", tool: str = "") -> Path:
+    """The one predictable place outputs go when nothing better applies:
+    ``<sessions_root>/outputs/<tool>``. Stable across runs, never the process's
+    current directory (which for the Dock launcher is the code checkout)."""
+    folder = sessions_root(sessions_root_setting) / OUTPUTS_SUBDIR
+    return folder / tool if tool else folder
 
-    The resources folder is read-only to every tool, so an input that lives
-    under ``resources_root`` sends outputs to ``<sessions_root>/outputs``
-    instead of next to the file."""
+
+def default_output_dir(
+    input_path: Path | None,
+    configured: str,
+    *,
+    resources_root: str = "",
+    sessions_root: str = "",
+    tool: str = "",
+) -> Path:
+    """Resolve where a tool should write, in this order:
+
+    1. the folder the teacher configured in Settings, if any;
+    2. next to the input file, when there is one and it is not inside the
+       read-only resources folder;
+    3. otherwise :func:`fallback_output_dir`, ``<sessions_root>/outputs/<tool>``.
+
+    Never the current working directory. Writers create the folder on first
+    write, so this function does no I/O."""
     if configured:
         return Path(configured).expanduser()
-    if input_path is not None:
-        if resources_root and _is_under(input_path, Path(resources_root).expanduser()):
-            return sessions_root("") / OUTPUTS_SUBDIR
+    if input_path is not None and not (
+        resources_root and _is_under(input_path, Path(resources_root).expanduser())
+    ):
         return input_path.parent
-    return Path.cwd()
+    return fallback_output_dir(sessions_root, tool)
 
 
 def _is_under(path: Path, root: Path) -> bool:

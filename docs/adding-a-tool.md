@@ -89,7 +89,9 @@ def run(self, inputs, ctx):
     )
 ```
 
-`ctx.output_dir` is the configured output folder, or the input's folder.
+`ctx.output_dir` is the configured output folder, the input's folder, or
+`<sessions root>/outputs/<tool>/` when there is no input; never the current
+directory. In a CLI resolve it with `config.output_dir_for(source, "<tool>")`.
 `ctx.resources` is the Resource Library (`None` under a bare CLI run): use
 `ctx.resources.search("while")` or `ctx.resources.pick(".py")` to let the
 teacher choose a file from the indexed resources instead of a raw file
