@@ -63,5 +63,16 @@ update:
 icon:
     uv run python scripts/make_icon.py
 
+# Cut a release from main: bump (patch|minor|major), move Unreleased in CHANGELOG, commit, tag, push.
+# The tag triggers the Release workflow (wheel + sdist + GitHub Release with the notes).
+release PART="patch":
+    @git diff --quiet || (echo "commit or stash changes first" && exit 1)
+    @[ "$(git branch --show-current)" = "main" ] || (echo "release from main (merge dev first)" && exit 1)
+    uv run python scripts/release.py bump {{PART}}
+    uv lock --quiet
+    uv run python scripts/release.py tag
+    git push --follow-tags
+    @echo "pushed; watch the Release workflow on GitHub"
+
 # Everything CI would do
 check: lint test

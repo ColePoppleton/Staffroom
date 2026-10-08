@@ -1,6 +1,26 @@
 # Changelog
 
-## Phase 7 — polish and packaging (2026-10-08)
+All notable changes are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
+[Semantic Versioning](https://semver.org/). Add a line under **Unreleased**
+with every change; `just release <part>` turns it into a version.
+
+## [Unreleased]
+
+### Added
+- Thin launcher app (`just install`) and self-update from the git remote.
+- Semantic versioning, Keep-a-Changelog, tag-driven GitHub Releases with a
+  wheel and sdist (`.github/workflows/release.yml`, `scripts/release.py`,
+  `just release`). `uv tool install` is the canonical install.
+- MIT licence.
+- Branch model, Issues board, the `/audit`, `/next-task` and `/merge-prs`
+  skills, and CI.
+
+## [0.1.0] - 2026-10-08
+
+The seven roadmap phases, as built:
+
+### Phase 7 — polish and packaging (2026-10-08)
 
 - Installed as a thin launcher: `just install` builds `Teaching Tools.app`
   whose executable runs the checkout with uv, and copies it into
@@ -30,7 +50,7 @@
   month" review in PHASES.md can be done from evidence. The review itself
   is a decision for after a month of use.
 
-## Phase 6 — quiz (2026-10-08)
+### Phase 6 — quiz (2026-10-08)
 
 - `core/spec/`: OCR J277 and AQA 8525 content maps as TOML data files with a
   loader (`load_taxonomy`, `find`, `describe`). Indicative: check against
@@ -56,7 +76,7 @@
 - Banks are Markdown (and could be TOML) rather than YAML, to avoid a
   dependency.
 
-## Phase 5 — pseudocode (2026-10-07)
+### Phase 5 — pseudocode (2026-10-07)
 
 - `tools/pseudocode`: Python ↔ OCR Exam Reference Language ↔ AQA pseudocode
   for the GCSE subset, through one intermediate representation. Covers
@@ -78,7 +98,7 @@
 - Widget kit: `TextView(copy_button=True)` adds a Copy button to any text
   output.
 
-## Phase 4 — sandboxed runner, trace, bugs, fade (2026-10-07)
+### Phase 4 — sandboxed runner, trace, bugs, fade (2026-10-07)
 
 - `core/runner/`: runs a file with `python -I -u` in a temp working
   directory with a minimal environment, hard wall-clock timeout (the process
@@ -102,7 +122,7 @@
 - `core/codeinput.py`: shared "file from the library or pasted code" input.
 - CLI: `tt trace make`, `tt bugs make` / `tt bugs kinds`, `tt fade make`.
 
-## Phase 3 — house style, parsons, worksheet (2026-10-07)
+### Phase 3 — house style, parsons, worksheet (2026-10-07)
 
 - `core/export/`: one document model (headings, paragraphs, code blocks,
   numbered items with answer space, tables, hint boxes, page breaks; answer
@@ -130,7 +150,7 @@
   those outputs now go to `~/TeachingSessions/outputs` unless an output
   folder is configured.
 
-## Phase 2 — marks (2026-10-06)
+### Phase 2 — marks (2026-10-06)
 
 - `tools/marks`: raw marks per question (q1..qn, one row per script, no
   identifiers) → per-script grades (view only), grade distribution table
@@ -152,7 +172,7 @@
 - Colour tokens moved to `core/theme_tokens.py` so charts can use the app
   palette without a tool touching Qt. matplotlib (Agg) added.
 
-## Phase 1b — classroom (2026-10-06)
+### Phase 1b — classroom (2026-10-06)
 
 - Library picker rebuilt as a palette after the first version proved
   unreadable: one big search field, the folder tree while it is empty, rich
@@ -185,7 +205,7 @@
   `RunResult.texts` and the optional `SupportsActions.act(name, row, ctx)`
   plugin method back them.
 
-## Phase 1a — Resource Library (2026-10-06)
+### Phase 1a — Resource Library (2026-10-06)
 
 - `core/library/`: scanner with kind classification and hidden-cruft rules,
   text extraction for .py/.txt/.md/.csv/.pdf only (pypdf, 20-page cap),
@@ -211,7 +231,7 @@
   log handler broke under typer's CliRunner; table previews no longer
   stretch their last column.
 
-## Phase 0 — Skeleton (2026-10-06)
+### Phase 0 — Skeleton (2026-10-06)
 
 - uv-managed src layout; `tt` (typer) and `tt-gui` (PySide6) entry points.
 - `core/`: `Table`, CSV/XLSX I/O with fake-data marker, TOML config, paths,
