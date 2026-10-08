@@ -136,3 +136,59 @@ def test_plugin_and_cli(tmp_path: Path) -> None:
     )
     assert r.exit_code == 0, r.output
     assert "Line  total  count  Output" in r.output and (tmp_path / "loop_trace_key.docx").exists()
+
+
+ASKS_TWICE = (
+    'width = int(input("Width? "))\nheight = int(input("Height? "))\nprint(width * height)\n'
+)
+
+
+def test_input_with_nothing_to_read_is_recorded_by_the_tracer() -> None:
+    # The tracer wraps input(): the uncaught EOFError it raised is reported as
+    # such, with how many inputs had been read, not guessed from stderr.
+    result = run_trace(ASKS_TWICE, "", 50)
+    assert result.input_eof and result.inputs_read == 0
+    assert result.error and result.error.startswith("EOFError")
+    partial = run_trace(ASKS_TWICE, "4\n", 50)
+    assert partial.input_eof and partial.inputs_read == 1
+    # A program that handles the EOF itself has not hit the problem.
+    handled = run_trace(
+        'try:\n    x = input()\nexcept EOFError:\n    x = "none"\nprint(x)\n', "", 50
+    )
+    assert not handled.input_eof and handled.error is None and handled.stdout == "none\n"
+    # ...and an EOFError the program raises itself is an ordinary error.
+    own = run_trace("raise EOFError('mine')\n", "", 50)
+    assert not own.input_eof and own.error == "EOFError: mine"
+
+
+def test_empty_inputs_box_is_a_tool_error_and_writes_nothing(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    out.mkdir()
+    ctx = RunContext(config=load_config(), output_dir=out)
+    with pytest.raises(
+        ToolError, match=r"^The pasted code asked for input but the Inputs box is empty"
+    ):
+        plugin.run({"pasted": ASKS_TWICE, "options": Options()}, ctx)
+    src = tmp_path / "area.py"
+    src.write_text(ASKS_TWICE)
+    with pytest.raises(
+        ToolError, match=r"^area\.py asked for a 2nd input but the Inputs box has only 1 line"
+    ):
+        plugin.run({"source": src, "stdin": "4", "options": Options()}, ctx)
+    r = runner.invoke(app, ["trace", "make", str(src), "--out", str(out)])
+    assert r.exit_code == 1, r.output
+    assert (
+        "area.py asked for input but the Inputs box is empty: add one line per input() call"
+        in r.output
+    )
+    assert list(out.iterdir()) == [], "nothing may be written for a run that got no input"
+
+
+def test_other_runtime_errors_still_make_the_sheet_and_say_so(tmp_path: Path) -> None:
+    ctx = RunContext(config=load_config(), output_dir=tmp_path)
+    result = plugin.run(
+        {"pasted": "x = 1\ny = x / 0\nprint(y)\n", "options": Options(formats="pdf")}, ctx
+    )
+    assert "ended with ZeroDivisionError: division by zero" in result.summary
+    assert "ends with an error: ZeroDivisionError" in result.texts["preview"]
+    assert len(result.files) == 2 and all(f.exists() for f in result.files)

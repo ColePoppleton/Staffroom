@@ -64,6 +64,14 @@ with every change; `just release <part>` turns it into a version.
   (`absorption: B AND (B OR NOT C) = B, leaving A AND B`). The header states
   the gate set or the law family so a sheet is self-describing, and an
   A-level sheet carries `alevel` in its file name (#20).
+- `trace`: a program that calls `input()` with the Inputs box empty (or
+  short) stops with "`<file>.py` asked for input but the Inputs box is empty:
+  add one line per input() call" and writes nothing, instead of a green
+  status and a one-row sheet. The tracer records the `EOFError` that
+  `input()` itself raised, so a program that catches the EOF, or raises its
+  own, is not mistaken for it. Any other runtime error still produces the
+  sheet, and the status line now says "ended with <Error>" as the log did
+  (#21).
 - `marks` finds the `MAX` row of a markbook export even when the flag sits in
   the name column: `core.csvio.read_table(path, flag=...)` decides which rows
   carry the word on the raw file and passes only the row indices on

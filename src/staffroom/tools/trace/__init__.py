@@ -80,6 +80,10 @@ class TracePlugin:
             stdin += "\n"
         ctx.progress(0.2, "Running in the sandbox")
         result = run_trace(source, stdin, options.max_steps)
+        if result.input_eof:
+            # Nothing is written: a one-row sheet for a program that never got
+            # its input is not a worksheet, it is a mistake to fix and rerun.
+            raise ToolError(logic.missing_input_message(name, stdin, result.inputs_read))
         steps = logic.select_steps(result, source, options.kinds())
         variables = logic.chosen_variables(result, options.variables)
         completed = logic.trace_table(steps, variables)
@@ -115,7 +119,9 @@ class TracePlugin:
             texts={"preview": to_text(doc.sheet()) + "\n\n" + to_text(doc.key())},
             files=files,
             summary=(
-                f"{len(steps)} rows; wrote {', '.join(f.name for f in files)} to {ctx.output_dir}"
+                f"{len(steps)} rows"
+                + (f"; ended with {result.error}" if result.error else "")
+                + f"; wrote {', '.join(f.name for f in files)} to {ctx.output_dir}"
             ),
         )
 
