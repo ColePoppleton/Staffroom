@@ -23,6 +23,14 @@ with every change; `just release <part>` turns it into a version.
   detached gets one plain line instead of git's "ambiguous argument" error;
   the release is reported but never pulled from there, and the update never
   switches branch.
+- Quiz's Kahoot export reports what it actually wrote (#23): the summary and
+  the chosen-questions table describe the rows in the file ("3 of 5 written;
+  2 short answers skipped: Q5, Q7"), every skipped question has its reason in
+  the log, and an export that would be empty stops with a message instead of
+  writing a file. Short-answer distractors are now borrowed from the whole
+  bank rather than only the chosen questions, nearest first (same topic tag,
+  then the same spec section, then anywhere), and the log names the source
+  question and topic whenever one had to come from outside the topic.
 
 ## [0.4.0] - 2026-10-08
 ### Added

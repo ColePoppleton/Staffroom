@@ -100,9 +100,26 @@ class QuizPlugin:
 
         notes: list[str] = []
         stem = source.stem
+        written = chosen
+        count_phrase = f"{len(chosen)} questions"
         ctx.progress(0.6, "Writing")
         if options.fmt == "kahoot":
-            files = write_kahoot(chosen, ctx.output_dir, stem, notes)
+            # Distractors come from the whole bank, not only the chosen questions,
+            # so a short answer is rarely skipped and stays within its topic.
+            sheet = logic.kahoot_sheet(chosen, bank.questions)
+            notes = sheet.notes
+            if not sheet.rows:
+                for n in notes:
+                    ctx.log("Note: " + n)
+                raise ToolError(
+                    "Nothing could be exported for Kahoot: "
+                    + "; ".join(f"Q{q.number} {reason}" for q, reason in sheet.skipped)
+                    + ". Add more short-answer questions to the bank, or export as forms "
+                    "or donow."
+                )
+            written = list(sheet.written)
+            count_phrase = logic.kahoot_report(sheet, len(chosen))
+            files = write_kahoot(sheet.rows, ctx.output_dir, stem)
             preview = (ctx.output_dir / f"{stem}_kahoot.csv").read_text(encoding="utf-8")
         elif options.fmt == "forms":
             files = write_forms(chosen, ctx.output_dir, stem, options.title)
@@ -117,12 +134,10 @@ class QuizPlugin:
             ctx.log("Note: " + n)
         ctx.progress(1.0, "Done")
         return RunResult(
-            tables={"chosen": logic.selection_table(chosen)},
+            tables={"chosen": logic.selection_table(written)},
             texts={"preview": preview},
             files=files,
-            summary=(
-                f"{len(chosen)} questions → {', '.join(f.name for f in files)} in {ctx.output_dir}"
-            ),
+            summary=f"{count_phrase} → {', '.join(f.name for f in files)} in {ctx.output_dir}",
         )
 
 

@@ -23,6 +23,26 @@ questions round-robin across the three windows; the run log lists what fell
 in each. *Do-now*, *spec point* and *retrieval windows* are in the
 [Glossary](../guide/glossary.md#quiz).
 
+## Short answers in Kahoot
+
+Kahoot has no typed-answer question, so a `short` question becomes a
+four-option one: the real answer plus three distractors borrowed from the
+other short answers in the bank (the whole bank, not only the questions
+chosen). The nearest are taken first: short answers with the same `topic:`
+tag, then ones in the same spec section (`ocr:1.2.x` for an `ocr:1.2.4`
+question), then anywhere. When a distractor had to come from outside the
+topic the run log says where from, for example
+`Q12: distractors borrowed outside topic 'networks': '10' (Q5, binary), …`,
+so you can add a few more short answers on that topic if it reads oddly.
+
+A short answer with fewer than three distinct distractors available anywhere
+in the bank is left out of the Kahoot file, and so is an mcq whose only
+correct option is the fifth or later. The summary and the chosen-questions
+table describe the file that was written, not the pick:
+`3 of 5 written; 2 short answers skipped: Q5, Q7 → …`, with the reason for
+each in the log. If nothing could be written the export stops with a message
+instead of leaving an empty file.
+
 ```bash
 staff quiz export --bank bank.md --format kahoot --topics binary,cpu --n 10
 staff quiz retrieval --bank bank.md --log taught.csv --date 2026-10-08

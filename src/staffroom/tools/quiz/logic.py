@@ -356,21 +356,86 @@ def _kahoot_time(seconds: int) -> int:
     return min(KAHOOT_TIMES, key=lambda t: (abs(t - seconds), t))
 
 
-def kahoot_rows(questions: list[Question], notes: list[str]) -> list[list[str]]:
-    """Rows in Kahoot's template column order (no header). Short-answer
-    questions borrow three distractors from other short answers."""
-    short_answers = [q.answer for q in questions if q.qtype == "short"]
-    rows: list[list[str]] = []
+@dataclass
+class KahootSheet:
+    """What a Kahoot export holds: the rows in template order (no header),
+    the questions those rows came from, the ones left out with the reason,
+    and notes for the run log."""
+
+    rows: list[list[str]] = field(default_factory=list)
+    written: tuple[Question, ...] = ()
+    skipped: tuple[tuple[Question, str], ...] = ()
+    notes: list[str] = field(default_factory=list)
+
+
+def _spec_sections(q: Question) -> set[str]:
+    """``ocr:1.2.4`` → ``ocr:1.2``: the section a spec point sits in."""
+    return {t.rsplit(".", 1)[0] for t in q.spec_tags}
+
+
+def _describe(q: Question) -> str:
+    return ", ".join(q.topics) or ", ".join(q.spec_tags) or "untagged"
+
+
+def _distractors(
+    q: Question, pool: list[Question], rng: random.Random
+) -> list[tuple[str, Question]]:
+    """Up to three distinct wrong answers for a short question, borrowed from
+    other short answers in ``pool``: same topic first, then the same spec
+    section, then anywhere. Returns ``(answer, donor)`` pairs."""
+    donors = [d for d in pool if d.qtype == "short" and d is not q and d.answer.strip()]
+    rng.shuffle(donors)
+
+    def rank(d: Question) -> int:
+        if set(d.topics) & set(q.topics):
+            return 0
+        if _spec_sections(d) & _spec_sections(q):
+            return 1
+        return 2
+
+    donors.sort(key=rank)  # stable, so the shuffle decides ties within a tier
+    taken = {q.answer.strip().casefold()}
+    out: list[tuple[str, Question]] = []
+    for d in donors:
+        key = d.answer.strip().casefold()
+        if key in taken:
+            continue
+        taken.add(key)
+        out.append((d.answer.strip(), d))
+        if len(out) == 3:
+            break
+    return out
+
+
+def kahoot_sheet(questions: list[Question], pool: list[Question] | None = None) -> KahootSheet:
+    """Build the Kahoot rows for ``questions``. A short-answer question needs
+    three distractors, borrowed from the short answers in ``pool`` (the whole
+    bank; defaults to ``questions``) nearest first: same topic, same spec
+    section, then anywhere, with a note naming the source whenever a
+    distractor came from outside the question's topic."""
+    pool = list(pool) if pool is not None else list(questions)
+    sheet = KahootSheet()
+    notes = sheet.notes
+    written: list[Question] = []
+    skipped: list[tuple[Question, str]] = []
     for q in questions:
         if q.qtype == "short":
-            others = [a for a in short_answers if a != q.answer]
-            if len(others) < 3:
-                notes.append(
-                    f"Q{q.number} skipped for Kahoot: short answer with too few distractors"
-                )
-                continue
             rng = random.Random(q.number)
-            options = [q.answer, *rng.sample(others, 3)]
+            borrowed = _distractors(q, pool, rng)
+            if len(borrowed) < 3:
+                reason = (
+                    "short answer with too few distractors (needs 3 other short answers in the "
+                    f"bank with different answers, found {len(borrowed)})"
+                )
+                notes.append(f"Q{q.number} skipped for Kahoot: {reason}")
+                skipped.append((q, reason))
+                continue
+            outside = [(a, d) for a, d in borrowed if not (set(d.topics) & set(q.topics))]
+            if outside:
+                sources = ", ".join(f"'{a}' (Q{d.number}, {_describe(d)})" for a, d in outside)
+                where = f"outside topic '{q.topics[0]}'" if q.topics else "from other topics"
+                notes.append(f"Q{q.number}: distractors borrowed {where}: {sources}")
+            options = [q.answer, *(a for a, _ in borrowed)]
             rng.shuffle(options)
             correct = [options.index(q.answer) + 1]
         else:
@@ -379,11 +444,13 @@ def kahoot_rows(questions: list[Question], notes: list[str]) -> list[list[str]]:
                 notes.append(f"Q{q.number}: Kahoot allows 4 answers; extra options dropped")
             correct = [i + 1 for i in q.correct if i < 4]
             if not correct:
-                notes.append(f"Q{q.number} skipped for Kahoot: no correct answer in the first 4")
+                reason = "no correct answer in the first 4 options"
+                notes.append(f"Q{q.number} skipped for Kahoot: {reason}")
+                skipped.append((q, reason))
                 continue
         while len(options) < 4:
             options.append("")
-        rows.append(
+        sheet.rows.append(
             [
                 _clip(q.text, KAHOOT_QUESTION_MAX, notes, f"Q{q.number} text"),
                 *(_clip(o, KAHOOT_ANSWER_MAX, notes, f"Q{q.number} answer") for o in options),
@@ -391,7 +458,24 @@ def kahoot_rows(questions: list[Question], notes: list[str]) -> list[list[str]]:
                 ",".join(str(c) for c in correct),
             ]
         )
-    return rows
+        written.append(q)
+    sheet.written = tuple(written)
+    sheet.skipped = tuple(skipped)
+    return sheet
+
+
+def kahoot_report(sheet: KahootSheet, chosen: int) -> str:
+    """The summary's opening phrase: ``"5 questions"`` when every chosen
+    question was written, else ``"3 of 5 written; 2 short answers skipped: Q5, Q7"``."""
+    if not sheet.skipped:
+        return f"{chosen} question{'s' if chosen != 1 else ''}"
+    n = len(sheet.skipped)
+    names = ", ".join(f"Q{q.number}" for q, _ in sheet.skipped)
+    if all(q.qtype == "short" for q, _ in sheet.skipped):
+        what = f"{n} short answer{'s' if n != 1 else ''} skipped"
+    else:
+        what = f"{n} skipped"
+    return f"{len(sheet.written)} of {chosen} written; {what}: {names}"
 
 
 def _csv_field(value: str) -> str:
