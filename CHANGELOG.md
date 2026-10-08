@@ -6,6 +6,9 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Added
+- First product audit (`docs/audits/2026-10-08.md`): ten personas, 23 issues
+  on the "Phase 8: Ready for other teachers" milestone, and the not-doing list.
 
 ## [0.3.0] - 2026-10-08
 ### Changed

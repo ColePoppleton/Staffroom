@@ -69,6 +69,8 @@ nav:
       - House style: guide/house-style.md
   - Contributing:
       - Process: process.md
+  - Audits:
+      - 2026-10-08: audits/2026-10-08.md
       - Adding a tool: adding-a-tool.md
       - Roadmap: ROADMAP.md
   - Changelog: changelog.md
