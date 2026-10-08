@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from staffroom.cli import app
 from staffroom.core.config import load_config
-from staffroom.core.plugin import RunContext
+from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.fade import logic, plugin
 from staffroom.tools.fade.logic import BLANK, Options
 
@@ -82,3 +82,64 @@ def test_plugin_and_cli(tmp_path: Path) -> None:
     assert (tmp_path / "sol_faded_key.docx").exists()
     r = runner.invoke(app, ["fade", "make", str(src), "--order", "sideways"])
     assert r.exit_code == 1
+
+
+def test_versions_are_capped_at_the_fadeable_line_count(tmp_path: Path) -> None:
+    two_lines = "x = 1\nprint(x)\n"
+    versions = logic.fade_versions(two_lines, Options(steps=8))
+    assert [logic.blank_count(v) for v in versions] == [1, 2]
+    # Whatever the sizes, every version has a blank and strictly more than the one before.
+    for n in range(1, 13):
+        program = "\n".join(f"v{i} = {i}" for i in range(n)) + "\n"
+        for steps in range(1, 13):
+            counts = [
+                logic.blank_count(v) for v in logic.fade_versions(program, Options(steps=steps))
+            ]
+            assert len(counts) == min(steps, n), (n, steps)
+            assert counts[0] >= 1 and counts[-1] == n, (n, steps)
+            assert all(a < b for a, b in itertools.pairwise(counts)), (n, steps, counts)
+    logged: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path, log=logged.append)
+    result = plugin.run({"pasted": two_lines, "options": Options(steps=8, formats="pdf")}, ctx)
+    assert result.texts["preview"].count("Version ") == 2
+    assert any("8 versions" in m and "2" in m for m in logged), logged
+
+
+def test_invalid_python_is_refused_with_the_shared_message(tmp_path: Path) -> None:
+    broken = "def oops(\n    x = 1\n"
+    ctx = RunContext(config=load_config(), output_dir=tmp_path)
+    with pytest.raises(ToolError, match=r"not valid Python: .* \(line [12]\)"):
+        plugin.run({"pasted": broken, "options": Options()}, ctx)
+    assert list(tmp_path.iterdir()) == []
+    src = tmp_path / "broken.py"
+    src.write_text(broken)
+    r = runner.invoke(app, ["fade", "make", str(src), "--out", str(tmp_path)])
+    assert r.exit_code == 1 and "not valid Python" in r.output
+
+
+def test_range_errors_say_what_was_expected_and_what_is_wrong() -> None:
+    with pytest.raises(ValueError, match="Line ranges like 3-5, 8"):
+        logic.fade_versions(PROGRAM, Options(order="ranges", ranges="abc"))
+    with pytest.raises(ValueError, match="no lines are listed"):
+        logic.fade_versions(PROGRAM, Options(order="ranges", ranges="  "))
+    with pytest.raises(ValueError, match=r"Lines 10-12 are past the end .*9 lines"):
+        logic.fade_versions(PROGRAM, Options(order="ranges", ranges="8-12"))
+    with pytest.raises(ValueError, match=r"Line 0 .*start at 1"):
+        logic.fade_versions(PROGRAM, Options(order="ranges", ranges="0, 2"))
+    with pytest.raises(ValueError) as excinfo:
+        logic.fade_versions(PROGRAM, Options(order="ranges", ranges="1, 6-7"))
+    message = str(excinfo.value)
+    assert "Nothing to fade" in message
+    assert "line 1 is a def/if/for/while header" in message and "Keep headers" in message
+    assert "line 6 is blank" in message and "line 7 is a comment" in message
+    # Listing ranges without choosing the ranges order is almost certainly a slip.
+    with pytest.raises(ValueError, match="Fade order is 'bottom_up'"):
+        logic.fade_versions(PROGRAM, Options(order="bottom_up", ranges="3-5"))
+    # Lines that cannot fade are reported but do not stop the others fading.
+    assert logic.unfadeable_lines(PROGRAM, Options(order="ranges", ranges="1-2, 8")) == [
+        (1, "line 1 is a def/if/for/while header (Keep headers is on)")
+    ]
+    versions = logic.fade_versions(PROGRAM, Options(steps=2, order="ranges", ranges="1-2, 8"))
+    assert [logic.blank_count(v) for v in versions] == [1, 2]
+    with pytest.raises(ValueError, match="every line is a header, a comment or blank"):
+        logic.fade_versions("# only a comment\n", Options())

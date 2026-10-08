@@ -16,7 +16,10 @@ def register(app: typer.Typer) -> None:
     @app.command()
     def make(
         source: Annotated[Path, typer.Argument(exists=True, dir_okay=False, help="A .py file")],
-        steps: Annotated[int, typer.Option("--steps", "-k", help="How many versions")] = 4,
+        steps: Annotated[
+            int,
+            typer.Option("--steps", "-k", help="How many versions (at most one per fadeable line)"),
+        ] = 4,
         order: Annotated[
             str, typer.Option("--order", help="bottom_up, top_down or ranges")
         ] = "bottom_up",

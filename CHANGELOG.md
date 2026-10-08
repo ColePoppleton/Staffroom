@@ -6,6 +6,16 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Fixed
+- Fade no longer makes duplicate or blank-free versions when asked for more
+  versions than there are fadeable lines (#24): versions are capped at the
+  fadeable-line count with a log note, so every version has at least one
+  blank and strictly more than the one before. A file that is not valid
+  Python is refused with the same "That is not valid Python: … (line n)"
+  message as the other tools. Range mistakes say what is wrong: lines past
+  the end of the file or below 1, ranges typed without choosing the `ranges`
+  order, and listed lines that are headers, comments or blank (skipped with
+  a log note, or an explanation when nothing is left to fade).
 
 ## [0.4.0] - 2026-10-08
 ### Added
