@@ -47,3 +47,37 @@ def test_index_missing_root(tmp_path: Path) -> None:
     cfg.save()
     r = runner.invoke(app, ["library", "index"])
     assert r.exit_code == 1 and "not found" in r.output
+
+
+def test_exclude_command_and_name_only_report(resources_root: Path) -> None:
+    (resources_root / "Python" / "task_submission.py").write_text(
+        "# Candidate number: 4021\nprint(1)\n"
+    )
+    r = runner.invoke(app, ["library", "index"])
+    assert r.exit_code == 0, r.output
+    assert "1 file skipped for text" in r.output
+    assert "name only: Python/task_submission.py" in r.output
+
+    r = runner.invoke(app, ["library", "status"])
+    assert r.exit_code == 0, r.output
+    assert "name only:   1 file" in r.output
+    assert "excluded:    -" in r.output
+    assert "only read" in r.output
+
+    r = runner.invoke(app, ["library", "exclude", "--add", "OCR Booklet", "--add", "*.csv"])
+    assert r.exit_code == 0, r.output
+    assert "configured:  OCR Booklet, *.csv" in r.output
+    assert load_config().general.library_exclude == ["OCR Booklet", "*.csv"]
+
+    r = runner.invoke(app, ["library", "index"])
+    assert r.exit_code == 0, r.output
+    assert "4 removed" in r.output and "2 exclusion pattern(s)" in r.output
+    r = runner.invoke(app, ["library", "search", "while"])
+    assert "exercise_3a.py" not in r.output and "while_loops.py" in r.output
+
+    r = runner.invoke(app, ["library", "exclude", "--remove", "*.csv", "--remove", "nope"])
+    assert r.exit_code == 0, r.output
+    assert "not in the list: nope" in r.output
+    assert load_config().general.library_exclude == ["OCR Booklet"]
+    r = runner.invoke(app, ["library", "exclude"])
+    assert "configured:  OCR Booklet" in r.output and "ignore file: -" in r.output

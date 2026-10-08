@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 
 from staffroom.core.config import Config, Theme
 from staffroom.core.discovery import discover_plugins
-from staffroom.core.library.model import IndexStats
+from staffroom.core.library.model import IndexStats, withheld_message
 from staffroom.core.library.service import LibraryService
 from staffroom.core.log import get_logger
 from staffroom.core.plugin import ToolPlugin
@@ -67,7 +67,9 @@ class MainWindow(QMainWindow):
         self.plugins = plugins if plugins is not None else discover_plugins()
         self.panels: dict[str, ToolPanel] = {}
         self.library = library or LibraryService(
-            Path(config.general.resources_root), picker=self._pick_resource
+            Path(config.general.resources_root),
+            picker=self._pick_resource,
+            exclude=config.general.library_exclude,
         )
         self.setWindowTitle("Staffroom")
         self.setMinimumSize(1040, 680)
@@ -99,6 +101,7 @@ class MainWindow(QMainWindow):
         self.sidebar.theme_toggle_requested.connect(self.toggle_theme)
         self.settings.theme_changed.connect(self.apply_theme)
         self.settings.resources_root_changed.connect(self.set_resources_root)
+        self.settings.library_exclude_changed.connect(self.set_library_exclude)
         self.settings.update_available.connect(self.sidebar.set_update_available)
         self.sidebar.mode_changed.connect(self._on_mode)
         res = self.sidebar.resources
@@ -211,15 +214,27 @@ class MainWindow(QMainWindow):
     def refresh_resources(self) -> None:
         resources = self.library.resources(include_hidden=self.config.general.show_hidden)
         status = f"{len(resources)} files" if resources else "Nothing indexed yet"
+        detail = ""
+        withheld = self.library.withheld_count() if resources else 0
+        if withheld:
+            status += f"  ·  {withheld} name only"
+            detail = withheld_message(withheld)
         if not self.library.root_exists:
-            status = "Folder not found: set it in Settings"
-        self.sidebar.resources.set_resources(resources, status)
+            status, detail = "Folder not found: set it in Settings", ""
+        self.sidebar.resources.set_resources(resources, status, detail)
         self.library_page.refresh_status()
 
     def set_resources_root(self, root: str) -> None:
         self.library.set_root(Path(root))
         self.refresh_resources()
         self.library_page.reindex(full=True)
+
+    def set_library_exclude(self, patterns: object) -> None:
+        """Settings changed the exclusion list: hide what is now excluded at
+        once and re-index so the database follows."""
+        self.library.set_exclude([str(p) for p in patterns] if isinstance(patterns, list) else [])
+        self.refresh_resources()
+        self.library_page.reindex()
 
     def _pick_resource(self, filter_ext: str | None) -> Path | None:
         return pick_resource(self.library, filter_ext, self)

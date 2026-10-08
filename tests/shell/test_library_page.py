@@ -134,3 +134,55 @@ def test_tools_mode_restores_tool(window: MainWindow) -> None:
     assert window.stack.currentWidget() is window.library_page
     window.sidebar.set_mode("tools")
     assert window.stack.currentWidget() is window.panel_for("hello")
+
+
+def test_withheld_file_shows_banner_and_status(
+    window: MainWindow, qtbot: QtBot, resources_root: Path
+) -> None:
+    (resources_root / "Python" / "task_submission.py").write_text(
+        "# Candidate number: 4021\n# UPN: A123456789012\nprint(1)\n"
+    )
+    with qtbot.waitSignal(window.library_page.indexed, timeout=10000):
+        window.sidebar.resources.reindex.click()
+    assert "1 name only" in window.sidebar.resources.status.text()
+    assert "pupil details" in window.sidebar.resources.status.toolTip()
+    assert "1 name only" in window.library_page.index_status.text()
+    window.library_page.show_resource("Python/task_submission.py")
+    preview = window.library_page.preview
+    assert preview.withheld_banner.isVisibleTo(preview)
+    assert not preview.cloud_banner.isVisibleTo(preview)
+    window.library_page.show_resource("Python/notes.md")
+    assert not preview.withheld_banner.isVisibleTo(preview)
+
+
+def test_settings_exclusion_list_hides_folder_and_reindexes(
+    window: MainWindow, qtbot: QtBot
+) -> None:
+    model = window.sidebar.resources.model
+    flags = Qt.MatchFlag.MatchExactly | Qt.MatchFlag.MatchRecursive
+    booklet = "Python/OCR Booklet/exercise_3a.py"
+    assert model.match(model.index(0, 0), REL_PATH_ROLE, booklet, 1, flags)
+
+    editor = window.settings.library_exclude
+    editor.edit.setText("OCR Booklet")
+    with qtbot.waitSignal(window.library_page.indexed, timeout=10000):
+        editor.add_button.click()
+    assert window.config.general.library_exclude == ["OCR Booklet"]
+    assert editor.values() == ["OCR Booklet"]
+    assert not model.match(model.index(0, 0), REL_PATH_ROLE, booklet, 1, flags)
+    assert window.library.db.get(booklet) is None
+    assert window.library.get("Python/notes.md") is not None
+
+    editor.list.setCurrentRow(0)
+    with qtbot.waitSignal(window.library_page.indexed, timeout=10000):
+        editor.remove_button.click()
+    assert window.config.general.library_exclude == []
+    assert window.library.get(booklet) is not None
+
+
+def test_settings_carries_the_stored_statement(window: MainWindow) -> None:
+    text = window.settings.library_statement.text()
+    assert "only ever read" in text
+    assert "library.db" in text
+    assert ".py, .txt, .md, .csv and .pdf" in text
+    assert "full re-index drops the old entries" in text

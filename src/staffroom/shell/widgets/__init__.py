@@ -10,6 +10,7 @@ from staffroom.shell.widgets.path_picker import PathPickerWidget
 from staffroom.shell.widgets.resource_picker import ResourcePickerWidget
 from staffroom.shell.widgets.results import ResultsArea
 from staffroom.shell.widgets.run_bar import RunBar
+from staffroom.shell.widgets.string_list import StringListEditor
 from staffroom.shell.widgets.table_view import (
     EditableTableWidget,
     TableModel,
@@ -31,6 +32,7 @@ __all__ = [
     "ResourcePickerWidget",
     "ResultsArea",
     "RunBar",
+    "StringListEditor",
     "TableModel",
     "TablePreviewWidget",
     "TableWidget",

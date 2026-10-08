@@ -7,7 +7,8 @@ in a sidecar JSON; Office and other binary files are never parsed, only
 opened externally; cloud-only placeholders are marked, never fatal.
 """
 
+from staffroom.core.library.exclude import ExclusionList
 from staffroom.core.library.model import Kind, Resource, SearchHit
 from staffroom.core.library.service import LibraryService, ResourceService
 
-__all__ = ["Kind", "LibraryService", "Resource", "ResourceService", "SearchHit"]
+__all__ = ["ExclusionList", "Kind", "LibraryService", "Resource", "ResourceService", "SearchHit"]

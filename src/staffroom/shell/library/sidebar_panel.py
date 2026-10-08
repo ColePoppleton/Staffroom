@@ -79,10 +79,13 @@ class ResourcesPanel(QWidget):
         footer.addWidget(self.reindex)
         layout.addLayout(footer)
 
-    def set_resources(self, resources: list[Resource], status: str) -> None:
+    def set_resources(self, resources: list[Resource], status: str, detail: str = "") -> None:
+        """``detail`` is the longer explanation behind a terse status (shown as
+        a tooltip), e.g. why some files are indexed by name only."""
         current = self.current_rel_path()
         self.model.set_resources(resources)
         self.status.setText(status)
+        self.status.setToolTip(detail)
         self.tree.expandToDepth(0)
         if current:
             self.select(current)

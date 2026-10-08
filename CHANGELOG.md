@@ -7,23 +7,20 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Added
+- Library privacy (#17): an exclusion list for the resources folder (Settings,
+  `staff library exclude`, or `<root>/.staffroom/ignore`) whose paths are
+  neither indexed nor listed and whose changes re-index; files whose text
+  looks like pupil details (candidate number, surname, UPN, date of birth
+  next to a value) are indexed by name only, counted in the index summary,
+  the sidebar status and `staff library status`, and flagged in the preview;
+  Settings and `docs/guide/privacy.md` state what is indexed, where the
+  database lives, that the folder is only read, and how to delete the index.
+  `StringListEditor` joins the widget kit; `staffroom --settings` opens
+  Settings for screenshots.
 - First product audit (`docs/audits/2026-10-08.md`): ten personas, 23 issues
   on the "Phase 8: Ready for other teachers" milestone, and the not-doing list.
 - `examples/marks_messy.csv`: a fake marks file on which every `marks`
   warning fires, for trying the tool and for the tests.
-
-### Fixed
-- `marks` finds the `MAX` row of a markbook export even when the flag sits in
-  the name column: `core.csvio.read_table(path, flag=...)` decides which rows
-  carry the word on the raw file and passes only the row indices on
-  (`Table.flagged_rows`); the identifier filter itself is unchanged and still
-  unconditional. The tool now warns, in the CLI and the panel log, on a mark
-  above its max (question, count, highest), a max of 0, blank or non-numeric
-  cells (`ab`), and grade boundaries above the paper total (a percent preset
-  applied as raw marks). Blank cells count as 0 in a script's total but are
-  left out of facility and discrimination instead of dragging them down, and
-  the distribution gains an "Incomplete scripts" row saying how many scripts
-  had one. The run still succeeds; the summary says how many warnings to read.
 
 ### Changed
 - Outputs never land in the code checkout or the shell's current directory.
@@ -37,6 +34,17 @@ with every change; `just release <part>` turns it into a version.
   import names); the Trace, Bugs and Fade panels point to it (#16).
 
 ### Fixed
+- `marks` finds the `MAX` row of a markbook export even when the flag sits in
+  the name column: `core.csvio.read_table(path, flag=...)` decides which rows
+  carry the word on the raw file and passes only the row indices on
+  (`Table.flagged_rows`); the identifier filter itself is unchanged and still
+  unconditional. The tool now warns, in the CLI and the panel log, on a mark
+  above its max (question, count, highest), a max of 0, blank or non-numeric
+  cells (`ab`), and grade boundaries above the paper total (a percent preset
+  applied as raw marks). Blank cells count as 0 in a script's total but are
+  left out of facility and discrimination instead of dragging them down, and
+  the distribution gains an "Incomplete scripts" row saying how many scripts
+  had one. The run still succeeds; the summary says how many warnings to read.
 - The runner caps captured stdout and stderr at 1 MB each and drains the
   rest, so a `while True: print(i)` no longer captures hundreds of megabytes
   before the timeout kills it; capped output ends with

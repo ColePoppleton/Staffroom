@@ -116,6 +116,16 @@ class PreviewPane(QWidget):
         self.cloud_banner.setWordWrap(True)
         self.cloud_banner.hide()
         layout.addWidget(self.cloud_banner)
+        self.withheld_banner = QLabel(
+            "Indexed by name only: the text looks like it holds pupil details (a candidate "
+            "number, surname, UPN or date of birth next to a value), so it was not copied into "
+            "the index. Exclude the folder in Settings, or keep such files out of the "
+            "resources folder."
+        )
+        self.withheld_banner.setProperty("role", "danger")
+        self.withheld_banner.setWordWrap(True)
+        self.withheld_banner.hide()
+        layout.addWidget(self.withheld_banner)
 
         # -- content
         self.content_card = Card()
@@ -203,6 +213,7 @@ class PreviewPane(QWidget):
         modified = datetime.fromtimestamp(resource.mtime).strftime("%d %b %Y, %H:%M")
         self.meta.setText(f"{resource.rel_path}   ·   {human_size(resource.size)}   ·   {modified}")
         self.cloud_banner.setVisible(resource.cloud_only)
+        self.withheld_banner.setVisible(resource.text_withheld)
         self.stack.setCurrentIndex(1)
 
         entry = self.service.tag_entry(resource.rel_path)

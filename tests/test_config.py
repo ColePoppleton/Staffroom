@@ -95,3 +95,11 @@ def test_outputs_from_the_resources_folder_follow_the_sessions_root(tmp_path: Pa
         inside, "", resources_root=str(root), sessions_root=str(tmp_path / "s"), tool="trace"
     )
     assert out == tmp_path / "s" / "outputs" / "trace"
+
+
+def test_library_exclude_round_trips() -> None:
+    cfg = load_config()
+    cfg.general.library_exclude = ["Pupil work", "Year 11/Mocks"]
+    cfg.save()
+    assert load_config().general.library_exclude == ["Pupil work", "Year 11/Mocks"]
+    assert load_config().general.library_exclude is not cfg.general.library_exclude

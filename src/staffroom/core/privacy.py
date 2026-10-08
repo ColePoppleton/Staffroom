@@ -132,3 +132,63 @@ def drop_identifier_columns(table: Table) -> tuple[Table, list[str]]:
     clean = table.select(keep)
     clean.dropped_columns = [*table.dropped_columns, *dropped]
     return clean, dropped
+
+
+# ---------------------------------------------------------------- free text
+# The Resource Library copies the text of searchable files into its index. A
+# file that looks like it holds pupil details (an identifier *label* followed
+# closely by a *value*) is indexed by name only. These are heuristics for a
+# warning, not a guarantee: a blank template ("Candidate number: ______") does
+# not match, and prose that merely mentions a label does not either.
+# A written name: a capitalised word after an explicit separator, so that
+# ``surname = row[0]`` or "the surname field" in a lesson does not count.
+_NAMEISH = r"\s*[:=\-–]\s*(?-i:[A-Z][a-z'\-]+)"
+_DATE = r"\d{1,2}[./\- ]\d{1,2}[./\- ]\d{2,4}"
+_SEP = r"\s*(?:[:=\-–]|is|was)?\s*"
+
+IDENTIFIER_TEXT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "candidate number",
+        re.compile(r"\bcandidate\s*(?:number|no\.?|num\.?|id)" + _SEP + r"\d{3,}", re.I),
+    ),
+    ("UPN", re.compile(r"\bUPN" + _SEP + r"[A-Z]\d{12}\b")),
+    ("UPN", re.compile(r"\bUPN" + _SEP + r"\d{4,}", re.I)),
+    ("ULN", re.compile(r"\bULN" + _SEP + r"\d{10}\b", re.I)),
+    (
+        "admission number",
+        re.compile(
+            r"\b(?:admission\s*(?:number|no\.?)|adm\.?\s*no\.?|adno)" + _SEP + r"\d{3,}", re.I
+        ),
+    ),
+    ("date of birth", re.compile(r"\b(?:date\s+of\s+birth|d\.?o\.?b\.?)" + _SEP + _DATE, re.I)),
+    (
+        "surname",
+        re.compile(r"\b(?:surname|last\s*name|family\s*name)" + _NAMEISH + r"\b", re.I),
+    ),
+    (
+        "forename",
+        re.compile(r"\b(?:forename|first\s*name|given\s*name)" + _NAMEISH + r"\b", re.I),
+    ),
+    (
+        "pupil name",
+        re.compile(r"\b(?:pupil|student|learner|candidate)\s*name" + _NAMEISH + r"\b", re.I),
+    ),
+    (
+        "email address",
+        re.compile(r"\be-?mail(?:\s*address)?" + _SEP + r"[\w.+-]+@[\w-]+\.[\w.-]+", re.I),
+    ),
+)
+
+
+def find_identifier_text(text: str) -> list[str]:
+    """Labels of the identifier patterns that occur in ``text``, in a stable
+    order, each once. Empty when the text looks clean."""
+    found: list[str] = []
+    for label, pattern in IDENTIFIER_TEXT_PATTERNS:
+        if label not in found and pattern.search(text):
+            found.append(label)
+    return found
+
+
+def looks_like_pupil_details(text: str) -> bool:
+    return bool(find_identifier_text(text))

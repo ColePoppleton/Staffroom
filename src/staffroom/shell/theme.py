@@ -129,12 +129,19 @@ QTreeView#ResourceTree::branch:open:has-children:!has-siblings,
 QTreeView#ResourceTree::branch:open:has-children:has-siblings {{
     image: url("{chevron}");
 }}
-QListWidget#ResultList {{
+QListWidget#ResultList, QListWidget#StringList {{
     background: {p.surface}; border: 1px solid {p.border}; border-radius: {RADIUS}px; padding: 6px;
 }}
-QListWidget#ResultList::item {{ border-radius: {RADIUS_SM}px; margin: 2px 0px; }}
-QListWidget#ResultList::item:hover {{ background: {p.surface_alt}; }}
-QListWidget#ResultList::item:selected {{ background: {p.accent_soft}; }}
+QListWidget#ResultList::item, QListWidget#StringList::item {{
+    border-radius: {RADIUS_SM}px; margin: 2px 0px;
+}}
+QListWidget#ResultList::item:hover, QListWidget#StringList::item:hover {{
+    background: {p.surface_alt};
+}}
+QListWidget#ResultList::item:selected, QListWidget#StringList::item:selected {{
+    background: {p.accent_soft};
+}}
+QListWidget#StringList::item {{ padding: 3px 6px; }}
 QPlainTextEdit#CodeView {{
     font-family: {MONO_FAMILY}; font-size: 12.5px; color: {p.text};
     background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;

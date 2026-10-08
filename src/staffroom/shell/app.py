@@ -35,6 +35,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--resource", help="open the Resources view on this path (relative to root)"
     )
+    parser.add_argument("--settings", action="store_true", help="open the Settings page")
     parser.add_argument("--theme", choices=["dark", "light"], help="override the saved theme")
     parser.add_argument("--run", action="store_true", help="run the tool before --screenshot")
     parser.add_argument("--screenshot", type=Path, help="render, save a PNG, and exit")
@@ -64,6 +65,8 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         window.sidebar.set_mode("resources")
         if args.resource:
             window.sidebar.resources.select(args.resource)
+    if args.settings:
+        window.show_settings()
     return window
 
 
