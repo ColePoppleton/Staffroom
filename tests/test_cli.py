@@ -9,12 +9,23 @@ from staffroom.cli import app
 runner = CliRunner()
 
 
-def test_list_shows_hello() -> None:
+def test_list_shows_hello_marked_hidden_after_the_workflow_tools() -> None:
     result = runner.invoke(app, ["list"])
     assert result.exit_code == 0, result.output
-    assert any(line.startswith("hello") for line in result.output.splitlines())
-    assert "reference tool" in result.output
-    assert "Total" in result.output
+    lines = result.output.splitlines()
+    hello = next(line for line in lines if line.startswith("hello"))
+    assert "reference tool" in hello and "Total" in hello and "[hidden]" in hello
+    assert "[hidden]: not shown in the launcher" in result.output
+    names = [line.split()[0] for line in lines if line and not line.startswith("[")]
+    assert names[:2] == ["classroom", "marks"]
+    assert names.index("hello") > names.index("pseudocode")
+    assert sum("[hidden]" in line for line in lines) == 2  # hello's line and the legend
+
+
+def test_hidden_tool_still_has_its_commands(example_marks: Path, tmp_path: Path) -> None:
+    result = runner.invoke(app, ["hello", "run", str(example_marks), "--out", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "marks_10x_totals.csv").exists()
 
 
 def test_version() -> None:

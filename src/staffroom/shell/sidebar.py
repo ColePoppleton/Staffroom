@@ -55,6 +55,8 @@ class Sidebar(QWidget):
     mode_changed = Signal(str)  # "tools" | "resources"
 
     def __init__(self, plugins: tuple[ToolPlugin, ...], parent: QWidget | None = None) -> None:
+        """``plugins`` is what the list shows, in order: the host passes the
+        visible ones only (``discovery.visible_plugins``)."""
         super().__init__(parent)
         self.setObjectName("Sidebar")
         self.setFixedWidth(SIDEBAR_WIDTH)
@@ -157,12 +159,20 @@ class Sidebar(QWidget):
             bottom_layout.addWidget(b)
         layout.addWidget(bottom)
 
-    def select(self, name: str) -> None:
+    def select(self, name: str) -> bool:
+        """Make ``name`` current. False when it is not listed (a hidden tool)."""
         for i in range(self.list.count()):
             item = self.list.item(i)
             if item.data(Qt.ItemDataRole.UserRole) == name:
                 self.list.setCurrentItem(item)
-                return
+                return True
+        return False
+
+    def tool_names(self) -> list[str]:
+        """The listed tools, top to bottom (the ⌘1-⌘9 order)."""
+        return [
+            str(self.list.item(i).data(Qt.ItemDataRole.UserRole)) for i in range(self.list.count())
+        ]
 
     def mode(self) -> str:
         return "resources" if self.resources_tab.isChecked() else "tools"

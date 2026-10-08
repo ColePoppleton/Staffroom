@@ -55,7 +55,7 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         config.general.output_dir = screenshot_output_dir()
     window = MainWindow(config)
     if args.tool:
-        window.sidebar.select(args.tool)
+        window.go_to_tool(args.tool)
     if args.open and args.tool:
         panel = window.panel_for(args.tool)
         key = panel.first_file_key()

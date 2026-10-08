@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from staffroom.core.config import Config, Theme
-from staffroom.core.discovery import discover_plugins
+from staffroom.core.discovery import discover_plugins, visible_plugins
 from staffroom.core.library.model import IndexStats, withheld_message
 from staffroom.core.library.service import LibraryService
 from staffroom.core.log import get_logger
@@ -64,7 +64,10 @@ class MainWindow(QMainWindow):
     ) -> None:
         super().__init__()
         self.config = config
+        # Every loadable tool; hidden ones can still be opened by name
+        # (``staffroom --tool hello``) but are not listed or on a shortcut.
         self.plugins = plugins if plugins is not None else discover_plugins()
+        self.visible_plugins = visible_plugins(self.plugins)
         self.panels: dict[str, ToolPanel] = {}
         self.library = library or LibraryService(
             Path(config.general.resources_root),
@@ -80,9 +83,9 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(root)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        self.sidebar = Sidebar(self.plugins)
+        self.sidebar = Sidebar(self.visible_plugins)
         self.stack = QStackedWidget()
-        self.welcome = WelcomePage(bool(self.plugins))
+        self.welcome = WelcomePage(bool(self.visible_plugins))
         self.settings = SettingsPage(config)
         self.library_page = LibraryPage(self.library, config)
         self.stack.addWidget(self.welcome)
@@ -118,16 +121,17 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+,"), self, self.sidebar.settings_button.click)
         QShortcut(QKeySequence("Ctrl+K"), self, self.focus_library_search)
         QShortcut(QKeySequence("Ctrl+O"), self, self.open_for_class)
-        for n, plugin in enumerate(self.plugins[:9], 1):
+        # ⌘1-⌘9 follow the sidebar top to bottom, so they skip hidden tools.
+        for n, plugin in enumerate(self.visible_plugins[:9], 1):
             QShortcut(
                 QKeySequence(f"Ctrl+{n}"), self, lambda name=plugin.name: self.go_to_tool(name)
             )
 
         self.apply_theme(config.general.theme)
-        names = [p.name for p in self.plugins]
+        names = [p.name for p in self.visible_plugins]
         initial = config.general.last_tool if config.general.last_tool in names else ""
         if not initial and names:
-            initial = names[0]
+            initial = names[0]  # a fresh config opens on the first workflow tool
         if initial:
             self.sidebar.select(initial)
         if config.general.sidebar_mode == "resources":
@@ -166,8 +170,15 @@ class MainWindow(QMainWindow):
         self.sidebar.resources.search.selectAll()
 
     def go_to_tool(self, name: str) -> None:
+        """Show ``name``: through the sidebar when it is listed, directly when
+        it is a hidden tool (``staffroom --tool hello``). Unknown names do nothing."""
         self.sidebar.set_mode("tools")
-        self.sidebar.select(name)
+        if self.sidebar.select(name):
+            return
+        if any(p.name == name for p in self.plugins):
+            self.sidebar.list.clearSelection()
+            self.sidebar.list.setCurrentRow(-1)
+            self.show_tool(name)
 
     def open_for_class(self) -> None:
         """⌘O: the classroom tool with the library picker open, when installed."""

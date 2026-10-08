@@ -129,11 +129,11 @@ def test_reindex_in_background(window: MainWindow, qtbot: QtBot, resources_root:
 
 
 def test_tools_mode_restores_tool(window: MainWindow) -> None:
-    window.sidebar.select("hello")
+    assert window.sidebar.select("marks")  # a listed tool; hello is hidden
     window.sidebar.set_mode("resources")
     assert window.stack.currentWidget() is window.library_page
     window.sidebar.set_mode("tools")
-    assert window.stack.currentWidget() is window.panel_for("hello")
+    assert window.stack.currentWidget() is window.panel_for("marks")
 
 
 def test_withheld_file_shows_banner_and_status(

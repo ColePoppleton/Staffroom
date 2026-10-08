@@ -31,11 +31,14 @@ def test_cmd_k_focuses_library_search(window: MainWindow) -> None:
 
 
 def test_cmd_number_jumps_to_tool(window: MainWindow) -> None:
-    second = window.plugins[1].name
+    """⌘2 is the second *visible* tool (marks), the same as the sidebar shows."""
+    second = window.visible_plugins[1].name
+    assert second == "marks"
     window.go_to_tool(second)
     panel = window.stack.currentWidget()
     assert isinstance(panel, ToolPanel) and panel.plugin.name == second
     assert window.sidebar.mode() == "tools"
+    assert window.sidebar.list.currentRow() == 1
 
 
 def test_settings_board_and_house_style_persist(window: MainWindow) -> None:
@@ -56,7 +59,7 @@ def test_app_icon_assets_exist() -> None:
 
 
 def test_run_records_usage(window: MainWindow, qtbot: QtBot, example_marks: Path) -> None:
-    window.sidebar.select("hello")
+    window.go_to_tool("hello")
     panel = window.stack.currentWidget()
     assert isinstance(panel, ToolPanel)
     panel.set_input_path("source", example_marks)

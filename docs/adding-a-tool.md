@@ -23,6 +23,32 @@ uv run staff list
 uv run staff my_tool run examples/marks_10x.csv
 ```
 
+`hello` is the reference tool: read `src/staffroom/tools/hello/` before
+writing your own. It is `hidden`, so it is not in the launcher sidebar, but
+`staff hello run` works and its tests run with everything else.
+
+## Where it sits in the sidebar
+
+The sidebar, and the `⌘1`–`⌘9` shortcuts that follow it top to bottom, list
+the shipped tools in the order a teacher meets them (`WORKFLOW_ORDER` in
+`core/discovery.py`): classroom, marks, worksheet, parsons, quiz, trace,
+bugs, fade, pseudocode. Two optional class attributes on the plugin change
+where a tool goes; both are read with `getattr`, so a tool that sets
+neither needs no change and lands after the shipped tools, alphabetically.
+
+```python
+class MyToolPlugin:
+    name = "my_tool"
+    ...
+    order = 15  # lower comes first; the shipped tools use 0, 10, 20, …
+    hidden = True  # not in the sidebar or on a shortcut; still a CLI tool
+```
+
+`order` places the tool among the shipped ones (15 puts it between marks
+and worksheet). `hidden` is for reference and developer tools: `staff list`
+still shows them, marked `[hidden]`, and `staffroom --tool <name>` still
+opens them for a screenshot.
+
 ## 2. Write the logic
 
 Put the real work in `logic.py` as functions over `Table` (see

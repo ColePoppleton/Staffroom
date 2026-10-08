@@ -26,6 +26,14 @@ with every change; `just release <part>` turns it into a version.
 - `marks`: the saved distribution chart is always print-friendly: white
   background and the light palette's ink, whatever `general.theme` is.
   The panel shows the same file (#13).
+- The sidebar lists tools in workflow order (classroom, marks, worksheet,
+  parsons, quiz, trace, bugs, fade, pseudocode) instead of A–Z, and ⌘1–⌘9
+  follow it, so a fresh install opens on Classroom and ⌘1 is Classroom.
+  `hello`, the developer reference tool, is hidden from the launcher: it
+  keeps its CLI, its tests and its place as the `staff new` model, and
+  `staff list` shows it marked `[hidden]`. Plugins may declare optional
+  `order` and `hidden` attributes (`docs/adding-a-tool.md`); tools without
+  them need no change. `just screenshots` now renders the marks tool. (#15)
 - Outputs never land in the code checkout or the shell's current directory.
   With no output folder set and no input file, tools write to
   `<sessions folder>/outputs/<tool>/` (created on first write); the run bar

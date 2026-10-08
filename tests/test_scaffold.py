@@ -36,6 +36,11 @@ def test_scaffold_produces_working_plugin(tmp_path: Path, monkeypatch: pytest.Mo
     spec = plugin.panel_spec()
     assert spec.title == "Demo tool"
     assert "source" in spec.input_keys()
+    # Neither optional attribute is set, so it sorts after the shipped tools and shows.
+    from staffroom.core.plugin import DEFAULT_ORDER, plugin_hidden, plugin_order
+
+    assert plugin_order(plugin) == DEFAULT_ORDER and plugin_hidden(plugin) is False
+    assert "order = " in (tools_dir / "demo_tool" / "__init__.py").read_text()
 
     with pytest.raises(FileExistsError):
         scaffold_tool("demo_tool", tools_dir)

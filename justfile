@@ -38,10 +38,10 @@ gui *ARGS:
 new NAME:
     uv run staff new {{NAME}}
 
-# Render the launcher (hello panel, example loaded, run) to docs/ in both themes
+# Render the launcher (marks panel, example loaded, run) to docs/ in both themes; outputs go to a throwaway folder
 screenshots:
-    QT_QPA_PLATFORM=offscreen uv run staffroom --tool hello --open examples/marks_10x.csv --run --theme dark --screenshot docs/launcher-dark.png
-    QT_QPA_PLATFORM=offscreen uv run staffroom --tool hello --open examples/marks_10x.csv --run --theme light --screenshot docs/launcher-light.png
+    QT_QPA_PLATFORM=offscreen uv run staffroom --tool marks --open examples/marks_10x.csv --run --theme dark --screenshot docs/launcher-dark.png
+    QT_QPA_PLATFORM=offscreen uv run staffroom --tool marks --open examples/marks_10x.csv --run --theme light --screenshot docs/launcher-light.png
 
 # Build the thin launcher app (runs this checkout via uv; updates need no reinstall)
 app:

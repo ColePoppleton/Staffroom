@@ -15,6 +15,7 @@ from staffroom import __version__
 from staffroom.core.config import load_config
 from staffroom.core.discovery import discover_plugins
 from staffroom.core.log import setup_logging
+from staffroom.core.plugin import plugin_hidden
 from staffroom.core.scaffold import scaffold_tool
 from staffroom.library_cli import library_app
 
@@ -35,16 +36,22 @@ def _root(
     setup_logging("DEBUG" if verbose else config.general.log_level)
 
 
+HIDDEN_MARKER = "[hidden]"
+
+
 @app.command("list")
 def list_tools() -> None:
-    """List installed tools."""
+    """List installed tools in sidebar order; hidden ones (not in the launcher) are marked."""
     plugins = discover_plugins()
     if not plugins:
         typer.echo("No tools installed. Create one with: staff new <name>")
         raise typer.Exit(0)
     width = max(len(p.name) for p in plugins)
     for p in plugins:
-        typer.echo(f"{p.name:<{width}}  v{p.version:<7} {p.description}")
+        marker = f"  {HIDDEN_MARKER}" if plugin_hidden(p) else ""
+        typer.echo(f"{p.name:<{width}}  v{p.version:<7} {p.description}{marker}")
+    if any(plugin_hidden(p) for p in plugins):
+        typer.echo(f"\n{HIDDEN_MARKER}: not shown in the launcher; still runs from the CLI.")
 
 
 @app.command("new")

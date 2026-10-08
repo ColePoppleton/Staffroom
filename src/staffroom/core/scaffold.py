@@ -63,6 +63,9 @@ class $class_name:
     name = "$name"
     description = "TODO: one line describing what $name does."
     version = "0.1.0"
+    # Optional (see docs/adding-a-tool.md, "Where it sits in the sidebar"):
+    #   order = 50     lower comes first; unset puts the tool after the shipped ones
+    #   hidden = True  keep it out of the launcher (reference and developer tools)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.$name.cli import register

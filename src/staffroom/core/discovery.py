@@ -15,10 +15,27 @@ from functools import cache
 from types import ModuleType
 
 from staffroom.core.log import get_logger
-from staffroom.core.plugin import ToolPlugin
+from staffroom.core.plugin import DEFAULT_ORDER, ToolPlugin, plugin_hidden, plugin_order
 
 log = get_logger(__name__)
 TOOLS_PACKAGE = "staffroom.tools"
+
+WORKFLOW_ORDER: tuple[str, ...] = (
+    "classroom",
+    "marks",
+    "worksheet",
+    "parsons",
+    "quiz",
+    "trace",
+    "bugs",
+    "fade",
+    "pseudocode",
+)
+"""The shipped tools in the order a teacher meets them: open a resource for
+class, mark, then the four sheet generators, then the three code tools.
+A plugin that declares its own ``order`` overrides its place here; a tool
+not listed and without an ``order`` lands after all of these, alphabetically.
+"""
 
 
 def iter_tool_module_names(package: str = TOOLS_PACKAGE) -> list[str]:
@@ -51,17 +68,34 @@ def load_plugin(name: str, package: str = TOOLS_PACKAGE) -> ToolPlugin:
     return plugin
 
 
+def sort_key(plugin: ToolPlugin) -> tuple[int, str]:
+    """``(order, name)``: a declared ``order`` first, else the workflow
+    position, else :data:`DEFAULT_ORDER`."""
+    order = plugin_order(plugin)
+    if order == DEFAULT_ORDER and plugin.name in WORKFLOW_ORDER:
+        order = WORKFLOW_ORDER.index(plugin.name) * 10
+    return order, plugin.name
+
+
 @cache
 def discover_plugins() -> tuple[ToolPlugin, ...]:
-    """All loadable plugins, sorted by name. Broken tools are logged and
-    skipped so one bad tool never takes the launcher down."""
+    """All loadable plugins, hidden ones included, in sidebar order
+    (:func:`sort_key`). Broken tools are logged and skipped so one bad tool
+    never takes the launcher down."""
     found: list[ToolPlugin] = []
     for name in iter_tool_module_names():
         try:
             found.append(load_plugin(name))
         except Exception:
             log.exception("skipping tool %r: failed to load", name)
-    return tuple(found)
+    return tuple(sorted(found, key=sort_key))
+
+
+def visible_plugins(plugins: tuple[ToolPlugin, ...] | None = None) -> tuple[ToolPlugin, ...]:
+    """The plugins a teacher should see: ``plugins`` (default: everything
+    discovered) without the ones that declare ``hidden = True``."""
+    source = discover_plugins() if plugins is None else plugins
+    return tuple(p for p in source if not plugin_hidden(p))
 
 
 def get_plugin(name: str) -> ToolPlugin:
