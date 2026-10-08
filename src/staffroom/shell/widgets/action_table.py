@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from shiboken6 import isValid
 
 from staffroom.core.panel import ActionTable
 from staffroom.core.table import Table
@@ -59,6 +60,8 @@ class ActionTableWidget(QWidget):
         self._update_buttons()
 
     def set_table(self, table: Table) -> None:
+        if not self.is_alive():
+            return  # a refresh queued before the panel was torn down (#49)
         current = self.selected_row()
         self.model.set_table(table)
         for i, col in enumerate(table.columns):
@@ -73,7 +76,15 @@ class ActionTableWidget(QWidget):
             self.select_matching(current)
         self._update_buttons()
 
+    def is_alive(self) -> bool:
+        """False once the Qt side of this widget (or its view) is gone. A
+        slot or refresh can still reach the Python object after that; using
+        the view then would touch freed memory."""
+        return isValid(self) and isValid(self.view) and self.view.selectionModel() is not None
+
     def selected_row(self) -> dict[str, Any] | None:
+        if not self.is_alive():
+            return None
         rows = self.view.selectionModel().selectedRows()
         if not rows:
             return None
@@ -95,7 +106,8 @@ class ActionTableWidget(QWidget):
     def _update_buttons(self) -> None:
         enabled = self.selected_row() is not None
         for button in self.buttons.values():
-            button.setEnabled(enabled)
+            if isValid(button):
+                button.setEnabled(enabled)
 
     def _fire(self, name: str) -> None:
         row = self.selected_row()

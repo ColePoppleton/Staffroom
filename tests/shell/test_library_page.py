@@ -31,7 +31,8 @@ def test_resources_mode_shows_tree_and_page(window: MainWindow) -> None:
     assert window.config.general.sidebar_mode == "resources"
     model = window.sidebar.resources.model
     assert model.rowCount() >= 2  # Python/, Scratch/
-    top = [model.item(i).text() for i in range(model.rowCount())]
+    # Indexes, not items: a QStandardItem wrapper can outlive its item (#49).
+    top = [model.index(i, 0).data() for i in range(model.rowCount())]
     assert top[:2] == ["Python", "Scratch"]
     # hidden cruft is absent by default
     flags = Qt.MatchFlag.MatchExactly | Qt.MatchFlag.MatchRecursive

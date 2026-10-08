@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -156,10 +156,32 @@ class MainWindow(QMainWindow):
             self.sidebar.select(initial)
         if config.general.sidebar_mode == "resources" and self.first_run is None:
             self.sidebar.set_mode("resources")
-        if auto_index and self.library.root_exists and self.library.count() == 0:
+        # A folder that was never fully indexed: empty, or an index that was
+        # stopped early (closing the window mid-index keeps the files done so
+        # far but stamps no ``last_indexed``) finishes now.
+        if auto_index and self.library.root_exists and self.library.last_indexed() is None:
             self.library_page.reindex()
         if auto_index and not config.read_only:
             self.settings.check_updates(fetch=True)
+
+    # -- lifetime --------------------------------------------------------
+    def wait_for_workers(self, timeout_ms: int = 10_000) -> bool:
+        """Stop the index worker (at its next file) and wait for it and for
+        any tool run still going, so no ``QThread`` is destroyed while it
+        runs: Qt aborts the whole process for that (#40). The window calls
+        this when it closes; screenshot runs and test fixtures call it before
+        tearing the window down. Returns True when every worker has stopped."""
+        stopped = self.library_page.stop_index(timeout_ms)
+        for panel in self.panels.values():
+            worker = panel.worker
+            if worker is not None and worker.isRunning() and not worker.wait(timeout_ms):
+                log.error("%s worker did not stop within %d ms", panel.plugin.name, timeout_ms)
+                stopped = False
+        return stopped
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        self.wait_for_workers()
+        super().closeEvent(event)
 
     # -- navigation ------------------------------------------------------
     def panel_for(self, name: str) -> ToolPanel:

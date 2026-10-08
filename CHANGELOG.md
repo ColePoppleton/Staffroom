@@ -31,6 +31,16 @@ with every change; `just release <part>` turns it into a version.
   bank rather than only the chosen questions, nearest first (same topic tag,
   then the same spec section, then anywhere), and the log names the source
   question and topic whenever one had to come from outside the topic.
+- The launcher no longer crashes or aborts around a running library index
+  (#49, #40). The Resources tree is built through model indexes instead of
+  `QStandardItem` objects, whose Python wrappers outlived the items and made
+  the next Qt object at that address come back as the wrong type (the flaky
+  `'QStandardItem' object has no attribute 'selectionChanged'` on CI).
+  Closing the window, a `--screenshot` run and the test fixtures now stop a
+  running index at its next file and wait for every worker thread
+  (`MainWindow.wait_for_workers`), so Qt never destroys a running `QThread`;
+  an index stopped early keeps what it has done and finishes on the next
+  launch. `ActionTable` ignores a refresh that arrives after its view is gone.
 
 ## [0.4.0] - 2026-10-08
 ### Added
