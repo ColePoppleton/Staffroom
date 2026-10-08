@@ -115,6 +115,8 @@ class Sidebar(QWidget):
         self.list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list.setSpacing(0)
+        # addItem links each wrapper to the list (a shiboken parent), so the list's
+        # destruction invalidates it; the list is never cleared or edited (#54).
         for n, plugin in enumerate(plugins, 1):
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, plugin.name)
@@ -162,7 +164,7 @@ class Sidebar(QWidget):
     def select(self, name: str) -> bool:
         """Make ``name`` current. False when it is not listed (a hidden tool)."""
         for i in range(self.list.count()):
-            item = self.list.item(i)
+            item = self.list.item(i)  # dropped on return; the list outlives this call (#54)
             if item.data(Qt.ItemDataRole.UserRole) == name:
                 self.list.setCurrentItem(item)
                 return True
@@ -170,6 +172,7 @@ class Sidebar(QWidget):
 
     def tool_names(self) -> list[str]:
         """The listed tools, top to bottom (the ⌘1-⌘9 order)."""
+        # item(i) wrappers live only for the comprehension; nothing deletes rows meanwhile (#54).
         return [
             str(self.list.item(i).data(Qt.ItemDataRole.UserRole)) for i in range(self.list.count())
         ]

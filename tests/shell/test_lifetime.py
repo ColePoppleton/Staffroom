@@ -4,7 +4,11 @@ Two failure modes, both timing-dependent: a Python wrapper that outlives its
 Qt object (the next object allocated at that address comes back as the wrong
 type: ``'QStandardItem' object has no attribute 'selectionChanged'``), and a
 ``QThread`` destroyed while it runs (Qt aborts the process). The tests pin
-the window down: no item wrappers, workers stopped before the window goes."""
+the window down: no item wrappers, workers stopped before the window goes.
+
+#54 extends the first to every ``QListWidgetItem`` the shell reaches: those
+wrappers are safe for a different reason (PySide invalidates them on
+``clear()`` and with the list), and the tests here pin that down."""
 
 from __future__ import annotations
 
@@ -18,19 +22,23 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtGui import QStandardItem
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QListWidgetItem
 from pytestqt.qtbot import QtBot
-from shiboken6 import delete
+from shiboken6 import delete, isValid
 
 from staffroom.core.config import load_config
+from staffroom.core.discovery import visible_plugins
 from staffroom.core.library.model import Resource
 from staffroom.core.library.service import LibraryService
 from staffroom.core.panel import Action, ActionTable
 from staffroom.core.table import Table
 from staffroom.shell.app import _save_screenshot, build_window, parse_args
+from staffroom.shell.library.picker import REL_ROLE, ResourcePickerDialog
 from staffroom.shell.library.tree import REL_PATH_ROLE, ResourceTreeModel
 from staffroom.shell.main_window import MainWindow
+from staffroom.shell.sidebar import Sidebar
 from staffroom.shell.widgets.action_table import ActionTableWidget
+from staffroom.shell.widgets.string_list import StringListEditor
 
 Progress = Callable[[int, int, str], None] | None
 
@@ -42,6 +50,10 @@ def _resource(rel_path: str, **extra: bool) -> Resource:
 
 def _item_wrappers() -> int:
     return sum(isinstance(o, QStandardItem) for o in gc.get_objects())
+
+
+def _list_item_wrappers() -> list[QListWidgetItem]:
+    return [o for o in gc.get_objects() if isinstance(o, QListWidgetItem)]
 
 
 @pytest.fixture
@@ -85,6 +97,96 @@ def test_tree_model_creates_no_item_wrappers(qapp: QApplication) -> None:
     assert model.index(0, 0, model.index(0, 0)).data() == "d.py  ☁︎"
     assert model.index(0, 0, model.index(0, 0)).data(REL_PATH_ROLE) == "Python/d.py"
     assert model.index(0, 0).data(REL_PATH_ROLE) is None
+
+
+def test_result_list_rows_are_invalidated_by_clear_and_never_accumulate(
+    qtbot: QtBot, service: LibraryService
+) -> None:
+    """``add_result_row`` leaves one wrapper per row, linked to the list by
+    ``addItem``. That is safe where a ``QStandardItem`` was not (#49):
+    ``QListWidget.clear()`` invalidates the wrappers before deleting the
+    items, so a search that rebuilds the list neither accumulates wrappers nor
+    leaves a stale one, and destroying the list releases the rest (#54)."""
+    gc.disable()  # a wrapper kept alive by a cycle must show up, not be collected
+    try:
+        before = _list_item_wrappers()  # held, so their ids stay taken
+        base = {id(w) for w in before}
+
+        def fresh() -> list[QListWidgetItem]:
+            return [w for w in _list_item_wrappers() if id(w) not in base]
+
+        dialog = ResourcePickerDialog(service, None, None)
+        qtbot.addWidget(dialog)
+        dialog.search.setText("while")
+        results = dialog.results
+        rows = results.count()
+        assert rows >= 2
+        rels = [results.item(i).data(REL_ROLE) for i in range(rows)]  # how the tests read it
+        assert "Python/Python_Course/while_loops.py" in rels
+        assert len(fresh()) == rows and all(isValid(w) for w in fresh())
+        kept = results.item(0)  # what a careless caller might hold across a search
+
+        dialog.search.setText("whil")  # clear() + rebuild
+        assert not isValid(kept)  # invalidated, not stale: the guard QStandardItem lacks
+        del kept
+        assert len(fresh()) == results.count() and all(isValid(w) for w in fresh())
+        dialog.search.setText("zzzznothing")  # the "No matches" row
+        assert results.count() == 1
+        assert len(fresh()) == 1 and all(isValid(w) for w in fresh())
+
+        delete(results)  # the list goes: its linked row wrappers go with it
+        assert fresh() == []
+    finally:
+        gc.enable()
+
+
+def test_string_list_editor_creates_no_item_wrappers(qtbot: QtBot) -> None:
+    """Rows are plain strings (``addItem(str)`` makes no wrapper) and every
+    ``item(i)`` wrapper is dropped inside the method that made it, so there is
+    nothing for ``clear()`` or ``takeItem()`` to leave stale (#54)."""
+    gc.disable()
+    try:
+        before = len(_list_item_wrappers())
+        editor = StringListEditor()
+        qtbot.addWidget(editor)
+        changes: list[list[str]] = []
+        editor.changed.connect(changes.append)
+        editor.set_values(["OCR Booklet", "  ", "old", "old"])
+        assert editor.values() == ["OCR Booklet", "old"]
+        assert editor.remove("old") and editor.add("Scratch")
+        editor.list.setCurrentRow(0)
+        editor.remove_selected()
+        assert editor.values() == ["Scratch"]
+        editor.set_values(["a", "b"])  # clear() + rebuild
+        assert editor.values() == ["a", "b"]
+        assert len(_list_item_wrappers()) == before
+        assert changes == [["OCR Booklet"], ["OCR Booklet", "Scratch"], ["Scratch"]]
+    finally:
+        gc.enable()
+
+
+def test_sidebar_item_wrappers_live_exactly_as_long_as_the_list(qapp: QApplication) -> None:
+    """The tool list is built once from ``QListWidgetItem()`` + ``addItem``,
+    which links each wrapper to the list; it is never cleared or edited, and
+    the list's destruction invalidates and releases the wrappers. ``select``
+    and ``tool_names`` read through ``item(i)`` without keeping anything (#54)."""
+    gc.disable()
+    try:
+        before = _list_item_wrappers()
+        base = {id(w) for w in before}
+        plugins = visible_plugins()
+        sidebar = Sidebar(plugins)
+        fresh = [w for w in _list_item_wrappers() if id(w) not in base]
+        assert len(fresh) == len(plugins) and all(isValid(w) for w in fresh)
+        del fresh
+        assert sidebar.tool_names() == [p.name for p in plugins]
+        assert sidebar.select(plugins[-1].name)
+        assert sidebar.list.currentRow() == len(plugins) - 1
+        assert len(_list_item_wrappers()) == len(before) + len(plugins)
+        delete(sidebar)
+        assert len(_list_item_wrappers()) == len(before)
+    finally:
+        gc.enable()
 
 
 def test_action_table_ignores_a_refresh_after_its_view_is_gone(qtbot: QtBot) -> None:

@@ -7,6 +7,12 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Fixed
+- Audited every `QListWidgetItem` the shell reaches for the stale-wrapper hazard
+  behind #49 (#54): the tool list, the string-list editor and the library result
+  lists are safe as they stand, because PySide invalidates row wrappers on
+  `QListWidget.clear()` and with the list, and `item(i)` wrappers never outlive
+  the call that made them. Each site now says why, and
+  `tests/shell/test_lifetime.py` pins the wrapper counts for all three.
 - Fade no longer makes duplicate or blank-free versions when asked for more
   versions than there are fadeable lines (#24): versions are capped at the
   fadeable-line count with a log note, so every version has at least one

@@ -120,7 +120,7 @@ class LibraryPage(QWidget):
         self._run_search()
 
     def _run_search(self) -> None:
-        self.results.clear()
+        self.results.clear()  # invalidates the row wrappers too, unlike QStandardItemModel (#54)
         if not self.query:
             self.results.hide()
             return

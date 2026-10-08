@@ -96,6 +96,7 @@ def test_search_lists_results_and_selecting_previews(window: MainWindow) -> None
     window.sidebar.resources.search.setText("while")
     results = window.library_page.results
     assert results.isVisibleTo(window.library_page)
+    # item(i) wrappers are dropped with each comprehension; the list is not cleared meanwhile (#54).
     rels = [results.item(i).data(Qt.ItemDataRole.UserRole) for i in range(results.count())]
     assert "Python/Python_Course/while_loops.py" in rels
     assert "Python/OCR Booklet/booklet.pdf" in rels

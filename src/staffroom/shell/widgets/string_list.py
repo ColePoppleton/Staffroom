@@ -57,6 +57,8 @@ class StringListEditor(QWidget):
 
     # -- value -----------------------------------------------------------
     def values(self) -> list[str]:
+        # Rows are plain strings (addItem(str) makes no wrapper); the item(i) wrappers
+        # here are dropped with the comprehension, before any clear or takeItem (#54).
         return [self.list.item(i).text() for i in range(self.list.count())]
 
     def set_values(self, values: Iterable[str]) -> None:
@@ -84,8 +86,8 @@ class StringListEditor(QWidget):
 
     def remove(self, value: str) -> bool:
         for i in range(self.list.count()):
-            if self.list.item(i).text() == value:
-                self.list.takeItem(i)
+            if self.list.item(i).text() == value:  # transient wrapper, gone before takeItem
+                self.list.takeItem(i)  # the row comes back to Python and is dropped at once
                 self.changed.emit(self.values())
                 return True
         return False

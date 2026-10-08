@@ -45,6 +45,7 @@ def test_sidebar_is_in_workflow_order_without_hello(window: MainWindow) -> None:
     assert [p.name for p in window.visible_plugins] == listed
     assert any(p.name == "hello" for p in window.plugins)
     # The ⌘n tooltips are numbered top to bottom, so ⌘1 is classroom, not hello.
+    # (item(i) wrappers are transient here; the sidebar list is never cleared, #54.)
     assert "(⌘1)" in window.sidebar.list.item(0).toolTip()
     assert "(⌘2)" in window.sidebar.list.item(1).toolTip()
 

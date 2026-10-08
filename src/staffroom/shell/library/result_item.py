@@ -81,7 +81,12 @@ SNIPPET_CHARS = 110
 
 
 def add_result_row(list_widget: QListWidget, hit: SearchHit, role: int) -> QListWidgetItem:
-    """Append a rich, fixed-height row."""
+    """Append a rich, fixed-height row.
+
+    The row's wrapper stays alive, linked to the list by ``addItem`` (a shiboken
+    parent). Unlike a ``QStandardItem`` (#49), it cannot go stale: PySide's
+    ``QListWidget.clear()`` invalidates every row wrapper before deleting the
+    items, and the list's destruction invalidates its linked children (#54)."""
     item = QListWidgetItem()
     item.setData(role, hit.resource.rel_path)
     widget = ResultItem.from_hit(hit)

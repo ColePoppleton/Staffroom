@@ -122,7 +122,7 @@ class ResourcePickerDialog(QDialog):
             self.tree.expandToDepth(0)
             self.stack.setCurrentWidget(self.tree)
             return
-        self.results.clear()
+        self.results.clear()  # invalidates the row wrappers too, unlike QStandardItemModel (#54)
         hits = [h for h in self.service.search(text) if self._matches_filter(h.resource)]
         seen = {h.resource.rel_path for h in hits}
         # Name-substring matches that FTS prefix matching missed (e.g. "loop" in "7_While_Loops").
