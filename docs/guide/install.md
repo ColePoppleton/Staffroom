@@ -22,7 +22,7 @@ Upgrade later with `uv tool upgrade staffroom`.
 
 !!! note "Until the first PyPI release"
     Install straight from GitHub:
-    `uv tool install git+https://github.com/ColePoppleton/Teaching-Tools`.
+    `uv tool install git+https://github.com/ColePoppleton/Staffroom`.
     Add `@v0.2.0` (any tag) to pin a version.
 
 ## macOS: a Dock icon
@@ -40,8 +40,8 @@ they are on the roadmap, not a priority yet.
 ## For developers
 
 ```bash
-git clone https://github.com/ColePoppleton/Teaching-Tools
-cd Teaching-Tools
+git clone https://github.com/ColePoppleton/Staffroom
+cd Staffroom
 just setup      # uv sync + pre-commit hooks
 just test
 just gui

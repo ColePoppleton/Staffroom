@@ -34,9 +34,9 @@ tt = "staffroom.cli:main"
 tt-gui = "staffroom.shell.app:main"
 
 [project.urls]
-Repository = "https://github.com/ColePoppleton/Teaching-Tools"
-Changelog = "https://github.com/ColePoppleton/Teaching-Tools/blob/main/CHANGELOG.md"
-Issues = "https://github.com/ColePoppleton/Teaching-Tools/issues"
+Repository = "https://github.com/ColePoppleton/Staffroom"
+Changelog = "https://github.com/ColePoppleton/Staffroom/blob/main/CHANGELOG.md"
+Issues = "https://github.com/ColePoppleton/Staffroom/issues"
 
 [dependency-groups]
 dev = [

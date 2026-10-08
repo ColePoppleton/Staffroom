@@ -1,7 +1,7 @@
 # Question banks
 
 A bank is a Markdown file. One `## ` heading per question; the lines under it
-are fields. [`examples/question_bank.md`](https://github.com/ColePoppleton/Teaching-Tools/blob/dev/examples/question_bank.md)
+are fields. [`examples/question_bank.md`](https://github.com/ColePoppleton/Staffroom/blob/dev/examples/question_bank.md)
 is a complete example.
 
 ```markdown

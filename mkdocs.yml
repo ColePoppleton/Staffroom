@@ -1,8 +1,8 @@
 site_name: Staffroom
 site_description: Small tools for secondary computing teachers, with no pupil data.
-site_url: https://colepoppleton.github.io/Teaching-Tools/
-repo_url: https://github.com/ColePoppleton/Teaching-Tools
-repo_name: ColePoppleton/Teaching-Tools
+site_url: https://colepoppleton.github.io/Staffroom/
+repo_url: https://github.com/ColePoppleton/Staffroom
+repo_name: ColePoppleton/Staffroom
 edit_uri: edit/dev/docs/
 copyright: MIT licensed.
 

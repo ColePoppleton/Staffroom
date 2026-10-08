@@ -17,7 +17,7 @@ folder; Office files open externally and are never parsed).
 `staff update` (or Settings › Update now) pulls the latest code. Shortcuts: ⌘K
 library search, ⌘O open for class, ⌘1–9 tools, ⌘L log, ⌘, settings.
 
-Documentation: https://colepoppleton.github.io/Teaching-Tools/ (built from
+Documentation: https://colepoppleton.github.io/Staffroom/ (built from
 `docs/` by MkDocs). MIT licensed.
 
 See `CLAUDE.md` for the conventions and `docs/adding-a-tool.md` for how to add

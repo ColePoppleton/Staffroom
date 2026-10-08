@@ -21,6 +21,8 @@ with every change; `just release <part>` turns it into a version.
 - The thin launcher is `Staffroom.app` (`uk.staffroom.launcher`, executable
   `staffroom`). The repository and docs URLs are unchanged until the GitHub
   repo is renamed.
+- The repository is now github.com/ColePoppleton/Staffroom and the docs
+  site is colepoppleton.github.io/Staffroom/ (the old URLs redirect).
 
 ### Fixed
 - The thin launcher no longer runs under Rosetta when opened from Finder
