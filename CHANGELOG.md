@@ -6,6 +6,8 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-10-09
 ### Fixed
 - Audited every `QListWidgetItem` the shell reaches for the stale-wrapper hazard
   behind #49 (#54): the tool list, the string-list editor and the library result
