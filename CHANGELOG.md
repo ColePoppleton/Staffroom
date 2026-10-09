@@ -23,6 +23,13 @@ with every change; `just release <part>` turns it into a version.
   the retrieval starter made after it both stay in the folder. A run that
   replaces a file of the same name still overwrites it, but the log and the
   summary now name it (`replaced question_bank_donow_s1.pdf`).
+- Classroom's run bar now says where **Open for class** really puts the copy,
+  *Copies to ~/TeachingSessions/<today>/<label>*, following the label as it is
+  typed, and its *Open sessions folder* link opens that folder (created on
+  demand) instead of an output folder the copy never goes to (#81). A tool can
+  name its own destination with `PanelSpec.writes_to` (`core.panel.WritesTo`);
+  every other tool still shows *Writes to* its output folder. A row action such
+  as Promote no longer moves the run bar's folder.
 
 ## [0.6.0] - 2026-10-09
 ### Added

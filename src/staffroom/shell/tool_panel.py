@@ -66,6 +66,7 @@ class ToolPanel(QWidget):
         self.text_areas: dict[str, TextAreaWidget] = {}
         self._refreshed = False
         self._quiet = False
+        self._action = False
         self.forms: dict[str, OptionsFormWidget] = {}
         self.grids: dict[str, EditableTableWidget] = {}
         self.previews: dict[str, TablePreviewWidget] = {}
@@ -100,7 +101,12 @@ class ToolPanel(QWidget):
         footer.setObjectName("Footer")
         footer_layout = QVBoxLayout(footer)
         footer_layout.setContentsMargins(32, 12, 32, 16)
-        self.run_bar = RunBar(self.spec.run_label)
+        writes_to = self.spec.writes_to
+        self.run_bar = (
+            RunBar(self.spec.run_label, verb=writes_to.verb, open_label=writes_to.open_label)
+            if writes_to
+            else RunBar(self.spec.run_label)
+        )
         self.run_bar.run_requested.connect(self.start_run)
         footer_layout.addWidget(self.run_bar)
         root.addWidget(footer)
@@ -108,6 +114,9 @@ class ToolPanel(QWidget):
             picker.changed.connect(self._show_output_folder)
         for rpicker in self.resource_pickers.values():
             rpicker.changed.connect(self._show_output_folder)
+        if writes_to:  # a tool's own destination may follow a typed input, e.g. a label
+            for text_field in self.text_fields.values():
+                text_field.edit.textChanged.connect(self._show_output_folder)
         self._show_output_folder()
 
     # -- building --------------------------------------------------------
@@ -255,9 +264,16 @@ class ToolPanel(QWidget):
         anchor = inputs.get(first) if first else None
         return self.config.output_dir_for(anchor, self.plugin.name)
 
+    def destination(self, inputs: dict[str, Any]) -> Path:
+        """Where the next run's files land: the tool's own ``writes_to`` folder
+        if its panel names one, else the shared output folder."""
+        if self.spec.writes_to:
+            return self.spec.writes_to.folder(inputs, self.config)
+        return self.output_dir(inputs)
+
     def _show_output_folder(self, *_: object) -> None:
         """Tell the run bar where the next run will write, before it starts."""
-        self.run_bar.set_output_folder(self.output_dir(self.collect_inputs()))
+        self.run_bar.set_output_folder(self.destination(self.collect_inputs()))
 
     # -- running ---------------------------------------------------------
     def start_run(self) -> None:
@@ -293,7 +309,7 @@ class ToolPanel(QWidget):
             resources=self.resources,
             job=lambda ctx: plugin.act(name, row, ctx),
         )
-        self._launch(worker, quiet=name in self.spec.refresh_actions())
+        self._launch(worker, quiet=name in self.spec.refresh_actions(), action=True)
 
     def _save_preset(self, action: str, name: str, table: Any) -> None:
         """Persist a preset through the plugin, synchronously (it is a config write)."""
@@ -328,8 +344,9 @@ class ToolPanel(QWidget):
                 log.warning("%s refresh %s failed: %s", plugin.name, name, exc)
                 self.results.append_log(f"Could not refresh: {exc}")
 
-    def _launch(self, worker: RunWorker, *, quiet: bool = False) -> None:
+    def _launch(self, worker: RunWorker, *, quiet: bool = False, action: bool = False) -> None:
         self._quiet = quiet
+        self._action = action
         self.run_bar.set_running(True)
         self.run_started.emit()
         worker.progress.connect(self.run_bar.set_progress)
@@ -365,7 +382,9 @@ class ToolPanel(QWidget):
         self.results.apply(result)
         self.run_bar.set_progress(1.0, "")
         self.run_bar.set_status(result.summary or "Done", "success")
-        if result.files:
+        # The run bar describes the Run button, so only a run moves its folder;
+        # a row action (classroom's Promote) writes somewhere else entirely.
+        if result.files and not self._action:
             self.run_bar.set_output_folder(result.files[0].parent)
         shown = [
             c

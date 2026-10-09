@@ -28,6 +28,10 @@ Output widgets fill from a ``RunResult``: ``ResultsTable`` and
 user pick a row and press an action button; the shell then calls
 ``plugin.act(action_name, row, ctx)`` and applies the returned RunResult.
 
+Under the inputs, the run bar says where the next run will write: the shared
+output folder (``Config.output_dir_for``) unless the panel sets ``writes_to``
+to a :class:`WritesTo` naming its own destination.
+
 If a new tool needs a widget that is not here, add it here and to the shell's
 widget kit. Do not put UI code in a tool.
 """
@@ -35,10 +39,15 @@ widget kit. Do not put UI code in a tool.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal
 
 from staffroom.core.table import Cell
+
+if TYPE_CHECKING:
+    from staffroom.core.config import Config
 
 CellKind = Literal["text", "int", "float", "bool"]
 
@@ -253,6 +262,27 @@ class LogArea:
 OutputWidget = ResultsTable | ActionTable | ImageView | TextView | LogArea
 
 
+# ---------------------------------------------------------------- destination
+DEFAULT_WRITES_VERB = "Writes to"
+DEFAULT_OPEN_LABEL = "Open output folder"
+
+
+@dataclass(frozen=True)
+class WritesTo:
+    """Where a run's files land, for a tool that does not write to the shared
+    output folder (e.g. classroom copies into the sessions folder).
+
+    ``folder(inputs, config)`` returns the folder the next run will write to,
+    from the same ``inputs`` dict ``plugin.run`` gets. It only computes a path:
+    no file access, it must not raise, and it is called on every input change.
+    The shell shows ``"<verb> <folder>"`` beside the Run button and a link
+    labelled ``open_label`` that opens the folder (creating it if need be)."""
+
+    folder: Callable[[Mapping[str, Any], Config], Path]
+    verb: str = DEFAULT_WRITES_VERB
+    open_label: str = DEFAULT_OPEN_LABEL
+
+
 # ---------------------------------------------------------------- the panel
 @dataclass(frozen=True)
 class PanelSpec:
@@ -261,6 +291,7 @@ class PanelSpec:
     inputs: tuple[InputWidget, ...] = ()
     outputs: tuple[OutputWidget, ...] = field(default=(LogArea(),))
     run_label: str = "Run"
+    writes_to: WritesTo | None = None  # None: the shared output folder
 
     def __post_init__(self) -> None:
         keys = [w.key for w in self.inputs] + [w.key for w in self.outputs]

@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+from staffroom.core import paths
+from staffroom.core.config import Config
 from staffroom.core.panel import (
     Action,
     ActionTable,
@@ -10,7 +17,20 @@ from staffroom.core.panel import (
     ResourcePicker,
     TextField,
     TextView,
+    WritesTo,
 )
+from staffroom.tools.classroom.logic import session_folder
+
+
+def copies_to(inputs: Mapping[str, Any], config: Config, *, today: date | None = None) -> Path:
+    """Where "Open for class" will put the copy: ``<sessions root>/<today>/<label>``,
+    or just ``<sessions root>/<today>`` until the label is valid."""
+    root = paths.sessions_root(config.general.sessions_root)
+    day = today or date.today()
+    try:
+        return root / session_folder(day, str(inputs.get("label") or ""))
+    except ValueError:
+        return root / day.isoformat()
 
 
 def panel_spec() -> PanelSpec:
@@ -55,4 +75,5 @@ def panel_spec() -> PanelSpec:
             LogArea(),
         ),
         run_label="Open for class",
+        writes_to=WritesTo(copies_to, verb="Copies to", open_label="Open sessions folder"),
     )

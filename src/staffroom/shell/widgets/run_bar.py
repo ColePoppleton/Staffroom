@@ -8,13 +8,23 @@ from PySide6.QtCore import QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QProgressBar, QPushButton, QVBoxLayout, QWidget
 
+from staffroom.core.panel import DEFAULT_OPEN_LABEL, DEFAULT_WRITES_VERB
+
 
 class RunBar(QWidget):
     run_requested = Signal()
 
-    def __init__(self, label: str = "Run", parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        label: str = "Run",
+        parent: QWidget | None = None,
+        *,
+        verb: str = DEFAULT_WRITES_VERB,
+        open_label: str = DEFAULT_OPEN_LABEL,
+    ) -> None:
         super().__init__(parent)
         self._folder: Path | None = None
+        self._verb = verb
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(8)
@@ -31,7 +41,7 @@ class RunBar(QWidget):
         self.folder = QLabel()
         self.folder.setProperty("role", "muted")
         self.folder.hide()
-        self.open_folder = QPushButton("Open output folder")
+        self.open_folder = QPushButton(open_label)
         self.open_folder.setProperty("role", "link")
         self.open_folder.clicked.connect(self._open_folder)
         self.open_folder.hide()
@@ -72,7 +82,7 @@ class RunBar(QWidget):
             self.folder.clear()
             self.folder.setToolTip("")
         else:
-            self.folder.setText("Writes to " + abbreviate_path(folder))
+            self.folder.setText(f"{self._verb} {abbreviate_path(folder)}")
             self.folder.setToolTip(str(folder))
         self.folder.setVisible(folder is not None)
         self.open_folder.setVisible(folder is not None)

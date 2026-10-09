@@ -76,6 +76,7 @@ def test_open_diff_promote_reopen(
     copies = list(copy.rglob("while_loops.py"))
     assert len(copies) == 1 and copies[0].parent.name == "P3 Y9 loops"
     assert runs[-1] == ["open", "-a", "Thonny", str(copies[0])]
+    assert panel.run_bar._folder == copies[0].parent  # the run bar named the right place
     table = panel.results.action_tables["sessions"]
     assert table.model.rowCount() == 1
 
@@ -96,6 +97,8 @@ def test_open_diff_promote_reopen(
     )
     assert original.read_bytes() == before
     assert "while_loops_v2.py" in panel.run_bar.status.text()
+    # Promote writes next to the original; the run bar still describes Open for class.
+    assert panel.run_bar._folder == copies[0].parent
 
     table.select_first()
     with qtbot.waitSignal(panel.run_finished, timeout=5000):
