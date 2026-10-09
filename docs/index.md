@@ -35,8 +35,11 @@ the panels use (seed, facility, ERL, do-now).
 ## Install in one line
 
 ```bash
-uv tool install staffroom
+uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.6.0
 staffroom
 ```
 
-Details and alternatives in [Install](guide/install.md).
+Staffroom is not on PyPI, so this installs the latest release (v0.6.0)
+straight from GitHub. The repository is private for now: the line works only
+if your GitHub account can see it. Details, the reason for `--python 3.12` and
+alternatives in [Install](guide/install.md).

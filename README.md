@@ -3,6 +3,20 @@
 A launcher for small Python tools for UK secondary computing teachers. One desktop shell (PySide6) lists installed tools in a
 sidebar; each tool is a plugin that owns its logic and a declarative panel.
 
+## Install
+
+Staffroom is not on PyPI. Install the latest release straight from GitHub with
+[uv](https://docs.astral.sh/uv/), then start the launcher:
+
+    uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.6.0
+    staffroom
+
+The repository is private for now, so this works only for a GitHub account that
+can see it. See [Install](https://colepoppleton.github.io/Staffroom/guide/install/)
+for the details.
+
+## Develop
+
     just setup      # install everything
     just test       # run tests
     just gui        # open the launcher

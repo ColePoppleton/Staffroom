@@ -31,6 +31,19 @@ with every change; `just release <part>` turns it into a version.
   every other tool still shows *Writes to* its output folder. A row action such
   as Promote no longer moves the run bar's folder.
 
+- The docs home page, the Install guide and the README now install from GitHub,
+  pinned to the latest release:
+  `uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.6.0`
+  (#80). They used to lead with installing by name from PyPI, where Staffroom
+  is not published, so the first instruction failed. The Install guide says
+  plainly that the repository is private for now, so the line works only for
+  an account that can see it, and Updating explains that a pinned install is
+  upgraded by re-running the line with the newer tag. `--python 3.12` stops uv
+  picking an older Python that Staffroom cannot run on. A new test fails if the
+  README or docs tell anyone to install by name while `extra.published_on_pypi`
+  in mkdocs.yml is false, and the *Install line* workflow runs the documented
+  line in CI.
+
 ## [0.6.0] - 2026-10-09
 ### Added
 - Trace has a Preset dropdown with **Full trace** (the default, as before) and

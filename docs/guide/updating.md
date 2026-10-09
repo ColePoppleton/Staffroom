@@ -2,9 +2,17 @@
 
 ## Installed with `uv tool install`
 
+The install line pins a release tag, so `uv tool upgrade staffroom` has
+nothing to move to and says *Nothing to upgrade*. To update, run the install
+line again with the newer tag from the
+[Releases](https://github.com/ColePoppleton/Staffroom/releases) page; uv
+replaces the old version:
+
 ```bash
-uv tool upgrade staffroom
+uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.6.0
 ```
+
+(Swap `v0.6.0` for the tag you want. The same works to go back a version.)
 
 ## Which version am I running?
 

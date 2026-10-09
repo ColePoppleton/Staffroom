@@ -34,6 +34,13 @@ theme:
         icon: material/weather-sunny
         name: Light mode
 
+extra:
+  # Staffroom is not on PyPI. While this is false, tests/test_install_docs.py
+  # fails if the docs or README tell anyone to install it by name (which would
+  # fail, or fetch a stranger's package if the name is ever taken). Set it to
+  # true only after the package is actually published.
+  published_on_pypi: false
+
 extra_css:
   - stylesheets/brand.css
 
