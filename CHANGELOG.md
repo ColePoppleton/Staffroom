@@ -6,6 +6,8 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+
+## [0.6.0] - 2026-10-09
 ### Added
 - Trace has a Preset dropdown with **Full trace** (the default, as before) and
   **Year 9** (#33): the Year 9 preset turns on the new *Top-level variables

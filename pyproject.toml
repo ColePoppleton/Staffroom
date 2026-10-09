@@ -1,6 +1,6 @@
 [project]
 name = "staffroom"
-version = "0.5.0"
+version = "0.6.0"
 description = "Small tools for secondary computing teachers: marks analysis, worksheets, Parsons problems, trace tables, pseudocode and quizzes. No pupil data."
 readme = "README.md"
 license = "MIT"
