@@ -5,6 +5,8 @@ Max marks 4,6,8,6,10,6 (paper total 40). Totals per script:
 q4 44, q5 75, q6 43 → means 3.3, 4.6, 5.8, 4.4, 7.5, 4.3.
 """
 
+import random
+import time
 from pathlib import Path
 
 import pytest
@@ -200,3 +202,42 @@ def test_clean_file_has_no_warnings(marks: Table) -> None:
     a = logic.analyse(marks, OCR)
     assert a.warnings == [] and a.incomplete_scripts == 0
     assert a.distribution.column("Grade")[-1] == "U"  # no incomplete row
+
+
+# ---------------------------------------------------------------- whole-cohort size (#29)
+def _cohort(rows: int, questions: int) -> Table:
+    """A FAKE whole-cohort file: marks only, no identifiers, seeded so the
+    numbers are the same on every run."""
+    rng = random.Random(29)
+    qcols = [f"q{i}" for i in range(1, questions + 1)]
+    return Table(qcols, [[rng.randint(0, 4) for _ in qcols] for _ in range(rows)], fake_data=True)
+
+
+def test_discrimination_computes_totals_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The O(n²) bug (#29) called totals() inside the sort key, once per script.
+    calls = 0
+    real_totals = logic.totals
+
+    def counting_totals(table: Table, qcols: list[str]) -> list[float]:
+        nonlocal calls
+        calls += 1
+        return real_totals(table, qcols)
+
+    monkeypatch.setattr(logic, "totals", counting_totals)
+    cohort = _cohort(rows=60, questions=5)
+    qcols = logic.question_columns(cohort.columns)
+    logic.discrimination(cohort, qcols, dict.fromkeys(qcols, 4.0))
+    assert calls == 1
+
+
+def test_analyse_whole_cohort_in_seconds_not_minutes() -> None:
+    # Acceptance criterion for #29: 3,000 scripts x 30 questions in under 3 s.
+    # It runs in about 0.15 s; the bound is loose so a busy CI runner passes,
+    # and the old O(n²) code (about a minute) cannot.
+    cohort = _cohort(rows=3000, questions=30)
+    started = time.perf_counter()
+    a = logic.analyse(cohort, RAW_AB, logic.Options(unit="raw", max_marks="4"))
+    elapsed = time.perf_counter() - started
+    assert elapsed < 3.0, f"analyse took {elapsed:.1f}s for 3,000 x 30"
+    assert len(a.grades) == 3000 and len(a.questions) == 30
+    assert all(-1.0 <= logic.as_mark(row[4]) <= 1.0 for row in a.questions.rows)  # discrimination
