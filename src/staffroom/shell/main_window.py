@@ -68,6 +68,7 @@ class MainWindow(QMainWindow):
         shows it exactly when no resources folder is set."""
         super().__init__()
         self.config = config
+        self._config_save_warned = False
         # Every loadable tool; hidden ones can still be opened by name
         # (``staffroom --tool hello``) but are not listed or on a shortcut.
         self.plugins = plugins if plugins is not None else discover_plugins()
@@ -197,8 +198,23 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(panel)
         if self.config.general.last_tool != name:
             self.config.general.last_tool = name
-            self.config.save()
+            self._save_config()
         log.debug("showing %s", name)
+
+    def _save_config(self) -> None:
+        """Remember a choice (last tool, sidebar mode, theme…) in config.toml.
+        A config home that cannot be written (#65) keeps the choice for this
+        session and says so once in the log instead of a traceback per click."""
+        try:
+            self.config.save()
+        except OSError as exc:
+            if not self._config_save_warned:
+                self._config_save_warned = True
+                log.warning(
+                    "Cannot save %s (%s); choices last for this session only",
+                    self.config.path,
+                    exc.strerror or exc,
+                )
 
     def show_settings(self) -> None:
         self.stack.setCurrentWidget(self.settings)
@@ -259,7 +275,7 @@ class MainWindow(QMainWindow):
     def _on_mode(self, mode: str) -> None:
         if self.config.general.sidebar_mode != mode:
             self.config.general.sidebar_mode = mode
-            self.config.save()
+            self._save_config()
         if mode == "resources":
             self.stack.setCurrentWidget(self.library_page)
         else:
@@ -277,7 +293,7 @@ class MainWindow(QMainWindow):
 
     def _on_show_hidden(self, show: bool) -> None:
         self.config.general.show_hidden = show
-        self.config.save()
+        self._save_config()
         self.library_page.set_show_hidden(show)
         self.refresh_resources()
 
@@ -300,11 +316,18 @@ class MainWindow(QMainWindow):
         counts = self.library.counts()
         status = counts.status_line(show_hidden=show_hidden, sep="\n")
         detail = counts_detail(counts) if counts.indexed else ""
-        if not self.library.root_set:
+        if self.library.unavailable_reason is not None:
+            # A read-only config home (#65): say so instead of a count that
+            # can never change, and offer nothing that would try to write.
+            status, detail = self.library.unavailable_reason, self.library.unavailable_detail()
+        elif not self.library.root_set:
             status, detail = "No folder chosen: set it in Settings", ""
         elif not self.library.root_exists:
             status, detail = "Folder not found: set it in Settings", ""
         self.sidebar.resources.set_resources(resources, status, detail)
+        self.sidebar.resources.set_library_state(
+            can_index=self.library.available, can_search=self.library.searchable
+        )
         self.library_page.refresh_status()
 
     def set_resources_root(self, root: str) -> None:
@@ -335,7 +358,7 @@ class MainWindow(QMainWindow):
             self.settings.theme.blockSignals(False)
         if self.config.general.theme != theme:
             self.config.general.theme = _as_theme(theme)
-            self.config.save()
+            self._save_config()
 
     def toggle_theme(self) -> None:
         self.apply_theme("light" if self.config.general.theme == "dark" else "dark")

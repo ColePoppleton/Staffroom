@@ -38,6 +38,15 @@ with every change; `just release <part>` turns it into a version.
   privacy filter. A new boundary test fails if any tool reads a `.csv`/`.xlsx`
   without `core.csvio` (raw `open`/`read_text` of a table path, `csv.reader`,
   `openpyxl.load_workbook`, or csvio's unfiltered `read_csv`/`read_xlsx`).
+- The launcher opens when the config home cannot be written (#65). It used to
+  die in `LibraryDB` with `sqlite3.OperationalError: unable to open database
+  file`. The library now opens the last index read-only, or an empty
+  in-memory database when there is none, and says *Resource Library
+  unavailable: cannot write <path>* once in the log, in the Resources sidebar
+  and header, and in `staff library status` (exit 0). Re-index is disabled,
+  `staff library index` and `search` exit 1 with that line, and every tool
+  still runs. The window's own settings (last tool, sidebar mode, theme)
+  last for the session with one warning instead of a traceback per click.
 - `staff` no longer dies with a `PermissionError` traceback when the config
   home (`~/.config/staffroom/` or `STAFFROOM_HOME`) cannot be written (#60).
   `setup_logging` used to create `logs/` and open the log file with no

@@ -100,10 +100,14 @@ class LibraryPage(QWidget):
         )
         # The same line the sidebar footer shows, from the same tally (#30).
         counts = self.service.counts()
-        self.index_status.setText(
-            f"{counts.status_line(show_hidden=self.show_hidden)}  ·  last index {when}"
-        )
-        self.index_status.setToolTip(counts_detail(counts))
+        if self.service.unavailable_reason is not None:  # read-only home (#65)
+            self.index_status.setText(self.service.unavailable_reason)
+            self.index_status.setToolTip(self.service.unavailable_detail())
+        else:
+            self.index_status.setText(
+                f"{counts.status_line(show_hidden=self.show_hidden)}  ·  last index {when}"
+            )
+            self.index_status.setToolTip(counts_detail(counts))
         if not self.service.root_set:
             self.subtitle.setText("No folder chosen yet: set it in Settings")
         else:
@@ -161,6 +165,10 @@ class LibraryPage(QWidget):
     # -- indexing --------------------------------------------------------
     def reindex(self, *, full: bool = False) -> None:
         if self.worker is not None and self.worker.isRunning():
+            return
+        if self.service.unavailable_reason is not None:
+            # Nowhere to keep an index (#65); the reason is already logged once.
+            self.refresh_status()
             return
         if not self.service.root_exists:
             self.index_status.setText(f"Folder not found: {self.service.root}. Set it in Settings.")

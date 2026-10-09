@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import errno
+import os
 import re
 import sqlite3
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from types import TracebackType
-from typing import cast
+from typing import Literal, cast
 
 from staffroom.core.library.model import Kind, Resource, SearchHit
 
@@ -41,33 +43,107 @@ def fts_query(user_query: str) -> str:
     return " ".join(f'"{t}"*' for t in tokens)
 
 
+UNAVAILABLE = "Resource Library unavailable: cannot write {path}"
+
+Mode = Literal["read-write", "read-only", "memory"]
+
+
 class LibraryDB:
+    """The index database. Opening it never fails the caller (#65): when
+    ``path`` cannot be written (a read-only config home), the last index is
+    opened read-only if there is a usable one, otherwise an empty in-memory
+    database stands in for this session. ``problem`` then says why in one
+    line (``reason`` holds the underlying error), ``writable`` is False and
+    every write raises ``PermissionError``.
+
+    ``mode`` is ``read-write`` (the file as normal), ``read-only`` (the last
+    index, searchable but frozen) or ``memory`` (``":memory:"`` on request,
+    which is writable, or the fallback, which is not)."""
+
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path) if path != ":memory:" else path
-        if isinstance(self.path, Path):
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(str(self.path), check_same_thread=False, isolation_level=None)
-        self.conn.row_factory = sqlite3.Row
-        if isinstance(self.path, Path):
-            self.conn.execute("PRAGMA journal_mode = WAL")
-            self.conn.execute("PRAGMA synchronous = NORMAL")
-        self.conn.executescript(SCHEMA)
-        self._migrate()
+        self.problem: str | None = None
+        self.reason: str | None = None  # the OS or SQLite error behind ``problem``
+        self.mode: Mode = "read-write"
         self._depth = 0
+        if not isinstance(self.path, Path):
+            self.mode = "memory"
+            self.conn = self._open_memory()
+            return
+        try:
+            self.conn = self._open_read_write(self.path)
+        except (OSError, sqlite3.Error) as exc:
+            self.problem = UNAVAILABLE.format(path=self.path)
+            self.reason = getattr(exc, "strerror", None) or str(exc)
+            conn = self._open_read_only(self.path)
+            if conn is not None:
+                self.mode, self.conn = "read-only", conn
+            else:
+                self.mode, self.conn = "memory", self._open_memory()
 
-    def _migrate(self) -> None:
-        """Add columns that older databases lack; nothing is dropped."""
-        have = {r["name"] for r in self.conn.execute("PRAGMA table_info(files)").fetchall()}
-        if "text_withheld" not in have:
-            self.conn.execute(
-                "ALTER TABLE files ADD COLUMN text_withheld INTEGER NOT NULL DEFAULT 0"
-            )
+    @property
+    def writable(self) -> bool:
+        """True when writes land where they were asked to."""
+        return self.problem is None
+
+    @staticmethod
+    def _open_read_write(path: Path) -> sqlite3.Connection:
+        # SQLite keeps its journal beside the file, so the folder must be
+        # writable as well as the file; checking first turns a confusing
+        # "attempt to write a readonly database" on the first read into a
+        # clean fallback here.
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not os.access(path.parent, os.W_OK) or (path.exists() and not os.access(path, os.W_OK)):
+            raise PermissionError(errno.EACCES, "permission denied", str(path))
+        conn = _connect(str(path))
+        try:
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA synchronous = NORMAL")
+            conn.executescript(SCHEMA)
+            _migrate(conn)
+        except sqlite3.Error:
+            conn.close()
+            raise
+        return conn
+
+    @staticmethod
+    def _open_read_only(path: Path) -> sqlite3.Connection | None:
+        """The last index, frozen, or None when there is no usable one.
+        ``immutable`` because a WAL database cannot otherwise be read from a
+        folder that will not take its ``-shm`` file."""
+        if not path.is_file():
+            return None
+        try:
+            conn = _connect(path.resolve().as_uri() + "?mode=ro&immutable=1", uri=True)
+        except sqlite3.Error:
+            return None
+        try:
+            tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master").fetchall()}
+            columns = {r["name"] for r in conn.execute("PRAGMA table_info(files)").fetchall()}
+        except sqlite3.Error:  # not a database, or not one we can read
+            conn.close()
+            return None
+        if not {"files", "fts", "meta"} <= tables or "text_withheld" not in columns:
+            conn.close()  # an older schema needs a write to migrate
+            return None
+        return conn
+
+    @staticmethod
+    def _open_memory() -> sqlite3.Connection:
+        conn = _connect(":memory:")
+        conn.executescript(SCHEMA)
+        return conn
+
+    def _require_writable(self) -> None:
+        if self.problem is not None:
+            raise PermissionError(self.problem)
 
     # -- transactions ----------------------------------------------------
     def begin(self) -> None:
         """Start a bulk transaction; nest-safe. One commit for a whole index
         run instead of one fsync per file (the difference between 4 s and
         6 minutes on a 600-file folder)."""
+        self._require_writable()
         if self._depth == 0:
             self.conn.execute("BEGIN")
         self._depth += 1
@@ -220,6 +296,19 @@ class LibraryDB:
             snippet = (row["snip"] or "").replace("\n", " ").strip()
             hits.append(SearchHit(_to_resource(row), snippet, float(row["score"])))
         return hits
+
+
+def _connect(database: str, *, uri: bool = False) -> sqlite3.Connection:
+    conn = sqlite3.connect(database, check_same_thread=False, isolation_level=None, uri=uri)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add columns that older databases lack; nothing is dropped."""
+    have = {r["name"] for r in conn.execute("PRAGMA table_info(files)").fetchall()}
+    if "text_withheld" not in have:
+        conn.execute("ALTER TABLE files ADD COLUMN text_withheld INTEGER NOT NULL DEFAULT 0")
 
 
 def _searchable_name(name: str) -> str:

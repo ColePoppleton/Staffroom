@@ -114,7 +114,11 @@ keeps three older copies (`staffroom.log.1` to `.3`), so the folder never
 grows past about 2 MB; `staff` prints the same lines to stderr. If the
 config folder cannot be written (a locked-down school account), the file is
 skipped: one warning line says so, the run carries on, and the log goes to
-stderr only. Each line is a time, a level, the module and a message, and the
+stderr only. The Resource Library does the same with `library.db`: one
+warning line, *Resource Library unavailable: cannot write …* in the
+Resources sidebar and in `staff library status`, search on the last index
+read-only (or none, if there is no earlier index), no indexing, and every
+tool still runs. Each line is a time, a level, the module and a message, and the
 messages hold:
 
 - which tool started and finished, with its one-line summary (*"12 scripts
