@@ -155,6 +155,12 @@ term has a precise meaning in the code, this is that meaning.
   a file whose text looked like pupil details, so only its name went into
   the index. Both in [Privacy](privacy.md).
 
+**Indexed, shown**
+: The two library file counts. *Indexed* is every file under the resources
+  folder that the exclusion list allows, hidden cruft included; *shown* is
+  indexed minus hidden, the size of the tree with *Hidden* off. One tally
+  feeds every place a count appears ([Using the launcher](launcher.md#how-files-are-counted)).
+
 **Cloud placeholder**
 : A file that a cloud service lists on this Mac but has not downloaded. The
   library marks it and moves on.

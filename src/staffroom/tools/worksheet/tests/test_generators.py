@@ -181,6 +181,16 @@ def test_truth_tables(seed: int, difficulty: str, board: str, level: str) -> Non
         for row, expected in zip(q.table[1:], answers, strict=True):
             env = {n: v == "1" for n, v in zip(names, row[:-1], strict=True)}
             assert evaluate_gates(expr, env) == (expected == "1"), (expr, env)
+        # One shape per difficulty, so medium and hard sheets look different: easy is one
+        # gate, medium two, hard three or a NOT over a bracket (never over NAND/NOR).
+        gates_n = len(re.findall(r"\b(?:AND|OR|XOR|NAND|NOR)\b", expr))
+        if difficulty == "easy":
+            assert gates_n == 1, expr
+        elif difficulty == "medium":
+            assert gates_n == 2 and "NOT (" not in expr, expr
+        else:
+            assert gates_n == 3 or "NOT (" in expr, expr
+            assert not re.search(r"NOT \([^()]*\b(?:NAND|NOR)\b", expr), expr
     if difficulty != "easy":  # 3 inputs: plenty of room, so a sheet never repeats a question
         assert len(set(exprs)) == len(exprs)
 
@@ -195,6 +205,18 @@ def truth(expr: str) -> list[bool]:
 
 LETTER = re.compile(r"\b[ABC]\b")
 TRIVIAL = re.compile(r"\b([ABC]) (?:AND|OR) \1\b|NOT NOT|\b[01]\b")
+# De Morgan is only ever applied to a gate over two literals, so it prints as in the textbook.
+DE_MORGAN_FORM = re.compile(r"^NOT \((?:NOT )?[ABC] (?:AND|OR) (?:NOT )?[ABC]\)$")
+# (AND/OR gates, bracket depth as printed, NOTs) a question may reach at each difficulty.
+DENSITY = {"easy": (3, 2, 3), "medium": (5, 3, 3), "hard": (6, 3, 4)}
+
+
+def bracket_depth(expr: str) -> int:
+    depth = best = 0
+    for ch in expr:
+        depth += {"(": 1, ")": -1}.get(ch, 0)
+        best = max(best, depth)
+    return best
 
 
 @pytest.mark.parametrize("seed", SEEDS)
@@ -202,10 +224,24 @@ TRIVIAL = re.compile(r"\b([ABC]) (?:AND|OR) \1\b|NOT NOT|\b[01]\b")
 @pytest.mark.parametrize("laws", ["absorption", "de_morgan", "identities", "all"])
 def test_boolean_simplification(seed: int, difficulty: str, laws: str) -> None:
     steps_n = {"easy": 1, "medium": 2, "hard": 3}[difficulty]
+    gates_max, depth_max, nots_max = DENSITY[difficulty]
+    prompts = []
     for q in logic.boolean_simplification(seed, 15, difficulty, laws):  # type: ignore[arg-type]
         expr = q.prompt.removeprefix("Simplify: ")
+        prompts.append(expr)
         assert truth(expr) == truth(q.answer)
         assert len(q.steps) == steps_n and q.working.count("\n") == steps_n - 1
+        # The question stays the size of an exam one: no form nested inside a form inside
+        # a form, however many steps the key has.
+        assert len(re.findall(r"\b(?:AND|OR)\b", expr)) <= gates_max, expr
+        assert bracket_depth(expr) <= depth_max, expr
+        assert expr.count("NOT") <= nots_max, expr
+        assert "NOT NOT NOT" not in expr, expr
+        if steps_n > 1:  # the key practises more than one law
+            assert len({step.law for step in q.steps}) >= 2, q.working
+        for step in q.steps:
+            if step.law == "De Morgan":
+                assert DE_MORGAN_FORM.match(step.before), step
         letters = set(LETTER.findall(expr))
         assert letters, expr
         state = expr
@@ -222,6 +258,26 @@ def test_boolean_simplification(seed: int, difficulty: str, laws: str) -> None:
         if laws in ("absorption", "de_morgan"):
             # X AND X, NOT NOT and constants only when the identities are being practised.
             assert not TRIVIAL.search(expr), expr
+    assert len(set(prompts)) == len(prompts)  # a sheet never repeats a question
+
+
+def test_simplification_reads_like_the_textbook() -> None:
+    # Easy questions are whole textbook forms a teacher recognises at a glance.
+    def prompts(laws: str) -> set[str]:
+        qs = logic.boolean_simplification(7, 40, "easy", laws)  # type: ignore[arg-type]
+        return {q.prompt.removeprefix("Simplify: ") for q in qs}
+
+    lit = r"(?:NOT )?[ABC]"
+    absorption = re.compile(rf"^{lit} (?:AND|OR) \({lit} (?:AND|OR) {lit}\)$")  # A OR (A AND C)
+    redundancy = re.compile(
+        rf"^([ABC]) (?:AND|OR) \(NOT \1 (?:AND|OR) {lit}\)$"
+    )  # A AND (NOT A OR B)
+    pair = re.compile(rf"^\({lit} (?:AND|OR) {lit}\) (?:AND|OR) \({lit} (?:AND|OR) {lit}\)$")
+    easy = prompts("absorption")
+    assert any(absorption.match(q) for q in easy), easy
+    assert any(redundancy.match(q) for q in easy), easy
+    assert any(pair.match(q) for q in easy), easy  # (A AND B) OR (A AND NOT B)
+    assert any(DE_MORGAN_FORM.match(q) for q in prompts("de_morgan"))  # NOT (NOT A OR NOT B)
 
 
 def test_simplification_laws_are_named_for_the_header() -> None:
@@ -289,3 +345,13 @@ def test_generate_dispatch_and_determinism() -> None:
     assert a == b and len(a) == 6
     with pytest.raises(ValueError, match="unknown topic"):
         logic.generate("nope", 1, 1, "easy")
+
+
+@pytest.mark.parametrize("count", [0, -3, 61, 500])
+def test_generate_refuses_an_empty_or_absurd_count(count: int) -> None:
+    # An empty sheet and key help nobody; 500 questions is a typo. One sentence says so.
+    with pytest.raises(ValueError, match=rf"between 1 and 60 \(you asked for {count}\)"):
+        logic.generate("binary", 1, count, "easy")
+    assert len(logic.generate("binary", 1, logic.MAX_COUNT, "easy")) == logic.MAX_COUNT
+    assert len(logic.generate("binary", 1, logic.MIN_COUNT, "easy")) == logic.MIN_COUNT
+    assert logic.Options.__dataclass_fields__["count"].metadata["max"] == logic.MAX_COUNT

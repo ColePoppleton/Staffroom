@@ -14,7 +14,7 @@ from typing import Annotated, Any
 import typer
 
 from staffroom import __version__
-from staffroom.core.config import load_config
+from staffroom.core.config import Config, load_config
 from staffroom.core.discovery import discover_plugins
 from staffroom.core.log import setup_logging
 from staffroom.core.plugin import ToolError, plugin_hidden
@@ -30,12 +30,20 @@ app = typer.Typer(
 )
 
 
+_cli_config: Config | None = None
+"""The config ``_root`` loaded for this invocation; ``_record_cli_run`` reads
+its ``read_only`` flag. (click 8.5 no longer exposes the current context inside
+a typer command, so this is not kept on ``ctx.obj``.)"""
+
+
 @app.callback()
 def _root(
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Debug logging")] = False,
 ) -> None:
+    global _cli_config
     config = load_config()
     setup_logging("DEBUG" if verbose else config.general.log_level)
+    _cli_config = config
 
 
 HIDDEN_MARKER = "[hidden]"
@@ -104,7 +112,9 @@ def update_(
 
 @app.command("usage")
 def usage_() -> None:
-    """Which tools have been used, how often, and when last (for the monthly review)."""
+    """Which tools have been used, how often, and when last (for the monthly
+    review). Counts launcher runs and ``staff`` commands together, then shows
+    each host's share."""
     from staffroom.core.usage import summary, usage_file
 
     rows = summary()
@@ -112,7 +122,8 @@ def usage_() -> None:
         typer.echo(f"nothing recorded yet ({usage_file()})")
         return
     for u in rows:
-        typer.echo(f"{u.name:<12} {u.runs:>4} run(s)   last {u.last_used}")
+        hosts = f"launcher {u.launcher_runs}, cli {u.cli_runs}"
+        typer.echo(f"{u.name:<12} {u.runs:>4} run(s)   {hosts:<22}   last {u.last_used}")
     known = {p.name for p in discover_plugins()}
     unused = sorted(known - {u.name for u in rows})
     if unused:
@@ -122,19 +133,41 @@ def usage_() -> None:
 app.add_typer(library_app, name="library")
 
 
-def _teacher_message_on_tool_error(command: Callable[..., Any]) -> Callable[..., Any]:
-    """A ``ToolError`` is a message for the teacher (wrong file type, mistyped
-    option): print its one line in red and exit 1. Every other exception is a
-    bug and keeps its traceback. Wrapping here means a tool's commands get this
-    without each one repeating the ``try``."""
+def _record_cli_run(tool: str) -> None:
+    """Count a finished ``staff <tool> ...`` command for ``staff usage``, the
+    CLI's half of what the launcher's worker records. Skipped when the config is
+    ``read_only`` (one-off runs that must persist nothing); a home folder that
+    cannot be written is handled inside ``record_run`` and never fails the
+    command. Only the tool's name and the date are stored."""
+    from staffroom.core.usage import record_run
+
+    if _cli_config is not None and _cli_config.read_only:
+        return
+    record_run(tool, source="cli")
+
+
+def _guard_tool_command(tool: str, command: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap one of ``tool``'s commands so that, without each command repeating
+    it: a ``ToolError`` (wrong file type, mistyped option) is a message for the
+    teacher, printed in red with exit 1, while every other exception is a bug
+    and keeps its traceback; and a command that completes, by returning or by
+    exiting 0, is recorded as a run of ``tool``. Every command counts, not just
+    ``run``: listing a tool's presets is still using the tool. A non-zero exit
+    is not counted."""
 
     @functools.wraps(command)
     def guarded(*args: Any, **kwargs: Any) -> Any:
         try:
-            return command(*args, **kwargs)
+            result = command(*args, **kwargs)
         except ToolError as exc:
             typer.secho(str(exc), fg=typer.colors.RED, err=True)
             raise typer.Exit(1) from None
+        except typer.Exit as exc:
+            if exc.exit_code == 0:
+                _record_cli_run(tool)
+            raise
+        _record_cli_run(tool)
+        return result
 
     return guarded
 
@@ -145,7 +178,7 @@ def _mount_plugins() -> None:
         plugin.register_cli(sub)
         for info in sub.registered_commands:
             if info.callback is not None:
-                info.callback = _teacher_message_on_tool_error(info.callback)
+                info.callback = _guard_tool_command(plugin.name, info.callback)
         app.add_typer(sub, name=plugin.name)
 
 

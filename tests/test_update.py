@@ -167,3 +167,28 @@ def test_no_remote_and_errors(tmp_path: Path) -> None:
         update.apply(lone, sync=False)
     broken = update.status(tmp_path / "not-a-repo")
     assert broken.error and broken.describe().startswith("Could not check")
+
+
+def test_running_version_names_the_commit_off_a_release_tag(repos: tuple[Path, Path]) -> None:
+    # Settings > Updates says which version is running (#69): the bare version
+    # on a release tag, the branch and short commit anywhere else.
+    upstream, local = repos
+    release(upstream, "2\n", tag="v0.6.0")
+    update.apply(local, sync=False)
+    st = update.status(local)
+    assert st.head_tag == "v0.6.0"
+    assert st.running_version("0.6.0") == "0.6.0"
+    git("checkout", "-q", "-b", "dev", cwd=local)
+    (local / "a.txt").write_text("dev\n")
+    git("commit", "-q", "-am", "dev work", cwd=local)
+    st = update.status(local)
+    assert st.head_tag == ""
+    assert st.running_version("0.6.0") == f"0.6.0 (dev, {st.commit})"
+    git("checkout", "-q", "--detach", cwd=local)
+    st = update.status(local)
+    assert st.running_version("0.6.0") == f"0.6.0 (detached, {st.commit})"
+
+
+def test_running_version_without_git_is_just_the_version(tmp_path: Path) -> None:
+    broken = update.status(tmp_path / "not-a-repo")
+    assert broken.running_version("0.6.0") == "0.6.0"

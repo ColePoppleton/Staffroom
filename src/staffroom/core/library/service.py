@@ -11,8 +11,11 @@ from staffroom.core import paths
 from staffroom.core.library.db import LibraryDB
 from staffroom.core.library.exclude import ExclusionList, ignore_file_path, read_ignore_file
 from staffroom.core.library.index import Indexer, Progress
-from staffroom.core.library.model import IndexStats, Kind, Resource, SearchHit
+from staffroom.core.library.model import IndexStats, Kind, LibraryCounts, Resource, SearchHit
 from staffroom.core.library.tags import TagEntry, TagStore
+from staffroom.core.log import get_logger
+
+log = get_logger(__name__)
 
 Opener = Callable[[Sequence[str]], None]
 Picker = Callable[[str | None], Path | None]
@@ -72,6 +75,10 @@ class LibraryService:
     ) -> None:
         self.root_set, self.root = _normalise_root(root)
         self.db = LibraryDB(db_path if db_path is not None else library_db_path())
+        if self.db.problem is not None:
+            # The one log line (#65); the sidebar and ``staff library status``
+            # repeat ``unavailable_reason`` but never log it again.
+            log.warning("%s (%s); %s", self.db.problem, self.db.reason, self._fallback_note())
         self.tags = TagStore(self.root)
         self._opener = opener
         self._picker = picker
@@ -104,6 +111,42 @@ class LibraryService:
     def ignore_file(self) -> Path:
         return ignore_file_path(self.root)
 
+    # -- availability (#65) ----------------------------------------------
+    @property
+    def available(self) -> bool:
+        """False when the database could not be opened for writing (a
+        read-only config home): nothing can be indexed this session. Every
+        tool still runs; only the library is affected."""
+        return self.db.writable
+
+    @property
+    def unavailable_reason(self) -> str | None:
+        """``Resource Library unavailable: cannot write <path>``, or None."""
+        return self.db.problem
+
+    @property
+    def searchable(self) -> bool:
+        """True unless the session runs on an empty stand-in database. A
+        read-only home with an earlier index still searches that index."""
+        return self.available or self.db.mode == "read-only"
+
+    def unavailable_detail(self) -> str:
+        """The longer explanation behind :attr:`unavailable_reason`, for a
+        tooltip or the CLI: what still works and what to change."""
+        if self.available:
+            return ""
+        return (
+            f"Staffroom cannot write {self.db.path} ({self.db.reason}). "
+            f"{self._fallback_note().capitalize()}. Every tool still works. "
+            f"Make {Path(self.db.path).parent} writable, or set STAFFROOM_HOME to a folder "
+            "you can write, then restart."
+        )
+
+    def _fallback_note(self) -> str:
+        if self.db.mode == "read-only":
+            return "search uses the last index, read-only, and re-indexing is off"
+        return "search and indexing are off for this session"
+
     # -- index -----------------------------------------------------------
     @property
     def root_exists(self) -> bool:
@@ -112,18 +155,31 @@ class LibraryService:
         return self.root_set and self.root.is_dir()
 
     def index(self, *, full: bool = False, progress: Progress | None = None) -> IndexStats:
+        """Raises ``PermissionError`` (with :attr:`unavailable_reason`) when
+        the database cannot be written, ``FileNotFoundError`` without a root."""
+        if self.db.problem is not None:
+            raise PermissionError(self.db.problem)
         if not self.root_exists:
             msg = f"resources root does not exist: {self.root}"
             raise FileNotFoundError(msg)
         return Indexer(self.root, self.db, self.exclusions()).run(full=full, progress=progress)
 
+    def counts(self) -> LibraryCounts:
+        """The one definition of "how many files" (#30): a tally over
+        :meth:`resources` with hidden included, so a freshly excluded folder
+        leaves the counts the moment it leaves the listing. The sidebar
+        footer, the Resources header, ``staff library status`` and the index
+        summary all show these numbers; nothing else counts rows."""
+        return LibraryCounts.tally(self.resources(include_hidden=True))
+
     def count(self) -> int:
-        return self.db.count()
+        """``counts().indexed``: every listable file, hidden ones included."""
+        return self.counts().indexed
 
     def withheld_count(self) -> int:
-        """Indexed files whose text was withheld because it looked like pupil
-        details. Shown in the sidebar status and ``staff library status``."""
-        return self.db.withheld_count()
+        """``counts().name_only``: files whose text was withheld because it
+        looked like pupil details."""
+        return self.counts().name_only
 
     def withheld_paths(self) -> list[str]:
         return self.db.withheld_paths()

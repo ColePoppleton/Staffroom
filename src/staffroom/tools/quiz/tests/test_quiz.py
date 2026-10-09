@@ -3,6 +3,7 @@ it picks only from topics taught in the configured windows."""
 
 import csv
 import io
+import logging
 from datetime import date
 from pathlib import Path
 
@@ -12,7 +13,9 @@ from typer.testing import CliRunner
 
 from staffroom.cli import app
 from staffroom.core.config import load_config
+from staffroom.core.csvio import read_table
 from staffroom.core.plugin import RunContext, ToolError
+from staffroom.core.table import Table
 from staffroom.tools.quiz import logic, plugin
 from staffroom.tools.quiz.export import write_kahoot
 from staffroom.tools.quiz.logic import KAHOOT_HEADERS, Options
@@ -64,7 +67,7 @@ def test_filters_and_choose(bank: logic.Bank) -> None:
 
 
 def test_retrieval_picks_only_from_taught_windows(bank: logic.Bank) -> None:
-    entries, errors = logic.parse_taught_log((EXAMPLES / "taught_log.csv").read_text())
+    entries, errors = logic.parse_taught_log(read_table(EXAMPLES / "taught_log.csv"))
     assert errors == [] and len(entries) == 6
     today = date(2026, 10, 8)
     windows = logic.topics_in_windows(entries, today)
@@ -77,11 +80,130 @@ def test_retrieval_picks_only_from_taught_windows(bank: logic.Bank) -> None:
     # A date with nothing taught in any window picks nothing.
     none, w = logic.retrieval_pick(bank.questions, entries, date(2027, 1, 1), 10, seed=1)
     assert none == [] and all(v == [] for v in w.values())
-    bad, errs = logic.parse_taught_log("date,topic\nnot-a-date,cpu\n2026-01-01,\n")
-    assert bad == [] and len(errs) == 2
-    assert logic.parse_taught_log("x,y\n1,2\n")[1] == [
+    bad, errs = logic.parse_taught_log(
+        Table(["date", "topic"], [["not-a-date", "cpu"], ["2026-01-01", None]])
+    )
+    assert bad == [] and errs == [
+        "line 2: bad date 'not-a-date' (use YYYY-MM-DD)",
+        "line 3: missing topic",
+    ]
+    assert logic.parse_taught_log(Table(["x", "y"], [[1, 2]]))[1] == [
         "taught log needs 'date' and 'topic' columns"
     ]
+    assert logic.parse_taught_log(Table([]))[1] == ["taught log is empty"]
+    # A date cell from an .xlsx log arrives with a midnight time.
+    excel, errs = logic.parse_taught_log(Table(["Date", "Topic"], [["2026-09-17 00:00:00", "CPU"]]))
+    assert errs == [] and excel == [logic.TaughtEntry(date(2026, 9, 17), "cpu")]
+
+
+def test_taught_log_warns_about_extra_columns_but_never_their_values(tmp_path: Path) -> None:
+    # A column the log should not have (#32): it is ignored, named once in the
+    # messages, and nothing in it is ever repeated back.
+    path = tmp_path / "taught.csv"
+    path.write_text(
+        "# FAKE DATA\n"
+        "Date,Room,topic,Period,\n"
+        "2026-09-17,IT2,loops,P3,\n"
+        "2026-09-24,IT2,searching,P3,\n",
+        encoding="utf-8",
+    )
+    entries, messages = logic.parse_taught_log(read_table(path))
+    assert [e.topic for e in entries] == ["loops", "searching"]
+    assert messages == [
+        "ignored column 'Room' — the log is date and topic only",
+        "ignored column 'Period' — the log is date and topic only",
+        "ignored unnamed column 5 — the log is date and topic only",
+    ]
+    joined = " ".join(messages)
+    assert "IT2" not in joined and "P3" not in joined
+    # The usual log has nothing to say.
+    assert logic.parse_taught_log(Table(["date", "topic"], [["2026-09-17", "loops"]]))[1] == []
+
+
+def test_plugin_logs_extra_taught_log_columns(tmp_path: Path) -> None:
+    log_path = tmp_path / "taught.csv"
+    log_path.write_text("# FAKE DATA\ndate,topic,room\n2026-10-01,networks,IT4\n", encoding="utf-8")
+    logged: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path / "out", log=logged.append)
+    options = Options(fmt="forms", retrieval=True, today="2026-10-08", count=3, seed=1)
+    result = plugin.run(
+        {"source": EXAMPLES / "question_bank.md", "taught_log": log_path, "options": options},
+        ctx,
+    )
+    assert result.tables["chosen"].rows
+    assert "Log: ignored column 'room' — the log is date and topic only" in logged
+    assert not any("IT4" in m for m in logged)
+
+
+class _Records(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__(logging.DEBUG)
+        self.messages: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.messages.append(record.getMessage())
+
+
+def test_taught_log_identifier_columns_are_dropped_by_csvio(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # #68: the taught log goes through core.csvio like every other table, so a
+    # column that could identify a pupil is dropped before the quiz sees it.
+    # The cells are placeholders, never names, real or invented.
+    log_path = tmp_path / "taught.csv"
+    log_path.write_text(
+        "# FAKE DATA\n"
+        "date,name,topic,Class\n"
+        "2026-09-17,CELL-A1,loops,CELL-B1\n"
+        "2026-10-01,CELL-A2,networks,CELL-B2\n",
+        encoding="utf-8",
+    )
+    seen: list[Table] = []
+    parse = logic.parse_taught_log
+
+    def spy(table: Table) -> tuple[list[logic.TaughtEntry], list[str]]:
+        seen.append(table)
+        return parse(table)
+
+    monkeypatch.setattr(logic, "parse_taught_log", spy)
+    records = _Records()
+    csvio_log = logging.getLogger("staffroom.core.csvio")
+    csvio_log.addHandler(records)
+    logged: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path / "out", log=logged.append)
+    options = Options(fmt="forms", retrieval=True, today="2026-10-08", count=3, seed=1)
+    try:
+        result = plugin.run(
+            {"source": EXAMPLES / "question_bank.md", "taught_log": log_path, "options": options},
+            ctx,
+        )
+    finally:
+        csvio_log.removeHandler(records)
+
+    # The parser only ever saw date and topic.
+    assert len(seen) == 1
+    assert seen[0].columns == ["date", "topic"]
+    assert seen[0].dropped_columns == ["name", "Class"]
+    assert not any("CELL" in str(c) for row in seen[0].rows for c in row)
+    # The usual csvio warning, and the tool's own line, by header only.
+    assert records.messages == ["taught.csv: dropped identifier column(s) name, Class"]
+    assert "Log: dropped identifier column(s), never read: name, Class" in logged
+    # The run still works from the surviving columns, and no value leaks anywhere.
+    assert result.tables["chosen"].rows
+    everywhere = [*logged, *records.messages, result.summary, *result.texts.values()]
+    assert not any("CELL" in m for m in everywhere)
+
+
+def test_taught_log_must_be_a_table_file(tmp_path: Path) -> None:
+    log_path = tmp_path / "taught.txt"
+    log_path.write_text("date,topic\n2026-10-01,networks\n", encoding="utf-8")
+    ctx = RunContext(config=load_config(), output_dir=tmp_path / "out")
+    options = Options(fmt="forms", retrieval=True, today="2026-10-08", count=3, seed=1)
+    with pytest.raises(ToolError, match=r"taught\.txt is a \.txt file"):
+        plugin.run(
+            {"source": EXAMPLES / "question_bank.md", "taught_log": log_path, "options": options},
+            ctx,
+        )
 
 
 def test_kahoot_rows_and_files(bank: logic.Bank, tmp_path: Path) -> None:

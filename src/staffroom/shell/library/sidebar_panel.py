@@ -72,6 +72,10 @@ class ResourcesPanel(QWidget):
         footer = QHBoxLayout()
         self.status = QLabel("")
         self.status.setProperty("role", "faint")
+        # "563 files (24 hidden)  ·  3 name only" (#30) is wider than the
+        # footer; wrap rather than clip the privacy-relevant tail.
+        self.status.setWordWrap(True)
+        self._can_index = True
         self.reindex = QPushButton("Re-index")
         self.reindex.setProperty("role", "ghost")
         self.reindex.clicked.connect(self.reindex_requested.emit)
@@ -91,9 +95,17 @@ class ResourcesPanel(QWidget):
             self.select(current)
 
     def set_indexing(self, running: bool, text: str = "") -> None:
-        self.reindex.setEnabled(not running)
+        self.reindex.setEnabled(not running and self._can_index)
         if text:
             self.status.setText(text)
+
+    def set_library_state(self, *, can_index: bool, can_search: bool) -> None:
+        """Turn off what the library cannot do this session (#65): Re-index
+        when its database cannot be written, the search box too when there
+        is no earlier index to search. The status line says why."""
+        self._can_index = can_index
+        self.reindex.setEnabled(can_index)
+        self.search.setEnabled(can_search)
 
     def current_rel_path(self) -> str | None:
         index = self.tree.currentIndex()

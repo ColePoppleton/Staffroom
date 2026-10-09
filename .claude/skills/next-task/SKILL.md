@@ -46,6 +46,13 @@ user left it on. Do not `git checkout` there.
   not negotiable: no pupil data, tools never import Qt, logic never does I/O, new UI goes into
   the shared widget kit.
 - Write the test first when the criterion is testable; it usually is.
+- **A `type:redesign` issue expects structural change.** Rebuild the section to the target
+  layout in the issue: move, merge or delete widgets, rewrite the panel's layout code, extend
+  the panel vocabulary and widget kit as needed. Do not shrink it to the smallest diff that
+  ticks a box; the minimal diff is the failure the redesign exists to fix. Before you start,
+  render the current section (screenshot, both themes); when you finish, render it again and
+  put both in the PR. If the target layout turns out wrong once built, say so in the PR and
+  show what you built instead.
 - Keep to the issue. Anything else you notice becomes a new issue:
   `gh issue create --title "…" --body "…" --label status:ready --label priority:next` and a
   one-line mention in the PR.

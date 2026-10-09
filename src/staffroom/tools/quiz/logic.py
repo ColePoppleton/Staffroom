@@ -30,7 +30,7 @@ from __future__ import annotations
 import random
 import re
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 from staffroom.core.table import Row, Table
@@ -267,24 +267,33 @@ class TaughtEntry:
     topic: str
 
 
-def parse_taught_log(text: str) -> tuple[list[TaughtEntry], list[str]]:
-    """CSV with ``date,topic`` columns (any order, header required). Lines
-    starting with ``#`` (the fake-data marker) are skipped."""
-    rows = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+def parse_taught_log(table: Table) -> tuple[list[TaughtEntry], list[str]]:
+    """A table with ``date`` and ``topic`` columns (any order, any case), as
+    read by :func:`staffroom.core.csvio.read_table`: the fake-data marker is
+    already stripped and identifier-looking columns (a name, a class) are
+    already dropped, so they never reach this function. Any other surviving
+    column is ignored and named in the messages, once, by its header only: the
+    log is date and topic, so whatever such a column holds is never read back.
+    Messages count lines as the header being line 1."""
     entries: list[TaughtEntry] = []
     errors: list[str] = []
-    if not rows:
+    if not table.columns:
         return entries, ["taught log is empty"]
-    header = [h.strip().lower() for h in rows[0].split(",")]
+    header = [h.strip().lower() for h in table.columns]
     if "date" not in header or "topic" not in header:
         return entries, ["taught log needs 'date' and 'topic' columns"]
     date_col, topic_col = header.index("date"), header.index("topic")
-    for i, row in enumerate(rows[1:], 2):
-        cells = [c.strip() for c in row.split(",")]
-        day_text = cells[date_col] if date_col < len(cells) else ""
-        topic = cells[topic_col] if topic_col < len(cells) else ""
+    for n, (raw, name) in enumerate(zip(table.columns, header, strict=True), 1):
+        if n - 1 in (date_col, topic_col):
+            continue
+        what = f"column {raw.strip()!r}" if name else f"unnamed column {n}"
+        errors.append(f"ignored {what} — the log is date and topic only")
+    for i, row in enumerate(table.rows, 2):
+        day_text = _cell_text(row[date_col])
+        topic = _cell_text(row[topic_col])
         try:
-            day = date.fromisoformat(day_text)
+            # datetime also takes an Excel date cell ("2026-09-17 00:00:00").
+            day = datetime.fromisoformat(day_text).date()
         except ValueError:
             errors.append(f"line {i}: bad date {day_text!r} (use YYYY-MM-DD)")
             continue
@@ -293,6 +302,10 @@ def parse_taught_log(text: str) -> tuple[list[TaughtEntry], list[str]]:
             continue
         entries.append(TaughtEntry(day, topic.lower()))
     return entries, errors
+
+
+def _cell_text(cell: object) -> str:
+    return "" if cell is None else str(cell).strip()
 
 
 def topics_in_windows(

@@ -40,8 +40,14 @@ def test_open_list_diff_promote_reopen(resources_root: Path, tmp_path: Path) -> 
     assert r.exit_code == 0 and "+# edited" in r.output
 
     r = runner.invoke(app, ["classroom", "promote", rel])
-    assert r.exit_code == 0 and "while_loops_v2.py" in r.output
+    assert r.exit_code == 0 and "Promoted as while_loops_v2.py" in r.output
     assert (original.parent / "while_loops_v2.py").exists()
+
+    # Promote again without editing: no v3, and the output says why (#32).
+    r = runner.invoke(app, ["classroom", "promote", rel])
+    assert r.exit_code == 0, r.output
+    assert "Already promoted as while_loops_v2.py" in r.output
+    assert not (original.parent / "while_loops_v3.py").exists()
 
     r = runner.invoke(app, ["classroom", "reopen", rel])
     assert r.exit_code == 0 and "Re-opened" in r.output

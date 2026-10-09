@@ -22,7 +22,7 @@ def test_index_search_tags_status() -> None:
 
     r = runner.invoke(app, ["library", "index"])
     assert r.exit_code == 0, r.output
-    assert "files scanned" in r.output
+    assert "files in the index (" in r.output
 
     r = runner.invoke(app, ["library", "search", "while", "--kind", "python"])
     assert r.exit_code == 0, r.output

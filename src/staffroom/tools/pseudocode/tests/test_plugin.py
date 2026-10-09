@@ -14,7 +14,7 @@ CODE = 'x = int(input("n: "))\nif x > 3:\n    print("big")\n'
 
 def test_plugin_writes_translation(tmp_path: Path) -> None:
     ctx = RunContext(config=load_config(), output_dir=tmp_path)
-    result = plugin.run({"pasted": CODE, "options": Options(direction="python_to_aqa")}, ctx)
+    result = plugin.run({"pasted": CODE, "options": Options(source="python", target="aqa")}, ctx)
     assert "OUTPUT" in result.texts["output"] and "Everything translated" in result.texts["report"]
     assert (tmp_path / "pasted_code.aqa.txt").read_text() == result.texts["output"]
 

@@ -6,6 +6,97 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Added
+- Trace has a Preset dropdown with **Full trace** (the default, as before) and
+  **Year 9** (#33): the Year 9 preset turns on the new *Top-level variables
+  only* option (`--top-level-only` on the CLI), which leaves out the lines run
+  inside functions and their locals, so the sheet has no Scope column and only
+  the program's own variables. Every trace sheet now names its preset in the
+  header (Full trace, Year 9 or Custom) so a teacher can tell which one they
+  handed out. Presets for an options form are part of the shared panel
+  vocabulary (`OptionsForm.presets`, `core.panel.preset`) and widget kit, so
+  any tool can offer them.
+- The launcher shows the running version: the sidebar header reads
+  `v0.5.0 · 9 tools`, and Settings › Updates says `Running Staffroom 0.5.0`,
+  adding the branch and short commit off a release tag (`0.5.0 (dev, a1b2c3d)`).
+  `packaging/make_launcher.py` writes the package version into the bundle's
+  `CFBundleShortVersionString` and `CFBundleVersion`, so Finder's Get Info
+  matches after `just install` (#69).
+
+### Changed
+- The `/audit` skill now has a design pass (task flow, hierarchy, structure, density,
+  consistency per section) that shows any proposed redesign as a rendered mockup beside the
+  current screen, with no cap and no quota on redesigns; `/next-task` treats a redesign
+  issue as a licence for structural change rather than the smallest diff.
+- `classroom` promote compares the copy with the original and with the latest
+  promoted version before writing: an unchanged copy makes no new file and
+  the message says `Already promoted as year9_v2.py` (or that it matches the
+  original). The CLI exits 0 and prints no path when nothing was written (#32).
+- `quiz` names any taught-log column other than `date` and `topic` in the run
+  log (`ignored column 'room' — the log is date and topic only`), by header
+  only; the column's contents are never read or shown (#32).
+
+### Fixed
+- `quiz` reads the taught log through `core.csvio.read_table` like every other
+  table, so an identifier column (`name`, `class`, …) is dropped before the
+  tool sees it, with the usual dropped-column warning and a run-log line by
+  header only (#68). It used to parse the file as raw text, bypassing the
+  privacy filter. A new boundary test fails if any tool reads a `.csv`/`.xlsx`
+  without `core.csvio` (raw `open`/`read_text` of a table path, `csv.reader`,
+  `openpyxl.load_workbook`, or csvio's unfiltered `read_csv`/`read_xlsx`).
+- The launcher opens when the config home cannot be written (#65). It used to
+  die in `LibraryDB` with `sqlite3.OperationalError: unable to open database
+  file`. The library now opens the last index read-only, or an empty
+  in-memory database when there is none, and says *Resource Library
+  unavailable: cannot write <path>* once in the log, in the Resources sidebar
+  and header, and in `staff library status` (exit 0). Re-index is disabled,
+  `staff library index` and `search` exit 1 with that line, and every tool
+  still runs. The window's own settings (last tool, sidebar mode, theme)
+  last for the session with one warning instead of a traceback per click.
+- `staff` no longer dies with a `PermissionError` traceback when the config
+  home (`~/.config/staffroom/` or `STAFFROOM_HOME`) cannot be written (#60).
+  `setup_logging` used to create `logs/` and open the log file with no
+  fallback, before any command ran; it now carries on with stderr alone and
+  prints one warning line naming the file it could not open. The launcher
+  takes the same path, so its startup gets the same fallback.
+- `worksheet` refuses a count outside 1–60 with one sentence ("Questions must
+  be between 1 and 60 (you asked for 0).") instead of writing an empty sheet
+  and key; the CLI and the panel share the limits (#31). Boolean
+  simplification questions are now built from textbook forms only (absorption,
+  the distributive pair, the redundancy form `A AND (NOT A OR B)`, De Morgan
+  over two literals) within a size budget per difficulty, so a hard three-step
+  question reads `(A OR (A AND C)) AND NOT (A AND NOT B)` rather than a form
+  nested three deep; each key practises more than one law and a sheet never
+  repeats a question. GCSE truth tables get one shape per difficulty (one
+  gate, two gates, three gates or a `NOT` over a bracket), so medium and hard
+  sheets no longer look the same. Keys stay reproducible from the printed seed.
+- `staff usage` now counts CLI runs as well as launcher runs (#28): every
+  `staff <tool> <command>` that finishes without a `ToolError` is recorded by
+  the one wrapper in `cli.py`, so no tool needs its own call. The total stays
+  one number per tool, with the launcher's and the CLI's shares shown beside
+  it; older files (launcher-only) need no migration. Nothing is recorded when
+  the config is `read_only` or the home folder cannot be written, and a
+  failed write never fails the command.
+- Pseudocode works out the input language from the code itself when `--from`
+  is not given, instead of calling every non-`.py` file OCR ERL (#27): `def`
+  and `:` blocks mean Python, `endif`/`next`/`then` mean OCR, `←`/`OUTPUT`/
+  `USERINPUT` mean AQA, with the file name as the tie-breaker. The log and
+  summary say what was decided ("Treated input as AQA pseudocode (guessed
+  from the code)"); code with nothing to go on, or that already looks like
+  the target, stops with a message naming the `--from` to pass. The panel's
+  single *Direction* is now *From* (default `guess`) and *To*.
+- `marks` grades a whole cohort in well under a second: `discrimination()`
+  computed every script's total once per comparison, which took a minute for
+  3,000 rows. Fixed quietly in 0.4.0 by #12; now measured and guarded by tests
+  (3,000 × 30 marks analysed in 0.15 s) (#29).
+- The library's file counts agree everywhere (#30). The sidebar said "563
+  files" and the Resources header "587 files indexed" because one left out
+  hidden cruft and the other did not; a pending exclusion widened the gap.
+  Both now show the one line `LibraryService.counts()` produces, `563 files
+  (24 hidden)  ·  3 name only`, with the hidden shown as a subset instead of
+  silently dropped, and `staff library status` and the index summary print
+  the same tally in long form (`587 indexed: 563 shown, 24 hidden, 2
+  cloud-only, 3 name only`). The definition is in the launcher guide.
 
 ## [0.5.0] - 2026-10-09
 ### Fixed

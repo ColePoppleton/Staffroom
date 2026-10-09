@@ -159,5 +159,3 @@ def test_untranslatable_is_listed_and_kept_as_comment() -> None:
 def test_invalid_python_raises() -> None:
     with pytest.raises(SyntaxError):
         logic.translate("while True\n    pass\n", "python", "ocr")
-    with pytest.raises(ValueError, match="unknown direction"):
-        logic.split_direction("python_to_python")

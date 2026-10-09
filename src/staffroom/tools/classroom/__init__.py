@@ -79,13 +79,14 @@ class ClassroomPlugin:
         if name == "promote":
             resources_root = Path(ctx.config.general.resources_root).expanduser()
             try:
-                target = sessions.promote(file, resources_root)
+                outcome = sessions.promote(file, resources_root)
             except (ValueError, OSError) as exc:
                 raise ToolError(str(exc)) from exc
-            ctx.log(f"Promoted to {target}")
-            return self._sessions_result(
-                ctx, files=[target], summary=f"Promoted as {target.name} next to the original"
-            )
+            if not outcome.created:
+                ctx.log(f"Nothing written: the copy is identical to {outcome.target}")
+                return self._sessions_result(ctx, summary=outcome.summary)
+            ctx.log(f"Promoted to {outcome.target}")
+            return self._sessions_result(ctx, files=[outcome.target], summary=outcome.summary)
         raise ToolError(f"Unknown action {name!r}")
 
 

@@ -39,6 +39,7 @@ class UpdateStatus:
     upstream: str = ""  # the branch's own tracking ref, "" when it has none
     tag: str = ""  # newest vX.Y.Z tag on the release ref that HEAD lacks
     note: str = ""  # one plain line about the checkout: other branch, no upstream, detached
+    head_tag: str = ""  # the vX.Y.Z tag HEAD sits on exactly, "" off a release tag
 
     @property
     def available(self) -> bool:
@@ -50,6 +51,15 @@ class UpdateStatus:
         """``apply`` would fast-forward: a release is ahead, the tree is clean,
         and the checkout is on the release branch and has not diverged."""
         return self.available and not self.dirty and self.on_release and not self.ahead
+
+    def running_version(self, version: str) -> str:
+        """The running version for people: ``0.6.0`` on a release tag,
+        ``0.6.0 (dev, a1b2c3d)`` anywhere else, the bare version when git
+        could not be read."""
+        if self.error or self.head_tag or self.commit in ("", "?"):
+            return version
+        branch = "detached" if self.branch == "HEAD" else self.branch
+        return f"{version} ({branch}, {self.commit})"
 
     def describe(self) -> str:
         if self.error:
@@ -134,9 +144,14 @@ def status(
         commit = _git(["rev-parse", "--short", "HEAD"], repo)
         branch = _git(["rev-parse", "--abbrev-ref", "HEAD"], repo)
         dirty = bool(_git(["status", "--porcelain", "--untracked-files=no"], repo))
+        head_tag = _try_git(
+            ["describe", "--tags", "--exact-match", "--match", "v[0-9]*", "HEAD"], repo
+        )
         remotes = _git(["remote"], repo).split()
         if not remotes:
-            return UpdateStatus(repo, commit, branch, "", 0, 0, dirty, on_release=False)
+            return UpdateStatus(
+                repo, commit, branch, "", 0, 0, dirty, on_release=False, head_tag=head_tag
+            )
         remote_name = "origin" if "origin" in remotes else remotes[0]
         release = f"{remote_name}/{release_branch}"
         if fetch:
@@ -170,6 +185,7 @@ def status(
             upstream=upstream,
             tag=tag,
             note=note,
+            head_tag=head_tag,
         )
     except (RuntimeError, subprocess.TimeoutExpired, OSError) as exc:
         return UpdateStatus(

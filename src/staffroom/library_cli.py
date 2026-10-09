@@ -42,6 +42,15 @@ def _require_root(svc: LibraryService) -> None:
     raise typer.Exit(1)
 
 
+def _require_writable(svc: LibraryService) -> None:
+    """Exit 1 with the reason when the database cannot be written (#65)."""
+    if svc.unavailable_reason is None:
+        return
+    typer.secho(svc.unavailable_reason, fg=typer.colors.RED, err=True)
+    typer.secho(svc.unavailable_detail(), dim=True, err=True)
+    raise typer.Exit(1)
+
+
 @library_app.command()
 def index(
     full: Annotated[
@@ -50,6 +59,7 @@ def index(
 ) -> None:
     """Index (or incrementally re-index) the resources root."""
     svc = _service()
+    _require_writable(svc)
     _require_root(svc)
     typer.echo(f"indexing {svc.root}")
 
@@ -76,7 +86,9 @@ def search(
 ) -> None:
     """Search file names and extracted text."""
     svc = _service()
-    if svc.count() == 0:
+    if not svc.searchable:
+        _require_writable(svc)  # "index is empty; run index" would send them nowhere
+    if svc.counts().indexed == 0:
         _require_root(svc)  # a fresh install hears where the folder is set, not "empty"
         typer.secho("index is empty; run  staff library index", fg=typer.colors.YELLOW, err=True)
         raise typer.Exit(1)
@@ -127,7 +139,11 @@ def status() -> None:
     else:
         typer.echo(f"root:        (not set: {_where_to_set_it()})")
     typer.echo(f"database:    {svc.db.path}")
-    typer.echo(f"files:       {svc.count()}")
+    if svc.unavailable_reason is not None:
+        typer.secho(svc.unavailable_reason, fg=typer.colors.YELLOW)
+        typer.secho(svc.unavailable_detail(), dim=True)
+    counts = svc.counts()  # the one definition the sidebar and header use too (#30)
+    typer.echo(f"files:       {counts.describe()}")
     typer.echo(f"last index:  {when}")
     typer.echo(f"tags file:   {svc.tags.path} ({len(svc.tags.all_tags())} tags)")
     excl = svc.exclusions()
@@ -135,7 +151,7 @@ def status() -> None:
     typer.echo(
         f"ignore file: {svc.ignore_file} ({'present' if svc.ignore_file.exists() else 'none'})"
     )
-    withheld = svc.withheld_count()
+    withheld = counts.name_only
     typer.echo(f"name only:   {withheld} file{'s' if withheld != 1 else ''}")
     if withheld:
         typer.secho(withheld_message(withheld), fg=typer.colors.YELLOW)
@@ -179,7 +195,13 @@ def exclude(
             typer.secho(f"not in the list: {pattern}", fg=typer.colors.YELLOW, err=True)
     if changed:
         cfg.general.library_exclude = patterns
-        cfg.save()
+        try:
+            cfg.save()
+        except OSError as exc:
+            typer.secho(
+                f"cannot save {cfg.path}: {exc.strerror or exc}", fg=typer.colors.RED, err=True
+            )
+            raise typer.Exit(1) from None
         typer.echo(f"saved to {cfg.path}; run  staff library index  to apply")
     svc = LibraryService(Path(cfg.general.resources_root), exclude=patterns)
     typer.echo("configured:  " + (", ".join(patterns) or "-"))

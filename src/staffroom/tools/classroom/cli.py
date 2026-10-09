@@ -79,7 +79,10 @@ def register(app: typer.Typer) -> None:
     def promote(
         session_file: Annotated[str, typer.Argument(help="Path under the sessions folder")],
     ) -> None:
-        """Copy an edited session file back next to its original as <name>_v2 (never overwrites)."""
+        """Copy an edited session file back next to its original as <name>_v2.
+
+        Never overwrites. An unchanged copy writes nothing and says which file already holds it.
+        """
         from staffroom.tools.classroom import plugin
 
         try:
@@ -88,7 +91,8 @@ def register(app: typer.Typer) -> None:
             _fail(exc)
             return
         typer.echo(result.summary)
-        typer.echo(str(result.files[0]))
+        for written in result.files:
+            typer.echo(str(written))
 
     @app.command()
     def reopen(

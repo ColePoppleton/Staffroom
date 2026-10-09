@@ -51,18 +51,43 @@ def session_folder(day: date, label: str) -> str:
     return f"{day.isoformat()}/{label_folder(label)}"
 
 
-def promoted_name(name: str, existing: set[str]) -> str:
-    """``while.py`` -> ``while_v2.py``; if that exists, ``while_v3.py`` and so
-    on. ``while_v2.py`` promotes to ``while_v3.py``. Never returns a name in
-    ``existing``."""
+def _split_version(name: str) -> tuple[str, int | None, str]:
+    """``while_v2.py`` -> ``("while", 2, ".py")``; ``while.py`` -> ``("while", None, ".py")``."""
     dot = name.rfind(".")
     stem, ext = (name, "") if dot <= 0 else (name[:dot], name[dot:])
     m = _VERSION.match(stem)
     base = m.group("stem") if m and m.group("stem") else stem
-    n = int(m.group("n")) + 1 if m and m.group("n") else 2
+    n = int(m.group("n")) if m and m.group("n") else None
+    return base, n, ext
+
+
+def promoted_name(name: str, existing: set[str]) -> str:
+    """``while.py`` -> ``while_v2.py``; if that exists, ``while_v3.py`` and so
+    on. ``while_v2.py`` promotes to ``while_v3.py``. Never returns a name in
+    ``existing``."""
+    base, current, ext = _split_version(name)
+    n = current + 1 if current is not None else 2
     while f"{base}_v{n}{ext}" in existing:
         n += 1
     return f"{base}_v{n}{ext}"
+
+
+def latest_version(name: str, existing: set[str]) -> str | None:
+    """The highest ``_vN`` sibling of ``name`` among ``existing``, other than
+    ``name`` itself: for ``while.py`` or ``while_v2.py`` with ``while_v2.py``
+    and ``while_v3.py`` present, ``while_v3.py``. ``None`` when nothing has
+    been promoted yet. Promote compares the copy with this file so an
+    unchanged copy is not promoted twice."""
+    base, _, ext = _split_version(name)
+    pattern = re.compile(rf"^{re.escape(base)}_v(\d+){re.escape(ext)}$")
+    best: tuple[int, str] | None = None
+    for other in existing:
+        if other == name:
+            continue
+        m = pattern.match(other)
+        if m and (best is None or int(m.group(1)) > best[0]):
+            best = (int(m.group(1)), other)
+    return best[1] if best else None
 
 
 def unified_diff(original: str, edited: str, original_name: str, edited_name: str) -> str:

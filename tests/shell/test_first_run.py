@@ -92,7 +92,9 @@ def test_choosing_a_folder_saves_indexes_and_lands_on_the_first_tool(
     assert win.library.count() > 0
     panel = win.stack.currentWidget()
     assert isinstance(panel, ToolPanel) and panel.plugin.name == "classroom"
-    assert win.sidebar.resources.status.text().endswith("files")
+    counts = win.library.counts()
+    assert counts.shown > 0
+    assert win.sidebar.resources.status.text() == counts.status_line(show_hidden=False, sep="\n")
     assert win.first_run.progress.value() == win.first_run.progress.maximum()
 
 

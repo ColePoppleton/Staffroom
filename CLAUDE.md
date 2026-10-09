@@ -139,5 +139,8 @@ app runs. Nothing merges without a PR and green CI.
   --screenshot`).
 * Config lives at `~/.config/staffroom/` (config.toml, logs/, library.db,
   usage.toml). Worksheets read the house-style header/footer from config.
+  `usage.toml` holds run counts and last-used dates only; the launcher's
+  worker and the `staff` command wrapper (`cli._guard_tool_command`) both
+  record into it, so tools never call `record_run` themselves.
 * Lesson copies live in `~/TeachingSessions` by default (`sessions_root`).
   Never default to, or detect, any cloud-synced folder; the teacher chooses.

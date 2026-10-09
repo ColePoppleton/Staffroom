@@ -1,10 +1,11 @@
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from staffroom.cli import app
 from staffroom.core.config import Config, GeneralSettings, load_config
-from staffroom.core.plugin import RunContext
+from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.worksheet import plugin
 from staffroom.tools.worksheet.logic import Options
 
@@ -90,3 +91,16 @@ def test_cli_level_and_board_options(tmp_path: Path) -> None:
     assert r.exit_code == 1
     r = runner.invoke(app, [*args, "--laws", "nope"])
     assert r.exit_code == 1
+
+
+def test_count_outside_the_range_is_refused_before_anything_is_written(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    args = ["worksheet", "make", "-t", "binary", "-f", "pdf", "-o", str(out)]
+    for count in ("0", "500"):
+        r = runner.invoke(app, [*args, "--count", count])
+        assert r.exit_code == 1, r.output
+        assert f"Questions must be between 1 and 60 (you asked for {count})." in r.output
+    assert not out.exists() or list(out.iterdir()) == []  # no empty sheet, no empty key
+    ctx = RunContext(config=load_config(), output_dir=out)
+    with pytest.raises(ToolError, match="you asked for 0"):
+        plugin.run({"options": Options(topic="binary", count=0, formats="docx")}, ctx)

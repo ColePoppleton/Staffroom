@@ -46,6 +46,11 @@ class Question:
 
 Generator = Callable[[int, int, Difficulty], list[Question]]
 
+# A sheet of fewer than one question is empty; more than this does not fit a lesson or a
+# printer tray. The panel's spin box and ``generate`` share these limits.
+MIN_COUNT = 1
+MAX_COUNT = 60
+
 
 @dataclass
 class Options:
@@ -60,7 +65,9 @@ class Options:
         "rle",
         "huffman",
     ] = field(default="binary", metadata={"label": "Topic"})
-    count: int = field(default=10, metadata={"label": "Questions", "min": 1, "max": 60})
+    count: int = field(
+        default=10, metadata={"label": "Questions", "min": MIN_COUNT, "max": MAX_COUNT}
+    )
     seed: int = field(default=42, metadata={"label": "Seed", "min": 0, "max": 999_999})
     difficulty: Difficulty = field(default="medium", metadata={"label": "Difficulty"})
     level: Level = field(
@@ -267,12 +274,37 @@ def _node(op: str, left: Expr, right: Expr) -> Expr:
     return Expr(f"({left.text} {op} {right.text})", fn, left.names | right.names, tidy)
 
 
-def _random_expr(rng: random.Random, inputs: list[str], gates: list[str], depth: int) -> Expr:
-    if depth == 0 or (depth < 2 and rng.random() < 0.3):
+def _negate(expr: Expr) -> Expr:
+    """NOT over a bracketed sub-expression: ``NOT (A AND B)``."""
+    return Expr(f"NOT {expr.text}", lambda env: 1 - expr.fn(env), expr.names, expr.tidy)
+
+
+def _shaped_expr(
+    rng: random.Random, inputs: list[str], gates: list[str], difficulty: Difficulty
+) -> Expr:
+    """One shape per difficulty, so the three sheets are visibly different: easy is one
+    gate on two inputs; medium is two gates (``(A AND B) OR NOT C``); hard is three gates
+    or a NOT over a bracket (``NOT (A AND B) OR (B AND C)``)."""
+
+    def leaf() -> Expr:
         return _leaf(rng.choice(inputs), rng.random() < 0.3)
-    op = rng.choice(gates)
-    left = _random_expr(rng, inputs, gates, depth - 1)
-    return _node(op, left, _random_expr(rng, inputs, gates, depth - 1))
+
+    def gate() -> Expr:
+        return _node(rng.choice(gates), leaf(), leaf())
+
+    if difficulty == "easy":
+        return gate()
+    if difficulty == "medium":
+        kids = [gate(), leaf()]
+        rng.shuffle(kids)
+        return _node(rng.choice(gates), kids[0], kids[1])
+    if rng.random() < 0.5:
+        return _node(rng.choice(gates), gate(), gate())
+    plain = [g for g in gates if g not in BEYOND_GCSE_GATES] or gates  # NOT (A NAND B) is odd
+    negated = _negate(_node(rng.choice(plain), leaf(), leaf()))
+    kids = [negated, gate() if rng.random() < 0.5 else leaf()]
+    rng.shuffle(kids)
+    return _node(rng.choice(gates), kids[0], kids[1])
 
 
 def _degenerate(expr: Expr, names: list[str], column: list[int]) -> bool:
@@ -293,7 +325,6 @@ def truth_tables(
 ) -> list[Question]:
     rng = random.Random(seed)
     n_inputs = 2 if difficulty == "easy" else 3
-    depth = 1 if difficulty == "easy" else 2
     names = ["A", "B", "C"][:n_inputs]
     binary_gates = [g for g in gates if g in _OPS]  # NOT is applied at the leaves
     envs = [
@@ -304,7 +335,7 @@ def truth_tables(
     out: list[Question] = []
     for _ in range(count):
         for attempt in range(300):
-            expr = _random_expr(rng, names, binary_gates, depth)
+            expr = _shaped_expr(rng, names, binary_gates, difficulty)
             column = [expr.fn(env) for env in envs]
             if _degenerate(expr, names, column):
                 continue
@@ -389,12 +420,47 @@ def _paths(node: BoolExpr, prefix: tuple[int, ...] = ()) -> list[tuple[tuple[int
     return found
 
 
+def _at(node: BoolExpr, path: tuple[int, ...]) -> BoolExpr:
+    for i in path:
+        node = node.kids[i]
+    return node
+
+
 def _replace(node: BoolExpr, path: tuple[int, ...], new: BoolExpr) -> BoolExpr:
     if not path:
         return new
     head, rest = path[0], path[1:]
     kids = tuple(_replace(k, rest, new) if i == head else k for i, k in enumerate(node.kids))
     return replace(node, kids=kids)
+
+
+def _is_literal(node: BoolExpr) -> bool:
+    """A letter or a negated letter: what a textbook law is written over."""
+    return node.kind == "var" or (node.kind == "not" and node.kids[0].kind == "var")
+
+
+def _is_simple_gate(node: BoolExpr) -> bool:
+    """AND/OR of two different literals, such as ``A AND NOT B``: the only gates De Morgan
+    and the redundancy law are applied to, so their forms stay the ones in the textbook
+    (never ``NOT (NOT B OR NOT B)`` from an idempotent ``B AND B``)."""
+    return (
+        node.kind in ("and", "or")
+        and all(_is_literal(k) for k in node.kids)
+        and node.kids[0] != node.kids[1]
+    )
+
+
+def _gates(node: BoolExpr) -> int:
+    return (node.kind in ("and", "or")) + sum(_gates(k) for k in node.kids)
+
+
+def _nesting(node: BoolExpr) -> int:
+    inner = max((_nesting(k) for k in node.kids), default=0)
+    return inner + (node.kind in ("and", "or"))
+
+
+def _nots(node: BoolExpr) -> int:
+    return (node.kind == "not") + sum(_nots(k) for k in node.kids)
 
 
 def _trivial(node: BoolExpr) -> bool:
@@ -409,60 +475,94 @@ def _trivial(node: BoolExpr) -> bool:
     return any(_trivial(k) for k in node.kids)
 
 
-# A law wraps a node ``x`` (using a different letter ``y`` where it needs one) in a longer
-# form that simplifies back to ``x``. It returns the longer form, the law's name and an
-# optional intermediate form for the key.
-_Law = Callable[[BoolExpr, BoolExpr, random.Random], tuple[BoolExpr, str, str]]
+def _triple_not(node: BoolExpr) -> bool:
+    """NOT NOT NOT X: nobody writes it, even on an identities sheet."""
+    if node.kind == "not" and node.kids[0].kind == "not" and node.kids[0].kids[0].kind == "not":
+        return True
+    return any(_triple_not(k) for k in node.kids)
 
 
-def _absorption(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
-    if rng.random() < 0.5:  # X OR (X AND Y) = X
+# A law wraps a node ``x`` in a longer form that simplifies back to ``x``. Laws over a
+# literal take another letter ``y``; laws over a simple gate use the gate's own operands.
+# Each returns the longer form, the law's name and an optional intermediate form for the
+# key, or None when it does not apply to this ``x``.
+_Wrap = tuple[BoolExpr, str, str] | None
+_Law = Callable[[BoolExpr, BoolExpr, random.Random], _Wrap]
+
+
+def _absorption(x: BoolExpr, y: BoolExpr, rng: random.Random) -> _Wrap:
+    """X OR (X AND Y) = X, and its dual; over a literal or a whole simple gate, so
+    ``(A AND B) OR ((A AND B) AND C)`` can appear."""
+    if rng.random() < 0.5:
         inner = _and(x, y) if rng.random() < 0.5 else _and(y, x)
         new = _or(x, inner) if rng.random() < 0.5 else _or(inner, x)
-    else:  # X AND (X OR Y) = X
+    else:
         inner = _or(x, y) if rng.random() < 0.5 else _or(y, x)
         new = _and(x, inner) if rng.random() < 0.5 else _and(inner, x)
     return new, "absorption", ""
 
 
-def _combining(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
-    if rng.random() < 0.5:  # (X AND Y) OR (X AND NOT Y) = X AND (Y OR NOT Y) = X
-        return (
-            _or(_and(x, y), _and(x, _neg(y))),
-            "distributive then complement",
-            (_and(x, _or(y, _neg(y))).shown),
-        )
-    return (
-        _and(_or(x, y), _or(x, _neg(y))),
-        "distributive then complement",
-        (_or(x, _and(y, _neg(y))).shown),
-    )
+def _combining(x: BoolExpr, y: BoolExpr, rng: random.Random) -> _Wrap:
+    """(X AND Y) OR (X AND NOT Y) = X AND (Y OR NOT Y) = X, and its dual."""
+    if not _is_literal(x):
+        return None
+    if rng.random() < 0.5:
+        new, via = _or(_and(x, y), _and(x, _neg(y))), _and(x, _or(y, _neg(y)))
+    else:
+        new, via = _and(_or(x, y), _or(x, _neg(y))), _or(x, _and(y, _neg(y)))
+    return new, "distributive then complement", via.shown
 
 
-def _identity(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+def _redundancy(x: BoolExpr, y: BoolExpr, rng: random.Random) -> _Wrap:
+    """L AND R = L AND (NOT L OR R): the exam favourite ``A AND (NOT A OR B)``. The
+    via form shows the distribution; the complement term then vanishes."""
+    if not _is_simple_gate(x):
+        return None
+    left, right = x.kids
+    outer, inner = (_and, _or) if x.kind == "and" else (_or, _and)
+    if rng.random() < 0.5:
+        new = outer(left, inner(_neg(left), right))
+        via = inner(outer(left, _neg(left)), outer(left, right))
+    else:
+        new = outer(inner(left, _neg(right)), right)
+        via = inner(outer(left, right), outer(_neg(right), right))
+    return new, "distributive then complement", via.shown
+
+
+def _de_morgan(x: BoolExpr, y: BoolExpr, rng: random.Random) -> _Wrap:
+    """L AND R = NOT (NOT L OR NOT R), and its dual, over a simple gate only."""
+    if not _is_simple_gate(x):
+        return None
+    left, right = x.kids
+    inner = _or if x.kind == "and" else _and
+    return _not(inner(_neg(left), _neg(right))), "De Morgan", ""
+
+
+def _identity(x: BoolExpr, y: BoolExpr, rng: random.Random) -> _Wrap:
+    if not _is_literal(x):
+        return None
     forms = [_and(x, _c(1)), _and(_c(1), x), _or(x, _c(0)), _or(_c(0), x)]
     return rng.choice(forms), "identity", ""
 
 
-def _idempotent(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+def _idempotent(x: BoolExpr, y: BoolExpr, rng: random.Random) -> _Wrap:
+    if not _is_literal(x):
+        return None
     return rng.choice([_and(x, x), _or(x, x)]), "idempotent", ""
 
 
-def _double_negation(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+def _double_negation(x: BoolExpr, y: BoolExpr, rng: random.Random) -> _Wrap:
+    if x.kind != "var":  # NOT NOT NOT A is not a question
+        return None
     return _not(_not(x)), "double negation", ""
 
 
-def _complement(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
+def _complement(x: BoolExpr, y: BoolExpr, rng: random.Random) -> _Wrap:
+    if not _is_literal(x):
+        return None
     if rng.random() < 0.5:  # X AND (Y OR NOT Y) = X AND 1 = X
         return _and(x, _or(y, _neg(y))), "complement then identity", _and(x, _c(1)).shown
     return _or(x, _and(y, _neg(y))), "complement then identity", _or(x, _c(0)).shown
-
-
-def _de_morgan(x: BoolExpr, y: BoolExpr, rng: random.Random) -> tuple[BoolExpr, str, str]:
-    left, right = x.kids
-    if x.kind == "and":  # NOT (NOT L OR NOT R) = L AND R
-        return _not(_or(_neg(left), _neg(right))), "De Morgan", ""
-    return _not(_and(_neg(left), _neg(right))), "De Morgan", ""
 
 
 # What the header says each family practises.
@@ -482,17 +582,25 @@ LAW_FAMILIES: dict[str, tuple[str, ...]] = {
 }
 
 
-def _laws_for(family: str) -> tuple[list[_Law], list[_Law]]:
-    """(laws that wrap a letter, laws that wrap an AND/OR)."""
-    on_letters: list[_Law] = []
-    on_gates: list[_Law] = []
+def _laws_for(family: str) -> list[_Law]:
+    laws: list[_Law] = []
     if family in ("absorption", "de_morgan", "all"):
-        on_letters += [_absorption, _combining]
+        laws += [_absorption, _combining, _redundancy]
     if family in ("identities", "all"):
-        on_letters += [_identity, _idempotent, _double_negation, _complement]
+        laws += [_identity, _idempotent, _double_negation, _complement]
     if family in ("de_morgan", "all"):
-        on_gates.append(_de_morgan)
-    return on_letters, on_gates
+        laws.append(_de_morgan)
+    return laws
+
+
+# How dense a printed question may get: (AND/OR gates, bracket nesting, NOTs). A hard
+# three-step question stays the size of an exam one, ``(A OR (A AND C)) AND NOT (A AND
+# NOT B)``, rather than growing a form inside a form inside a form.
+_BUDGET: dict[Difficulty, tuple[int, int, int]] = {
+    "easy": (3, 2, 3),
+    "medium": (5, 3, 3),
+    "hard": (6, 3, 4),
+}
 
 
 def _targets() -> list[BoolExpr]:
@@ -518,44 +626,122 @@ def _other_letter(rng: random.Random, node: BoolExpr, whole: BoolExpr) -> BoolEx
     return _neg(letter) if rng.random() < 0.3 else letter
 
 
+@dataclass(frozen=True)
+class _Candidate:
+    law: str
+    new: BoolExpr  # the longer form
+    old: BoolExpr  # the node it replaces
+    via: str
+    result: BoolExpr  # the whole expression after the wrap
+
+
+def _candidates(
+    expr: BoolExpr, laws: list[_Law], rng: random.Random, allow_trivial: bool
+) -> list[_Candidate]:
+    """Every clean way of applying one law somewhere in ``expr``: over a literal, or over
+    a simple gate. De Morgan is never applied directly under a NOT, which would print
+    ``NOT NOT (...)`` and credit De Morgan for a double negation."""
+    found: list[_Candidate] = []
+    for path, node in _paths(expr):
+        if not (_is_literal(node) or _is_simple_gate(node)):
+            continue
+        under_not = bool(path) and _at(expr, path[:-1]).kind == "not"
+        for law in laws:
+            if law is _de_morgan and under_not:
+                continue
+            wrap = law(node, _other_letter(rng, node, expr), rng)
+            if wrap is None:
+                continue
+            new, name, via = wrap
+            candidate = _replace(expr, path, new)
+            if _triple_not(candidate) or (_trivial(candidate) and not allow_trivial):
+                continue
+            found.append(_Candidate(name, new, node, via, candidate))
+    return found
+
+
+def _within(candidate: _Candidate, budget: tuple[int, int, int]) -> bool:
+    gates, nesting, nots = budget
+    result = candidate.result
+    return _gates(result) <= gates and _nesting(result) <= nesting and _nots(result) <= nots
+
+
+def _wrap_chain(
+    expr: BoolExpr,
+    remaining: int,
+    family: list[_Law],
+    rng: random.Random,
+    allow_trivial: bool,
+    budget: tuple[int, int, int],
+    used: frozenset[str],
+    need: int,
+) -> list[_Candidate] | None:
+    """``remaining`` wraps in a row that all stay within the budget and name at least
+    ``need`` different laws between them, chosen at random but preferring a law the
+    question has not used yet; None when no sequence fits. A wrap is only committed to
+    when the steps after it can still fit, so a question never has to exceed its budget
+    to reach its step count, and a two-step key never practises one law twice."""
+    if remaining == 0:
+        return [] if len(used) >= need else None
+    options = [c for c in _candidates(expr, family, rng, allow_trivial) if _within(c, budget)]
+    rng.shuffle(options)
+    options.sort(key=lambda c: c.law in used)  # stable: fresh laws first, shuffled within
+    for candidate in options:
+        rest = _wrap_chain(
+            candidate.result,
+            remaining - 1,
+            family,
+            rng,
+            allow_trivial,
+            budget,
+            used | {candidate.law},
+            need,
+        )
+        if rest is not None:
+            return [candidate, *rest]
+    return None
+
+
 def boolean_simplification(
     seed: int, count: int, difficulty: Difficulty, laws: Laws = "absorption"
 ) -> list[Question]:
-    """Start from a short target and wrap one letter (or one gate, for De Morgan) at a
-    time in a law's longer form. The key undoes the wraps in reverse order, each step
-    written with the actual sub-expression it rewrites, so it reads in the question's
-    own letters and ends at the target."""
+    """Start from a short target and wrap one literal or one simple gate at a time in a
+    law's textbook form, keeping the whole within the difficulty's size budget and
+    preferring a law the question has not used yet. The key undoes the wraps in reverse
+    order, each step written with the actual sub-expression it rewrites, so it reads in
+    the question's own letters and ends at the target."""
     rng = random.Random(seed)
     steps_n = {"easy": 1, "medium": 2, "hard": 3}[difficulty]
-    on_letters, on_gates = _laws_for(laws)
+    budget = _BUDGET[difficulty]
+    family = _laws_for(laws)
     allow_trivial = laws in ("identities", "all")
     targets = _targets()
+    seen: set[str] = set()
     out: list[Question] = []
     for _ in range(count):
-        target = rng.choice(targets)
-        expr = target
-        wraps: list[tuple[str, BoolExpr, BoolExpr, str, BoolExpr]] = []
-        for _ in range(steps_n):
-            for _attempt in range(50):
-                spots = [
-                    (path, node)
-                    for path, node in _paths(expr)
-                    if (node.kind == "var" and on_letters)
-                    or (node.kind in ("and", "or") and on_gates)
-                ]
-                path, node = rng.choice(spots)
-                law = rng.choice(on_letters if node.kind == "var" else on_gates)
-                new, name, via = law(node, _other_letter(rng, node, expr), rng)
-                candidate = _replace(expr, path, new)
-                if allow_trivial or not _trivial(candidate):
-                    break
-            else:  # no clean wrap found (does not happen in practice); stop short
+        found: tuple[BoolExpr, list[_Candidate]] | None = None
+        for _attempt in range(20):  # prefer a question the sheet does not already have
+            target = rng.choice(targets)
+            chain = _wrap_chain(
+                target, steps_n, family, rng, allow_trivial, budget, frozenset(), min(2, steps_n)
+            )
+            if chain is None:  # this target cannot carry that many steps within the budget
+                continue
+            found = (target, chain)
+            if chain[-1].result.shown not in seen:
                 break
-            wraps.append((name, new, node, via, expr))
-            expr = candidate
+        if found is None:  # pragma: no cover - every target carries three steps
+            msg = f"no {difficulty} question fits the size budget for laws={laws!r}"
+            raise RuntimeError(msg)
+        target, wraps = found
+        expr = wraps[-1].result
+        seen.add(expr.shown)
+        # Undoing a wrap leaves the expression it was applied to: the previous wrap's
+        # result, or the target for the first wrap.
+        before_each = [target, *(w.result for w in wraps[:-1])]
         steps = tuple(
-            Step(law=name, before=new.shown, after=old.shown, result=state.shown, via=via)
-            for name, new, old, via, state in reversed(wraps)
+            Step(law=w.law, before=w.new.shown, after=w.old.shown, result=s.shown, via=w.via)
+            for w, s in zip(reversed(wraps), reversed(before_each), strict=True)
         )
         working = "\n".join(f"{i}. {step.text()}" for i, step in enumerate(steps, 1))
         out.append(
@@ -730,12 +916,17 @@ def generate(
     laws: Laws = "absorption",
 ) -> list[Question]:
     """``board`` is the teacher's exam board from config (``ocr`` or ``aqa``); it and
-    ``level`` decide the gates a truth table may use, ``laws`` the simplification family."""
+    ``level`` decide the gates a truth table may use, ``laws`` the simplification family.
+    A ``count`` outside ``MIN_COUNT``..``MAX_COUNT`` is refused: an empty sheet and key
+    help nobody, and a 500-question sheet is a typo."""
     try:
         gen = GENERATORS[topic]
     except KeyError:
         msg = f"unknown topic {topic!r}; choose from {', '.join(GENERATORS)}"
         raise ValueError(msg) from None
+    if not MIN_COUNT <= count <= MAX_COUNT:
+        msg = f"Questions must be between {MIN_COUNT} and {MAX_COUNT} (you asked for {count})."
+        raise ValueError(msg)
     if topic == "truth_tables":
         return truth_tables(seed, count, difficulty, gate_set(board, level, difficulty))
     if topic == "boolean_simplification":

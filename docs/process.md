@@ -35,7 +35,7 @@ checklist, the areas it touches (`core/export`, `tools/marks`, …), a size and 
 
 | Skill | Where | What |
 | --- | --- | --- |
-| `/audit` | main chat | Drives the product as several personas, then holds the PM meeting: a milestone of issues plus a "not doing" list. |
+| `/audit` | main chat | Drives the product as several personas, reviews every section's layout and flow with mockups, then holds the PM meeting: a milestone of issues (redesigns where the design pass justifies them, each shown as a mockup) plus a "not doing" list. |
 | `/next-task` | a new chat | Claims the best `status:ready` issue, works it in a worktree on a feature branch, opens a PR to `dev`. |
 | `/merge-prs` | main chat | Reviews open PRs against their issues, merges green ones, releases `dev → main`, cleans up. |
 

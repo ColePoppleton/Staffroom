@@ -42,6 +42,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="show the first-run card as a fresh install would (the saved folder is kept)",
     )
     parser.add_argument("--theme", choices=["dark", "light"], help="override the saved theme")
+    parser.add_argument(
+        "--preset", help="choose this preset in the tool's options form (for --screenshot)"
+    )
     parser.add_argument("--run", action="store_true", help="run the tool before --screenshot")
     parser.add_argument("--screenshot", type=Path, help="render, save a PNG, and exit")
     parser.add_argument("--size", default="1240x780", help="window size for --screenshot, WxH")
@@ -66,6 +69,9 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         key = panel.first_file_key()
         if key:
             panel.set_input_path(key, args.open.resolve())
+    if args.preset and args.tool:
+        for form in window.panel_for(args.tool).forms.values():
+            form.apply_preset(args.preset)
     if args.resource is not None:
         window.sidebar.set_mode("resources")
         if args.resource:

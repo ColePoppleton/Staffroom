@@ -45,6 +45,27 @@ shot launcher-dark  --tool marks --open examples/marks_10x.csv --run --theme dar
 shot first-run-dark --first-run --theme dark
 shot settings       --settings --theme dark
 
+# The sidebar header (app name, version, tool count) in both themes, cropped
+# from a full launcher render so it always matches the real window.
+header() {
+    local theme="$1"
+    uv run staffroom --size "$size" --tool marks --theme "$theme" \
+        --screenshot "$home/launcher-$theme.png" >/dev/null
+    uv run python - "$home/launcher-$theme.png" "docs/sidebar-header-$theme.png" "${size%x*}" <<'PY'
+import sys
+from PIL import Image
+
+from staffroom.shell.sidebar import SIDEBAR_WIDTH
+
+image = Image.open(sys.argv[1])
+scale = image.width / int(sys.argv[3])  # the device pixel ratio of the render
+image.crop((0, 0, round(SIDEBAR_WIDTH * scale), round(108 * scale))).save(sys.argv[2])
+print("saved", sys.argv[2])
+PY
+}
+header dark
+header light
+
 # Tool panels, in sidebar order
 shot classroom-dark            --tool classroom --open "$fixtures/Python/Year 9/average.py" --theme dark
 shot marks-dark                --tool marks --open examples/marks_10x_max.csv --run --theme dark
@@ -53,6 +74,7 @@ shot worksheet-light           --tool worksheet --run --theme light
 shot parsons-dark              --tool parsons --open examples/year9.py --run --theme dark
 shot quiz-light                --tool quiz --open examples/question_bank.md --run --theme light
 shot trace-dark                --tool trace --open examples/year9.py --run --theme dark
+shot trace-preset-dark         --tool trace --open examples/year9.py --preset "Year 9" --theme dark --size 1240x1500
 shot trace-missing-input-dark  --tool trace --open "$fixtures/Python/Year 10/temperature.py" --run --theme dark
 shot bugs-light                --tool bugs --open examples/year9.py --run --theme light
 shot pseudocode-dark           --tool pseudocode --open examples/year9.py --run --theme dark

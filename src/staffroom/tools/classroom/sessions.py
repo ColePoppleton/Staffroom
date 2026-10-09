@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from staffroom.core.log import get_logger
 from staffroom.core.table import Row, Table
 from staffroom.tools.classroom.logic import (
     SessionFile,
+    latest_version,
     promoted_name,
     session_folder,
     unified_diff,
@@ -158,19 +160,57 @@ def diff_against_original(session_file: Path) -> str:
     return unified_diff(a, b, f"original/{origin.name}", f"session/{session_file.name}")
 
 
-def promote(session_file: Path, resources_root: Path) -> Path:
+@dataclass(frozen=True)
+class Promotion:
+    """What :func:`promote` did. ``created`` is False when nothing was written
+    because the copy is byte-identical to ``target``: the original itself
+    (``matches_original``, nothing to promote) or the latest promoted version
+    (already promoted)."""
+
+    target: Path
+    created: bool
+    matches_original: bool = False
+
+    @property
+    def summary(self) -> str:
+        if self.created:
+            return f"Promoted as {self.target.name} next to the original"
+        if self.matches_original:
+            return (
+                f"No changes: the copy matches the original {self.target.name}; nothing to promote"
+            )
+        return f"Already promoted as {self.target.name}: the copy has not changed since"
+
+
+def _same_bytes(a: Path, b: Path) -> bool:
+    try:
+        return a.is_file() and b.is_file() and a.read_bytes() == b.read_bytes()
+    except OSError:
+        return False
+
+
+def promote(session_file: Path, resources_root: Path) -> Promotion:
     """Copy the edited session file back next to its original under a new
-    versioned name. Never overwrites; the original is untouched."""
+    versioned name. Never overwrites; the original is untouched. A copy that
+    is byte-identical to the original, or to the latest promoted version, is
+    not written again: the result says which file already holds it."""
     origin = origin_of(session_file)
     if origin is None:
         msg = f"No origin recorded for {session_file.name}; promote by hand."
         raise ValueError(msg)
     target_dir = origin.parent if origin.parent.exists() else resources_root
-    new_name = promoted_name(origin.name, {p.name for p in target_dir.iterdir()})
-    target = target_dir / new_name
+    if _same_bytes(session_file, origin):
+        log.info("not promoted: %s matches its original %s", session_file, origin)
+        return Promotion(origin, created=False, matches_original=True)
+    existing = {p.name for p in target_dir.iterdir()}
+    latest = latest_version(origin.name, existing)
+    if latest is not None and _same_bytes(session_file, target_dir / latest):
+        log.info("not promoted: %s already promoted as %s", session_file, latest)
+        return Promotion(target_dir / latest, created=False)
+    target = target_dir / promoted_name(origin.name, existing)
     shutil.copy2(session_file, target)
     log.info("promoted %s -> %s", session_file, target)
-    return target
+    return Promotion(target, created=True)
 
 
 def reopen(session_file: Path, editor_command: str, runner: Runner | None = None) -> list[str]:

@@ -166,6 +166,19 @@ cut lines, laid out in columns), `AnswerGrid` (empty boxes headed by
 position) and `PageBreak`. A new block goes in `core/export/model.py` with a
 rendering in each of `pdf.py`, `docx.py` and `text.py`, so every tool gets it.
 
+## Presets for an options form
+
+`OptionsForm(..., presets=(preset("Year 9", top_level_only=True), ...))` puts
+a Preset dropdown above the fields. A preset pins some fields of the schema
+(`core.panel.preset(name, **values)`); choosing it sets those and leaves the
+rest as the teacher had them, and editing a field afterwards moves the
+dropdown to whichever preset still matches, or to *Custom*. The same rule is
+`core.panel.matching_preset(presets, options)`: call it in `logic` to print
+the preset's name on the output, so a sheet says which preset it came from
+even when the options were typed on the command line (`trace` does this).
+Keep the presets in `logic.py` next to the options dataclass; the panel just
+passes them on.
+
 ## Presets for an editable table
 
 `EditableTable(..., presets=(("OCR J277", rows), ...), preset_action="save_preset")`

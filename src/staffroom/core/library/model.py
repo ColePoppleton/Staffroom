@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
 from typing import Literal
@@ -151,6 +152,71 @@ class SearchHit:
     score: float
 
 
+@dataclass(frozen=True)
+class LibraryCounts:
+    """How many files the library holds, by one definition (#30).
+
+    ``indexed`` is every file in the index that the current exclusion list
+    allows: the excluded are never counted, and hidden cruft, cloud
+    placeholders and name-only files *are* counted, then reported as
+    subsets so nothing is subtracted silently. ``shown`` is what the tree
+    lists with *Hidden* off. Every count a teacher sees comes from
+    :meth:`staffroom.core.library.service.LibraryService.counts`, which is
+    :meth:`tally` over the listable resources; documented in
+    ``docs/guide/launcher.md``.
+    """
+
+    indexed: int = 0
+    hidden: int = 0
+    cloud_only: int = 0
+    name_only: int = 0
+
+    @classmethod
+    def tally(cls, resources: Iterable[Resource]) -> LibraryCounts:
+        indexed = hidden = cloud = name_only = 0
+        for r in resources:
+            indexed += 1
+            hidden += r.hidden
+            cloud += r.cloud_only
+            name_only += r.text_withheld
+        return cls(indexed=indexed, hidden=hidden, cloud_only=cloud, name_only=name_only)
+
+    @property
+    def shown(self) -> int:
+        """Files listed with *Hidden* off."""
+        return self.indexed - self.hidden
+
+    def visible(self, *, show_hidden: bool) -> int:
+        """Files listed with the *Hidden* toggle in the given state."""
+        return self.indexed if show_hidden else self.shown
+
+    def status_line(self, *, show_hidden: bool, sep: str = "  ·  ") -> str:
+        """The terse line the sidebar footer and the Resources header both
+        start with: ``563 files (24 hidden)  ·  3 name only``. The narrow
+        sidebar passes ``sep="\\n"`` so the tail is not clipped."""
+        if self.indexed == 0:
+            return "Nothing indexed yet"
+        n = self.visible(show_hidden=show_hidden)
+        line = f"{n} file{'s' if n != 1 else ''}"
+        if self.hidden:
+            line += f" (incl. {self.hidden} hidden)" if show_hidden else f" ({self.hidden} hidden)"
+        if self.name_only:
+            line += f"{sep}{self.name_only} name only"
+        return line
+
+    def describe(self) -> str:
+        """The long form for ``staff library status`` and the index summary:
+        ``587 indexed: 563 shown, 24 hidden, 2 cloud-only, 3 name only``."""
+        return (
+            f"{self.indexed} indexed: {self.shown} shown, {self.hidden} hidden, "
+            f"{self.cloud_only} cloud-only, {self.name_only} name only"
+        )
+
+    def parenthetical(self) -> str:
+        """``(24 hidden, 2 cloud-only, 3 name only)`` after a file count."""
+        return f"({self.hidden} hidden, {self.cloud_only} cloud-only, {self.name_only} name only)"
+
+
 @dataclass
 class IndexStats:
     scanned: int = 0
@@ -165,12 +231,15 @@ class IndexStats:
     withheld_paths: list[str] = field(default_factory=list)
     excluded: int = 0  #: patterns in force during this run
     seconds: float = 0.0
+    #: What the index holds after this run, by the one definition
+    #: (:class:`LibraryCounts`); the same numbers the sidebar and header show.
+    counts: LibraryCounts = field(default_factory=LibraryCounts)
 
     def summary(self) -> str:
         line = (
-            f"{self.scanned} files scanned: {self.added} added, {self.updated} updated, "
-            f"{self.unchanged} unchanged, {self.removed} removed; {self.cloud_only} cloud-only; "
-            f"{self.text_indexed} with text; {self.seconds:.1f}s"
+            f"{self.counts.indexed} files in the index {self.counts.parenthetical()}: "
+            f"{self.added} added, {self.updated} updated, {self.unchanged} unchanged, "
+            f"{self.removed} removed; {self.text_indexed} with text; {self.seconds:.1f}s"
         )
         if self.text_withheld:
             line += "\n" + withheld_message(self.text_withheld)

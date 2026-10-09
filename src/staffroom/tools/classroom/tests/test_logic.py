@@ -4,6 +4,7 @@ import pytest
 
 from staffroom.tools.classroom.logic import (
     label_folder,
+    latest_version,
     promoted_name,
     session_folder,
     summarise_diff,
@@ -43,6 +44,22 @@ def test_label_folder_and_session_folder() -> None:
 def test_promoted_name(name: str, existing: set[str], expected: str) -> None:
     assert promoted_name(name, existing) == expected
     assert expected not in existing
+
+
+@pytest.mark.parametrize(
+    ("name", "existing", "expected"),
+    [
+        ("while.py", set(), None),
+        ("while.py", {"while.py", "while_v2.py"}, "while_v2.py"),
+        ("while.py", {"while_v2.py", "while_v3.py", "while_v10.py"}, "while_v10.py"),
+        ("while_v2.py", {"while_v2.py", "while_v3.py"}, "while_v3.py"),
+        ("while_v2.py", {"while_v2.py"}, None),  # only itself: nothing promoted yet
+        ("while.py", {"whilst_v2.py", "while_v2.txt", "while_v2"}, None),  # other files
+        ("notes", {"notes_v2", "notes_v3.py"}, "notes_v2"),
+    ],
+)
+def test_latest_version(name: str, existing: set[str], expected: str | None) -> None:
+    assert latest_version(name, existing) == expected
 
 
 def test_unified_diff_and_summary() -> None:

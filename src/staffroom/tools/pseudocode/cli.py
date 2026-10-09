@@ -13,25 +13,21 @@ from staffroom.tools.pseudocode.logic import Options
 
 SourceArg = Annotated[Path, typer.Argument(exists=True, dir_okay=False, help="Input file")]
 SaveOpt = Annotated[bool, typer.Option("--save", help="Also write the translation to a file")]
-FromOpt = Annotated[str, typer.Option("--from", help="python, ocr or aqa (default: from the file)")]
+FromOpt = Annotated[
+    str,
+    typer.Option(
+        "--from",
+        help="python, ocr or aqa (default: guessed from the code, then the file name)",
+    ),
+]
 OutOpt = Annotated[Path | None, typer.Option("--out", "-o", help="Folder to write the translation")]
 
 
-def _guess(source: Path, hint: str) -> str:
-    if hint:
-        return hint
-    name = source.name.lower()
-    if name.endswith(".py"):
-        return "python"
-    if ".aqa" in name:
-        return "aqa"
-    return "ocr"
-
-
-def _run(source: Path, src: str, dst: str, out: Path | None, save: bool) -> None:
+def _run(source: Path, hint: str, dst: str, out: Path | None, save: bool) -> None:
     from staffroom.tools.pseudocode import plugin
 
-    if src not in ("python", "ocr", "aqa") or src == dst:
+    src = hint or "guess"
+    if src not in ("guess", "python", "ocr", "aqa") or src == dst:
         typer.secho(f"cannot translate from {src!r} to {dst!r}", fg="red", err=True)
         raise typer.Exit(1)
     config = load_config()
@@ -40,7 +36,7 @@ def _run(source: Path, src: str, dst: str, out: Path | None, save: bool) -> None
         output_dir=out or config.output_dir_for(source, "pseudocode"),
         log=lambda msg: typer.echo(msg, err=True),
     )
-    options = Options(direction=f"{src}_to_{dst}", formats="txt" if save else "none")  # type: ignore[arg-type]
+    options = Options(source=src, target=dst, formats="txt" if save else "none")  # type: ignore[arg-type]
     try:
         result = plugin.run({"source": source, "options": options}, ctx)
     except ToolError as exc:
@@ -58,18 +54,18 @@ def register(app: typer.Typer) -> None:
         source: SourceArg, from_: FromOpt = "", out: OutOpt = None, save: bool = False
     ) -> None:
         """Translate SOURCE (Python or AQA) to OCR Exam Reference Language."""
-        _run(source, _guess(source, from_), "ocr", out, save)
+        _run(source, from_, "ocr", out, save)
 
     @app.command("to-aqa")
     def to_aqa(
         source: SourceArg, from_: FromOpt = "", out: OutOpt = None, save: bool = False
     ) -> None:
         """Translate SOURCE (Python or OCR) to AQA pseudocode."""
-        _run(source, _guess(source, from_), "aqa", out, save)
+        _run(source, from_, "aqa", out, save)
 
     @app.command("to-python")
     def to_python(
         source: SourceArg, from_: FromOpt = "", out: OutOpt = None, save: bool = False
     ) -> None:
         """Translate SOURCE (OCR or AQA pseudocode) to Python."""
-        _run(source, _guess(source, from_), "python", out, save)
+        _run(source, from_, "python", out, save)

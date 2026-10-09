@@ -111,8 +111,15 @@ editor command Classroom launched. It is shown, not saved.
 **The app log** is the log drawer in the launcher (⌘L) and a file,
 `~/.config/staffroom/logs/staffroom.log`. The file rotates at 512 KB and
 keeps three older copies (`staffroom.log.1` to `.3`), so the folder never
-grows past about 2 MB; `staff` prints the same lines to stderr. Each line
-is a time, a level, the module and a message, and the messages hold:
+grows past about 2 MB; `staff` prints the same lines to stderr. If the
+config folder cannot be written (a locked-down school account), the file is
+skipped: one warning line says so, the run carries on, and the log goes to
+stderr only. The Resource Library does the same with `library.db`: one
+warning line, *Resource Library unavailable: cannot write …* in the
+Resources sidebar and in `staff library status`, search on the last index
+read-only (or none, if there is no earlier index), no indexing, and every
+tool still runs. Each line is a time, a level, the module and a message, and the
+messages hold:
 
 - which tool started and finished, with its one-line summary (*"12 scripts
   graded; aggregates saved to …"*);
@@ -140,7 +147,7 @@ session (`docs/audits/2026-10-08.md` §2.3), with today's paths.
 | Config | `~/.config/staffroom/config.toml` | settings only: theme, folders, editor command, exam board, header and footer text, the library exclusion list |
 | Library index | `~/.config/staffroom/library.db` | path, size, modified time and kind for every file under the resources folder, and the text of searchable files except those indexed by name only |
 | Log | `~/.config/staffroom/logs/staffroom.log` (+ `.1` to `.3`) | tool names, file paths, names of dropped columns, warnings; never values |
-| Usage | `~/.config/staffroom/usage.toml` | run count and last-used date per tool |
+| Usage | `~/.config/staffroom/usage.toml` | run count (launcher and `staff` commands, with the CLI's share) and last-used date per tool; never what was run on |
 | Lesson copies | `<sessions folder>/<date>/<lesson label>/` | the copy you edited in class |
 | Session sidecar | `<sessions folder>/<date>/<lesson label>/.origin.json` | the lesson label and, for each copy, the absolute path of the original it came from |
 | Tag sidecar | `<resources folder>/.staffroom/tags.json` | tags and notes keyed by the resource's relative path |
