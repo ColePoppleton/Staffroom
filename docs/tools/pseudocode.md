@@ -6,6 +6,11 @@ listed; nothing is dropped silently.
 
 ![Pseudocode panel](../pseudocode-dark.png)
 
+The source is on the left, numbered, with the language it is in; the
+translation is on the right, numbered too, with what could not be translated
+listed under it. Choose a file from the Library or with *Browse…*, or
+*Paste instead*.
+
 The subset: variables, arithmetic (`DIV`, `MOD`, `^`), comparisons,
 `AND/OR/NOT`, if/elif/else, count loops, for-each, while, `do…until`,
 functions and procedures, lists and indexing, string length / substring /
@@ -27,9 +32,12 @@ pseudocode (guessed from the code)"). Two cases stop with a message instead
 of guessing wrong: code with nothing to go on (`x = 5` is all three
 languages), and code that already looks like the language asked for, such
 as `to-ocr sheet.txt` on an OCR sheet. Both say which `--from` to pass. On
-the command line `--from python|ocr|aqa` always wins; in the panel, *From*
-is `guess` by default and can be set to a language the same way, and *To*
-is the target.
+the command line `--from python|ocr|aqa` always wins. In the panel,
+*Language* (under the file) switches to the language it guessed as soon as
+you choose a file or paste code, so you see the guess before you translate,
+and you can set it yourself; it shows *Guess* only when there is nothing to
+go on. *To* is the target; if the code is already in that language, *To*
+moves to another one.
 
 ```bash
 staff pseudocode to-ocr program.py

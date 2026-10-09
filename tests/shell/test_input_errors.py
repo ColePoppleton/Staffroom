@@ -43,7 +43,7 @@ def _run_fails(panel: ToolPanel, qtbot: QtBot) -> str:
     log_text = panel.results.log_view.toPlainText()
     for word in TRACEBACK_WORDS:
         assert word not in log_text, log_text
-        assert word not in panel.run_bar.status.text()
+        assert word not in panel.strip.text()
     return log_text
 
 
@@ -56,7 +56,7 @@ def test_wrong_file_type_is_one_line(
     panel = _panel(window, tool)
     panel.set_input_path(key, notes)
     log_text = _run_fails(panel, qtbot)
-    status = panel.run_bar.status.text()
+    status = panel.strip.text()
     assert "notes.txt" in status and ".csv" in status and ".xlsx" in status
     assert "\n" not in status
     assert status in log_text
@@ -64,7 +64,7 @@ def test_wrong_file_type_is_one_line(
 
 def test_fade_bad_ranges_is_one_line(window: MainWindow, qtbot: QtBot) -> None:
     panel = _panel(window, "fade")
-    panel.set_text("pasted", "x = 1\ny = 2\nprint(x + y)\n")
+    panel.set_text("source", "x = 1\ny = 2\nprint(x + y)\n")
     form = panel.forms["options"]
     widgets = {
         name: form.layout().itemAt(i * 2 + 1).widget()
@@ -74,5 +74,5 @@ def test_fade_bad_ranges_is_one_line(window: MainWindow, qtbot: QtBot) -> None:
     widgets["ranges"].setText("abc")
     assert form.value().order == "ranges" and form.value().ranges == "abc"
     _run_fails(panel, qtbot)
-    status = panel.run_bar.status.text()
+    status = panel.strip.text()
     assert "Line ranges like 3-5, 8" in status and "'abc'" in status

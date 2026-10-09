@@ -16,6 +16,8 @@ from staffroom.core.log import get_logger
 from staffroom.core.table import Row, Table
 from staffroom.tools.classroom.logic import (
     SessionFile,
+    is_day_folder,
+    is_session_folder,
     latest_version,
     promoted_name,
     session_folder,
@@ -85,15 +87,21 @@ def open_for_class(
 
 
 def list_sessions(sessions_root: Path) -> list[SessionFile]:
-    """Every lesson copy under the root, newest day first."""
+    """Every lesson copy under the root, newest day first. Only real session
+    folders count (:func:`~staffroom.tools.classroom.logic.is_session_folder`):
+    the tools' shared ``outputs/`` folder and anything else in the root are
+    skipped."""
     found: list[SessionFile] = []
     if not sessions_root.is_dir():
         return found
     for day_dir in sorted(sessions_root.iterdir(), reverse=True):
-        if not day_dir.is_dir() or day_dir.name.startswith("."):
+        if not is_day_folder(day_dir.name) or not day_dir.is_dir():
             continue
         for label_dir in sorted(day_dir.iterdir()):
-            if not label_dir.is_dir() or label_dir.name.startswith("."):
+            rel = f"{day_dir.name}/{label_dir.name}"
+            is_dir = label_dir.is_dir()
+            has_origin = is_dir and (label_dir / ORIGIN_FILE).is_file()
+            if not is_session_folder(rel, is_dir=is_dir, has_origin=has_origin):
                 continue
             origins = _read_origins(label_dir)
             label = _read_label(label_dir)

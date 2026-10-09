@@ -51,10 +51,10 @@ def window(qtbot: QtBot, read_only_home: Path, tmp_path: Path) -> MainWindow:
 
 def test_window_opens_and_says_the_library_is_unavailable(window: MainWindow) -> None:
     assert not window.library.available
-    status = window.sidebar.resources.status.text()
+    status = window.resources.status.text()
     assert status.startswith(UNAVAILABLE) and str(library_db_path()) in status
-    assert window.sidebar.resources.status.toolTip()  # the longer explanation
-    assert not window.sidebar.resources.reindex.isEnabled()
+    assert window.resources.status.toolTip()  # the longer explanation
+    assert not window.resources.reindex.isEnabled()
     assert UNAVAILABLE in window.library_page.index_status.text()
     assert window.library_page.worker is None  # no start-up index into thin air
     assert not (Path(os.environ["STAFFROOM_HOME"]) / "library.db").exists()
@@ -67,7 +67,7 @@ def test_reindex_request_is_refused_quietly(window: MainWindow) -> None:
 
 
 def test_resources_mode_and_search_do_not_crash(window: MainWindow) -> None:
-    window.sidebar.set_mode("resources")
+    window.show_library()
     assert window.stack.currentWidget() is window.library_page
     window.focus_library_search()
     window.library_page.set_query("while")
@@ -113,8 +113,8 @@ def test_a_real_launch_with_a_locked_config_does_not_raise(
     try:
         win = MainWindow(config, auto_index=False)  # no update check over the network
         qtbot.addWidget(win)
-        win.sidebar.set_mode("resources")
-        win.sidebar.set_mode("tools")
+        win.show_library()
+        win.sidebar.select("marks")
         win.toggle_theme()
         assert not win.library.available
         saves = [m for m in records.messages if m.startswith("Cannot save ")]

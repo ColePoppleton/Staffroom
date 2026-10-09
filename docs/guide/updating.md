@@ -2,16 +2,25 @@
 
 ## Installed with `uv tool install`
 
+The install line pins a release tag, so `uv tool upgrade staffroom` has
+nothing to move to and says *Nothing to upgrade*. To update, run the install
+line again with the newer tag from the
+[Releases](https://github.com/ColePoppleton/Staffroom/releases) page; uv
+replaces the old version:
+
 ```bash
-uv tool upgrade staffroom
+uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.6.0
 ```
+
+(Swap `v0.6.0` for the tag you want. The same works to go back a version.)
 
 ## Which version am I running?
 
-The sidebar header shows it under the app name, for example `v0.5.0 · 9 tools`.
+The foot of the sidebar shows it, for example `v0.6.0 · up to date` once the
+app has checked for a release (just `v0.6.0` before, or when it cannot check).
 
-![The sidebar header with the version, dark theme](../sidebar-header-dark.png)
-![The sidebar header with the version, light theme](../sidebar-header-light.png)
+![The sidebar footer with the version, dark theme](../sidebar-footer-dark.png)
+![The sidebar footer with the version, light theme](../sidebar-footer-light.png)
 
 Settings › Updates says the same at the top of the card. On a release tag it
 is just the version (`Running Staffroom 0.5.0`); anywhere else it adds the
@@ -27,7 +36,8 @@ not, so Get Info can lag behind the sidebar until the next `just install`.
 
 The app checks the git remote when it starts and compares your checkout with
 the **released branch**, `origin/main`, whatever branch you happen to be on.
-If a release is ahead, **Update available** appears in the sidebar; Settings ›
+If a release is ahead, an **update** link appears beside the version at the
+foot of the sidebar and opens Settings › Updates; Settings ›
 Updates has *Check for updates* and *Update now*, and the status line names
 the newest release tag (for example `v0.5.0`). Restart afterwards.
 

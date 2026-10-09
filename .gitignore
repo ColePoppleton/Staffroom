@@ -17,6 +17,7 @@ data/
 .idea/
 !docs/*.png
 !docs/assets/*.png
+!docs/audits/*/*.png
 !src/staffroom/shell/assets/*.png
 .idea/
 .DS_Store

@@ -18,6 +18,7 @@ class ClassroomPlugin:
     name = "classroom"
     description = "Open a resource for class on a copy; diff and promote edits."
     version = "0.1.0"
+    group, glyph = "Lessons", "screen"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.classroom.cli import register

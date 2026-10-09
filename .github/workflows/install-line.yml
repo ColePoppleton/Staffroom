@@ -1,0 +1,48 @@
+name: Install line
+
+# Runs the install command the docs home page tells colleagues to use (#80),
+# so a wrong or unpublished install line fails here instead of on a teacher's Mac.
+# The tests (tests/test_install_docs.py) separately refuse a PyPI-only line.
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "README.md"
+      - "docs/index.md"
+      - "docs/guide/install.md"
+      - "pyproject.toml"
+      - ".github/workflows/install-line.yml"
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/index.md"
+      - "docs/guide/install.md"
+      - "pyproject.toml"
+      - ".github/workflows/install-line.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: documented install line
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Run the install line from docs/index.md in a throwaway tool dir
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pattern='^uv tool install --python 3\.12 git\+https://github\.com/ColePoppleton/Staffroom@v[0-9]+\.[0-9]+\.[0-9]+$'
+          line=$(grep -m1 -E "$pattern" docs/index.md) || {
+            echo "docs/index.md has no line matching: $pattern"; exit 1; }
+          echo "Running: $line"
+          # The repository is private: let git (which uv uses) clone with the job token.
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          export UV_TOOL_DIR="$RUNNER_TEMP/uv-tools" UV_TOOL_BIN_DIR="$RUNNER_TEMP/uv-bin"
+          eval "$line"
+          "$UV_TOOL_BIN_DIR/staff" version

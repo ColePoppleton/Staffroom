@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from staffroom.core.panel import (
+    CodeSource,
     LogArea,
     OptionsForm,
+    PagePreview,
     PanelSpec,
-    ResourcePicker,
-    TextArea,
-    TextView,
 )
 from staffroom.tools.fade.logic import Options
 
@@ -22,18 +21,9 @@ def panel_spec() -> PanelSpec:
             "(see Running pupil code in the docs for the tools that do run it)."
         ),
         inputs=(
-            ResourcePicker(
-                key="source",
-                label="Python file",
-                filter_ext=".py",
-                required=False,
-                help="From the library or anywhere. Or paste code below instead.",
-            ),
-            TextArea(
-                key="pasted", label="Or paste code", rows=8, help="Used when no file is chosen."
-            ),
+            CodeSource(key="source", label="Worked solution", required=False),
             OptionsForm(key="options", schema=Options),
         ),
-        outputs=(TextView(key="preview", label="Preview (sheet, then key)"), LogArea()),
+        outputs=(PagePreview(key="pages", label="Faded versions"), LogArea()),
         run_label="Make versions",
     )

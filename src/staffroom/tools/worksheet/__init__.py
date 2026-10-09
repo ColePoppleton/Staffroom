@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from staffroom.core.export import export, house_style_from, to_text
-from staffroom.core.panel import PanelSpec
+from staffroom.core.panel import PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.tools.worksheet import logic
 from staffroom.tools.worksheet.panel import panel_spec
@@ -20,6 +20,7 @@ class WorksheetPlugin:
     name = "worksheet"
     description = "Seeded theory question sets (binary, logic, sizes, compression) with keys."
     version = "0.1.0"
+    group, glyph = "Sheets & quizzes", "page"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.worksheet.cli import register
@@ -62,11 +63,13 @@ class WorksheetPlugin:
             + (f", {note}" if note else "")
         )
         ctx.progress(1.0, "Done")
-        preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
+        sheet_text, key_text = to_text(doc.sheet()), to_text(doc.key())
         return RunResult(
-            texts={"preview": preview},
+            texts={"preview": sheet_text + "\n\n" + key_text},  # the CLI's --preview
+            pages={"pages": pages_from(files, sheet_text=sheet_text, key_text=key_text)},
             files=files,
             summary=f"Wrote {', '.join(f.name for f in files)} to {ctx.output_dir}",
+            outcome=f"{len(questions)} questions · seed {options.seed}, {options.difficulty}",
         )
 
 

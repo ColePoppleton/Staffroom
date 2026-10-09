@@ -18,7 +18,9 @@ from staffroom.core.log import get_logger
 log = get_logger(__name__)
 
 Opener = Callable[[Sequence[str]], None]
-Picker = Callable[[str | None], Path | None]
+ExtFilter = str | tuple[str, ...] | None
+"""A picker's filter: one extension like ``".py"``, several, or None for any."""
+Picker = Callable[[ExtFilter], Path | None]
 
 DEFAULT_RESOURCES_ROOT = ""
 
@@ -28,7 +30,7 @@ class ResourceService(Protocol):
 
     root: Path
 
-    def pick(self, filter: str | None = None) -> Path | None: ...
+    def pick(self, filter: ExtFilter = None) -> Path | None: ...
     def search(self, query: str) -> list[SearchHit]: ...
     def open_externally(self, path: Path) -> None: ...
     def open_for_class(self, path: Path, label: str) -> Path: ...
@@ -236,7 +238,7 @@ class LibraryService:
     def reveal(self, path: Path) -> None:
         self._opener(["-R", str(path)])
 
-    def pick(self, filter: str | None = None) -> Path | None:
+    def pick(self, filter: ExtFilter = None) -> Path | None:
         if self._picker is None:
             return None
         return self._picker(filter)

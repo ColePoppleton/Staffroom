@@ -27,7 +27,8 @@ from PySide6.QtWidgets import (
 )
 
 from staffroom.core.library.model import Resource, SearchHit
-from staffroom.core.library.service import LibraryService
+from staffroom.core.library.service import ExtFilter, LibraryService
+from staffroom.core.panel import normalise_extensions
 from staffroom.shell.library.result_item import add_result_row, no_matches_row
 from staffroom.shell.library.tree import REL_PATH_ROLE, ResourceTreeModel
 
@@ -36,7 +37,7 @@ REL_ROLE = Qt.ItemDataRole.UserRole
 
 class ResourcePickerDialog(QDialog):
     def __init__(
-        self, service: LibraryService, filter_ext: str | None, parent: QWidget | None
+        self, service: LibraryService, filter_ext: ExtFilter, parent: QWidget | None
     ) -> None:
         super().__init__(parent)
         self.setObjectName("Palette")
@@ -44,7 +45,8 @@ class ResourcePickerDialog(QDialog):
         self.setModal(True)
         self.resize(760, 580)
         self.service = service
-        self.filter_ext = filter_ext.lower() if filter_ext else None
+        # The same reading of the filter as the panel spec's (one or several).
+        self.exts = normalise_extensions(filter_ext)
         self._chosen: Resource | None = None
 
         layout = QVBoxLayout(self)
@@ -53,7 +55,7 @@ class ResourcePickerDialog(QDialog):
 
         self.search = QLineEdit()
         self.search.setObjectName("PaletteSearch")
-        what = f"{self.filter_ext} files" if self.filter_ext else "the library"
+        what = f"{' / '.join(self.exts)} files" if self.exts else "the library"
         self.search.setPlaceholderText(f"Search {what} by name or contents…")
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self.refresh)
@@ -103,16 +105,14 @@ class ResourcePickerDialog(QDialog):
         self._resources = [
             r
             for r in service.resources()
-            if not r.cloud_only and (self.filter_ext is None or r.ext == self.filter_ext)
+            if not r.cloud_only and (not self.exts or r.ext in self.exts)
         ]
         self.refresh("")
         self.search.setFocus()
 
     # -- population ------------------------------------------------------
     def _matches_filter(self, resource: Resource) -> bool:
-        return not resource.cloud_only and (
-            self.filter_ext is None or resource.ext == self.filter_ext
-        )
+        return not resource.cloud_only and (not self.exts or resource.ext in self.exts)
 
     def refresh(self, text: str) -> None:
         text = text.strip()
@@ -179,7 +179,7 @@ class ResourcePickerDialog(QDialog):
 
 
 def pick_resource(
-    service: LibraryService, filter_ext: str | None, parent: QWidget | None
+    service: LibraryService, filter_ext: ExtFilter, parent: QWidget | None
 ) -> Path | None:
     dialog = ResourcePickerDialog(service, filter_ext, parent)
     if dialog.exec() == QDialog.DialogCode.Accepted:

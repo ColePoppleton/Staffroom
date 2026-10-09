@@ -45,13 +45,13 @@ shot launcher-dark  --tool marks --open examples/marks_10x.csv --run --theme dar
 shot first-run-dark --first-run --theme dark
 shot settings       --settings --theme dark
 
-# The sidebar header (app name, version, tool count) in both themes, cropped
-# from a full launcher render so it always matches the real window.
-header() {
+# The sidebar footer (version and update state) in both themes, cropped from
+# a full launcher render so it always matches the real window.
+footer() {
     local theme="$1"
     uv run staffroom --size "$size" --tool marks --theme "$theme" \
         --screenshot "$home/launcher-$theme.png" >/dev/null
-    uv run python - "$home/launcher-$theme.png" "docs/sidebar-header-$theme.png" "${size%x*}" <<'PY'
+    uv run python - "$home/launcher-$theme.png" "docs/sidebar-footer-$theme.png" "${size%x*}" <<'PY'
 import sys
 from PIL import Image
 
@@ -59,24 +59,25 @@ from staffroom.shell.sidebar import SIDEBAR_WIDTH
 
 image = Image.open(sys.argv[1])
 scale = image.width / int(sys.argv[3])  # the device pixel ratio of the render
-image.crop((0, 0, round(SIDEBAR_WIDTH * scale), round(108 * scale))).save(sys.argv[2])
+bottom = image.height
+image.crop((0, bottom - round(48 * scale), round(SIDEBAR_WIDTH * scale), bottom)).save(sys.argv[2])
 print("saved", sys.argv[2])
 PY
 }
-header dark
-header light
+footer dark
+footer light
 
-# Tool panels, in sidebar order
+# Tool panels
 shot classroom-dark            --tool classroom --open "$fixtures/Python/Year 9/average.py" --theme dark
 shot marks-dark                --tool marks --open examples/marks_10x_max.csv --run --theme dark
-shot marks-warnings-light      --tool marks --open examples/marks_messy.csv --run --theme light
+shot marks-warnings-light      --tool marks --open examples/marks_messy.csv --run --expand --theme light
 shot worksheet-light           --tool worksheet --run --theme light
 shot parsons-dark              --tool parsons --open examples/year9.py --run --theme dark
 shot quiz-light                --tool quiz --open examples/question_bank.md --run --theme light
-shot trace-dark                --tool trace --open examples/year9.py --run --theme dark
+shot trace-dark                --tool trace --open examples/year9.py --run --select-row 8 --theme dark
 shot trace-preset-dark         --tool trace --open examples/year9.py --preset "Year 9" --theme dark --size 1240x1500
 shot trace-missing-input-dark  --tool trace --open "$fixtures/Python/Year 10/temperature.py" --run --theme dark
-shot bugs-light                --tool bugs --open examples/year9.py --run --theme light
+shot bugs-light                --tool bugs --open examples/year9.py --run --select-row 1 --theme light
 shot pseudocode-dark           --tool pseudocode --open examples/year9.py --run --theme dark
 
 # Resource Library
@@ -88,13 +89,46 @@ uv run staff marks run examples/marks_10x_max.csv --out "$home/out/marks" >/dev/
 cp "$home/out/marks/marks_10x_max_distribution.png" docs/marks-chart.png
 echo "saved docs/marks-chart.png"
 
+# The pages the tools print, for the home page's fan and its "What comes out"
+# gallery: page 1 of each PDF, made from the example files by the same
+# commands a teacher would type. The date in each page's header is today's.
+page() {
+    local pdf="$1" name="$2" dpi="${3:-90}"
+    if command -v pdftoppm >/dev/null; then
+        pdftoppm -png -r "$dpi" -f 1 -l 1 -singlefile "$pdf" "docs/$name"
+    else
+        # macOS fallback (lower resolution): `brew install poppler` for pdftoppm.
+        sips -s format png "$pdf" --out "docs/$name.png" >/dev/null
+    fi
+    echo "saved docs/$name.png"
+}
+first_pdf() { ls "$1"/*.pdf | grep -v -i key | head -1; }
+
 uv run staff worksheet make --topic truth_tables --difficulty hard --board ocr --seed 1 \
     --format pdf --out "$home/out/worksheet" --no-preview >/dev/null
-sheet="$(ls "$home/out/worksheet"/*.pdf | grep -v -i key | head -1)"
-if command -v pdftoppm >/dev/null; then
-    pdftoppm -png -r 110 -f 1 -l 1 -singlefile "$sheet" docs/worksheet-sample
-else
-    # macOS fallback (lower resolution): `brew install poppler` for pdftoppm.
-    sips -s format png "$sheet" --out docs/worksheet-sample.png >/dev/null
-fi
-echo "saved docs/worksheet-sample.png"
+page "$(first_pdf "$home/out/worksheet")" worksheet-sample 110
+
+uv run staff worksheet make --topic binary --difficulty medium --board ocr --seed 1 --count 8 \
+    --format pdf --out "$home/out/binary" --no-preview >/dev/null
+page "$(first_pdf "$home/out/binary")" output-worksheet
+
+uv run staff parsons make examples/year9.py --seed 1 --format pdf \
+    --out "$home/out/parsons" --no-preview >/dev/null
+page "$(first_pdf "$home/out/parsons")" output-parsons
+
+uv run staff trace make examples/year9.py --format pdf --out "$home/out/trace" --no-preview >/dev/null
+page "$(first_pdf "$home/out/trace")" output-trace
+
+uv run staff bugs make examples/year9.py --seed 1 --format pdf --out "$home/out/bugs" >/dev/null
+page "$(first_pdf "$home/out/bugs")" output-bugs
+
+uv run staff fade make examples/year9.py --format pdf --out "$home/out/fade" --no-preview >/dev/null
+page "$(first_pdf "$home/out/fade")" output-fade
+
+uv run staff quiz export --bank examples/question_bank.md --format donow --seed 1 \
+    --out "$home/out/quiz" >/dev/null
+page "$(first_pdf "$home/out/quiz")" output-quiz
+
+# Pseudocode writes text, not a page: keep the translation itself.
+uv run staff pseudocode to-ocr examples/year9.py 2>/dev/null > docs/output-pseudocode-ocr.txt
+echo "saved docs/output-pseudocode-ocr.txt"

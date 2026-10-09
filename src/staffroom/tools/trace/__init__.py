@@ -8,7 +8,7 @@ from typing import Any
 
 from staffroom.core.codeinput import code_from_inputs
 from staffroom.core.export import export, house_style_from, to_text
-from staffroom.core.panel import PanelSpec
+from staffroom.core.panel import PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.core.runner import MAX_OUTPUT_BYTES, blocked_imports, run_source
 from staffroom.tools.trace import logic
@@ -63,6 +63,7 @@ class TracePlugin:
     name = "trace"
     description = "Blank and completed trace tables from a sandboxed run."
     version = "0.1.0"
+    group, glyph = "From a program", "table"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.trace.cli import register
@@ -120,15 +121,19 @@ class TracePlugin:
             style=house_style_from(ctx.config),
         )
         ctx.progress(1.0, "Done")
+        sheet_text, key_text = to_text(doc.sheet()), to_text(doc.key())
         return RunResult(
             tables={"table": completed},
-            texts={"preview": to_text(doc.sheet()) + "\n\n" + to_text(doc.key())},
+            texts={"preview": sheet_text + "\n\n" + key_text},  # the CLI's --preview
+            pages={"pages": pages_from(files, sheet_text=sheet_text, key_text=key_text)},
             files=files,
             summary=(
                 f"{len(steps)} rows"
                 + (f"; ended with {result.error}" if result.error else "")
                 + f"; wrote {', '.join(f.name for f in files)} to {ctx.output_dir}"
             ),
+            outcome=f"{len(steps)} rows · {preset}"
+            + (f", ended with {result.error}" if result.error else ""),
         )
 
 

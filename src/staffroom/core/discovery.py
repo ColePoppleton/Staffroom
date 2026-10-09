@@ -15,26 +15,35 @@ from functools import cache
 from types import ModuleType
 
 from staffroom.core.log import get_logger
-from staffroom.core.plugin import DEFAULT_ORDER, ToolPlugin, plugin_hidden, plugin_order
+from staffroom.core.plugin import (
+    DEFAULT_ORDER,
+    GROUPS,
+    OTHER_GROUP,
+    ToolPlugin,
+    plugin_group,
+    plugin_hidden,
+    plugin_order,
+)
 
 log = get_logger(__name__)
 TOOLS_PACKAGE = "staffroom.tools"
 
 WORKFLOW_ORDER: tuple[str, ...] = (
     "classroom",
-    "marks",
     "worksheet",
-    "parsons",
     "quiz",
+    "parsons",
     "trace",
     "bugs",
     "fade",
     "pseudocode",
+    "marks",
 )
-"""The shipped tools in the order a teacher meets them: open a resource for
-class, mark, then the four sheet generators, then the three code tools.
-A plugin that declares its own ``order`` overrides its place here; a tool
-not listed and without an ``order`` lands after all of these, alphabetically.
+"""The shipped tools in sidebar order, which follows the groups of a
+teacher's week (:data:`~staffroom.core.plugin.GROUPS`): open a resource for
+class; sheets and quizzes; the five tools made from a program; marks after a
+test. Within its group a plugin's declared ``order`` overrides its place
+here; a tool not listed and without an ``order`` comes after these, A-Z.
 """
 
 
@@ -68,13 +77,34 @@ def load_plugin(name: str, package: str = TOOLS_PACKAGE) -> ToolPlugin:
     return plugin
 
 
-def sort_key(plugin: ToolPlugin) -> tuple[int, str]:
-    """``(order, name)``: a declared ``order`` first, else the workflow
-    position, else :data:`DEFAULT_ORDER`."""
+def group_key(group: str) -> tuple[int, str]:
+    """Where ``group`` sits in the sidebar: the named :data:`GROUPS` in their
+    order, then any group a plugin made up (A-Z), then :data:`OTHER_GROUP`."""
+    if group in GROUPS:
+        return GROUPS.index(group), ""
+    if group == OTHER_GROUP:
+        return len(GROUPS) + 1, ""
+    return len(GROUPS), group.casefold()
+
+
+def sort_key(plugin: ToolPlugin) -> tuple[int, str, int, str]:
+    """``(group rank, group, order, name)``: by group first (:func:`group_key`),
+    then within it a declared ``order``, else the workflow position, else
+    :data:`DEFAULT_ORDER`, ties by name."""
     order = plugin_order(plugin)
     if order == DEFAULT_ORDER and plugin.name in WORKFLOW_ORDER:
         order = WORKFLOW_ORDER.index(plugin.name) * 10
-    return order, plugin.name
+    rank, group = group_key(plugin_group(plugin))
+    return rank, group, order, plugin.name
+
+
+def grouped(plugins: tuple[ToolPlugin, ...]) -> list[tuple[str, tuple[ToolPlugin, ...]]]:
+    """``plugins`` as sidebar groups, ``[(group, tools), ...]``, both in
+    sidebar order (:func:`sort_key`). Empty groups are left out."""
+    groups: dict[str, list[ToolPlugin]] = {}
+    for plugin in sorted(plugins, key=sort_key):
+        groups.setdefault(plugin_group(plugin), []).append(plugin)
+    return [(name, tuple(tools)) for name, tools in groups.items()]
 
 
 @cache

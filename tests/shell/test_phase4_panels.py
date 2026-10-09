@@ -29,10 +29,10 @@ def run_tool(window: MainWindow, qtbot: QtBot, name: str) -> ToolPanel:
     window.sidebar.select(name)
     panel = window.stack.currentWidget()
     assert isinstance(panel, ToolPanel) and panel.plugin.name == name
-    panel.set_text("pasted", PROGRAM)
+    panel.set_text("source", PROGRAM)
     with qtbot.waitSignal(panel.run_finished, timeout=60000) as blocker:
         panel.start_run()
-    assert blocker.args == [True], panel.run_bar.status.text()
+    assert blocker.args == [True], panel.strip.text()
     return panel
 
 
@@ -40,17 +40,23 @@ def test_trace_panel(window: MainWindow, qtbot: QtBot, tmp_path: Path) -> None:
     panel = run_tool(window, qtbot, "trace")
     model = panel.results.tables["table"][0]
     assert model.columnCount() >= 4 and model.rowCount() >= 8
-    assert "Trace table" in panel.results.text_views["preview"].toPlainText()
-    assert (tmp_path / "out" / "pasted_code_trace_key.pdf").exists()
+    pages = panel.results.page_previews["pages"]
+    assert pages.path("key") == tmp_path / "out" / "pasted_code_trace_key.pdf"
+    assert pages.page_count("sheet") >= 1
 
 
 def test_bugs_panel(window: MainWindow, qtbot: QtBot, tmp_path: Path) -> None:
     panel = run_tool(window, qtbot, "bugs")
     assert panel.results.tables["key"][0].rowCount() >= 1
     assert (tmp_path / "out" / "pasted_code_bug1.py").exists()
+    assert panel.results.page_previews["pages"].path("sheet") == (
+        tmp_path / "out" / "pasted_code_bugs.pdf"
+    )
 
 
 def test_fade_panel(window: MainWindow, qtbot: QtBot, tmp_path: Path) -> None:
     panel = run_tool(window, qtbot, "fade")
-    assert "Faded examples" in panel.results.text_views["preview"].toPlainText()
+    pages = panel.results.page_previews["pages"]
+    assert pages.path("sheet") == tmp_path / "out" / "pasted_code_faded.pdf"
+    assert pages.page_count("key") >= 1
     assert (tmp_path / "out" / "pasted_code_faded_key.docx").exists()

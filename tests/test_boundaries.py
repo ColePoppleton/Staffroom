@@ -201,7 +201,7 @@ def _table_picker_keys(spec: object) -> set[str]:
             ):
                 keys.add(item.key)
         elif isinstance(item, ResourcePicker):
-            if (item.filter_ext or "").lower() in TABLE_EXTENSIONS:
+            if any(ext in TABLE_EXTENSIONS for ext in item.extensions):
                 keys.add(item.key)
         elif dataclasses.is_dataclass(item) and not isinstance(item, type):
             pending.extend(getattr(item, f.name) for f in dataclasses.fields(item))

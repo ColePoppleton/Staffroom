@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
+from staffroom.core.codeinput import code_from_inputs
 from staffroom.core.export import export, house_style_from, to_text
-from staffroom.core.panel import PanelSpec
+from staffroom.core.panel import PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.tools.parsons import logic
 from staffroom.tools.parsons.panel import panel_spec
@@ -21,6 +21,7 @@ class ParsonsPlugin:
     name = "parsons"
     description = "Working code → Parsons problem worksheet + answer key."
     version = "0.1.0"
+    group, glyph = "From a program", "blocks"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.parsons.cli import register
@@ -32,18 +33,7 @@ class ParsonsPlugin:
 
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
-        source_path: Path | None = inputs.get("source")
-        pasted = str(inputs.get("pasted") or "")
-        if source_path is not None:
-            try:
-                source = source_path.read_text(encoding="utf-8", errors="replace")
-            except OSError as exc:
-                raise ToolError(f"Could not read {source_path}: {exc}") from exc
-            name = source_path.stem
-        elif pasted.strip():
-            source, name = pasted, "pasted_code"
-        else:
-            raise ToolError("Choose a Python file or paste some code.")
+        source, name = code_from_inputs(inputs)
 
         ctx.progress(0.2, "Splitting into blocks")
         try:
@@ -67,11 +57,16 @@ class ParsonsPlugin:
             style=house_style_from(ctx.config),
         )
         ctx.progress(1.0, "Done")
-        preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
+        sheet_text, key_text = to_text(doc.sheet()), to_text(doc.key())
         return RunResult(
-            texts={"preview": preview},
+            texts={"preview": sheet_text + "\n\n" + key_text},  # the CLI's --preview
+            pages={"pages": pages_from(files, sheet_text=sheet_text, key_text=key_text)},
             files=files,
             summary=f"Wrote {', '.join(f.name for f in files)} to {ctx.output_dir}",
+            outcome=(
+                f"{len(problem.solution)} blocks · "
+                f"{len(problem.distractor_numbers())} distractors, seed {problem.seed}"
+            ),
         )
 
 

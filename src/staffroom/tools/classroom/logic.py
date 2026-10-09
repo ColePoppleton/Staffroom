@@ -11,6 +11,7 @@ MAX_LABEL = 60
 _UNSAFE = re.compile(r"[^A-Za-z0-9 _.-]+")
 _SPACES = re.compile(r"\s+")
 _VERSION = re.compile(r"^(?P<stem>.*?)(?:_v(?P<n>\d+))?$")
+_ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,32 @@ def label_folder(label: str) -> str:
 
 def session_folder(day: date, label: str) -> str:
     return f"{day.isoformat()}/{label_folder(label)}"
+
+
+def is_day_folder(name: str) -> bool:
+    """True for a folder named like the day :func:`session_folder` makes,
+    ``2026-10-06``: an ISO date that exists. Anything else in the sessions
+    root, such as the tools' shared ``outputs`` folder, is not a day."""
+    if not _ISO_DAY.match(name):
+        return False
+    try:
+        date.fromisoformat(name)
+    except ValueError:
+        return False
+    return True
+
+
+def is_session_folder(rel: str, *, is_dir: bool, has_origin: bool) -> bool:
+    """Whether ``rel`` (relative to the sessions root) is a lesson folder that
+    classroom made: ``<day>/<label>``, a directory under a date-named day
+    folder, holding the ``.origin.json`` sidecar :func:`open_for_class` writes.
+    Only these are listed as past sessions; ``outputs/<tool>``, stray files
+    and folders the teacher made by hand are left alone."""
+    parts = [p for p in rel.split("/") if p]
+    if len(parts) != 2 or not is_dir:
+        return False
+    day, label = parts
+    return is_day_folder(day) and not label.startswith(".") and has_origin
 
 
 def _split_version(name: str) -> tuple[str, int | None, str]:

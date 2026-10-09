@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from staffroom.core.codeinput import code_from_inputs
+from staffroom.core.codeinput import code_from_inputs, code_path
 from staffroom.core.panel import PanelSpec
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.tools.pseudocode import logic
@@ -16,6 +15,7 @@ class PseudocodePlugin:
     name = "pseudocode"
     description = "Python ↔ OCR ERL / AQA pseudocode (GCSE subset) with a could-not-translate list."
     version = "0.1.0"
+    group, glyph = "From a program", "code"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.pseudocode.cli import register
@@ -28,10 +28,11 @@ class PseudocodePlugin:
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
         text, name = code_from_inputs(inputs)
-        picked = inputs.get("source")
-        filename = picked.name if isinstance(picked, Path) else ""
-        dst = options.target
-        src, guessed = _resolve_source(options.source, text, filename, dst)
+        picked = code_path(inputs)
+        filename = picked.name if picked else ""
+        # The panel's From and To choices; the command line sets them in options.
+        dst = inputs.get("to") or options.target
+        src, guessed = _resolve_source(inputs.get("from") or options.source, text, filename, dst)
         if guessed:
             ctx.log(
                 f"Treated input as {logic.LANGUAGE_LABELS[src]} (guessed from the code); "
@@ -43,7 +44,7 @@ class PseudocodePlugin:
         except SyntaxError as exc:
             raise ToolError(f"That is not valid Python: {exc.msg} (line {exc.lineno})") from exc
         for d in result.dropped:
-            ctx.log("Could not translate " + d)
+            ctx.warn("Could not translate " + d)
         for n in result.notes:
             ctx.log("Note: " + n)
         files = []
@@ -63,8 +64,14 @@ class PseudocodePlugin:
             summary += f"; input guessed as {logic.LANGUAGE_LABELS[src]}"
         if files:
             summary += f"; wrote {files[0].name}"
+        outcome = f"{logic.LANGUAGE_LABELS[dst]} · {status}"
+        if guessed:
+            outcome += f", input read as {logic.LANGUAGE_LABELS[src]}"
         return RunResult(
-            texts={"output": result.text, "report": result.report()}, files=files, summary=summary
+            texts={"output": result.text, "report": result.report()},
+            files=files,
+            summary=summary,
+            outcome=outcome,
         )
 
 

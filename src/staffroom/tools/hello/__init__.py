@@ -57,6 +57,7 @@ class HelloPlugin:
             tables={"result": result},
             files=[out],
             summary=f"Wrote {len(result)} rows to {out}",
+            outcome=f"{len(result)} rows totalled",
         )
 
 

@@ -1,10 +1,12 @@
-"""A small Python syntax highlighter for the preview pane."""
+"""A small Python syntax highlighter for the Library preview and the code
+views of the tool panels."""
 
 from __future__ import annotations
 
 import builtins
 import keyword
 import re
+from dataclasses import dataclass
 
 from PySide6.QtCore import QRegularExpression
 from PySide6.QtGui import QColor, QFont, QSyntaxHighlighter, QTextCharFormat, QTextDocument
@@ -22,27 +24,54 @@ def _fmt(color: str, *, bold: bool = False, italic: bool = False) -> QTextCharFo
     return f
 
 
+@dataclass(frozen=True)
+class CodeColors:
+    """The highlighter's colours, as ``#rrggbb`` strings."""
+
+    keyword: str
+    builtin: str
+    name: str
+    number: str
+    string: str
+    comment: str
+
+    @classmethod
+    def from_palette(cls, p: Palette) -> CodeColors:
+        return cls(
+            p.accent, p.code_builtin, p.code_name, p.code_number, p.code_string, p.text_faint
+        )
+
+
 class PythonHighlighter(QSyntaxHighlighter):
-    def __init__(self, document: QTextDocument, palette: Palette) -> None:
+    def __init__(self, document: QTextDocument, colors: Palette | CodeColors) -> None:
         super().__init__(document)
-        p = palette
+        self._build(colors if isinstance(colors, CodeColors) else CodeColors.from_palette(colors))
+
+    def set_colors(self, colors: CodeColors) -> None:
+        """Re-colour (a theme change) and redraw."""
+        self._build(colors)
+        self.rehighlight()
+
+    def _build(self, p: CodeColors) -> None:
         kw = "|".join(re.escape(k) for k in keyword.kwlist)
         bi = "|".join(re.escape(b) for b in dir(builtins) if not b.startswith("_"))
         self.rules: list[tuple[QRegularExpression, QTextCharFormat]] = [
-            (QRegularExpression(rf"\b({kw})\b"), _fmt(p.accent, bold=True)),
-            (QRegularExpression(rf"\b({bi})\b(?=\()"), _fmt(p.code_builtin)),
-            (QRegularExpression(r"\b(def|class)\s+(\w+)"), _fmt(p.code_name, bold=True)),
-            (QRegularExpression(r"\b\d+(\.\d+)?\b"), _fmt(p.code_number)),
-            (QRegularExpression(r"@\w+"), _fmt(p.code_builtin)),
-            (QRegularExpression(r"'[^'\\]*(\\.[^'\\]*)*'"), _fmt(p.code_string)),
-            (QRegularExpression(r'"[^"\\]*(\\.[^"\\]*)*"'), _fmt(p.code_string)),
-            (QRegularExpression(r"#[^\n]*"), _fmt(p.text_faint, italic=True)),
+            (QRegularExpression(rf"\b({kw})\b"), _fmt(p.keyword, bold=True)),
+            (QRegularExpression(rf"\b({bi})\b(?=\()"), _fmt(p.builtin)),
+            (QRegularExpression(r"\b(def|class)\s+(\w+)"), _fmt(p.name, bold=True)),
+            (QRegularExpression(r"\b\d+(\.\d+)?\b"), _fmt(p.number)),
+            (QRegularExpression(r"@\w+"), _fmt(p.builtin)),
+            (QRegularExpression(r"'[^'\\]*(\\.[^'\\]*)*'"), _fmt(p.string)),
+            (QRegularExpression(r'"[^"\\]*(\\.[^"\\]*)*"'), _fmt(p.string)),
+            (QRegularExpression(r"#[^\n]*"), _fmt(p.comment, italic=True)),
+            # OCR ERL comments; no Python line starts with // (floor division).
+            (QRegularExpression(r"^\s*//[^\n]*"), _fmt(p.comment, italic=True)),
         ]
         self.triple = [
             (QRegularExpression("'''"), 1),
             (QRegularExpression('"""'), 2),
         ]
-        self.string_fmt = _fmt(p.code_string)
+        self.string_fmt = _fmt(p.string)
 
     def highlightBlock(self, text: str) -> None:  # noqa: N802
         for rx, fmt in self.rules:

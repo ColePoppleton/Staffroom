@@ -1,16 +1,19 @@
-"""The Resources page in the main area: search results beside the preview."""
+"""The Library: one page. A header line (where the folder is, what is in the
+index), then two columns: the search box, filters and folder tree (or the
+search results in its place) on the left, the chosen file's preview on the
+right with its tags and the use bar over the file itself."""
 
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QListWidget,
     QListWidgetItem,
     QProgressBar,
-    QSplitter,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -21,11 +24,41 @@ from staffroom.core.library.service import LibraryService
 from staffroom.core.log import get_logger
 from staffroom.shell.library.preview import PreviewPane
 from staffroom.shell.library.result_item import add_result_row, no_matches_row
+from staffroom.shell.library.sidebar_panel import ResourcesPanel
 from staffroom.shell.library.worker import IndexWorker
 from staffroom.shell.widgets import make_label
+from staffroom.shell.widgets.elided_label import ElidedLabel
 
 log = get_logger(__name__)
 REL_ROLE = Qt.ItemDataRole.UserRole
+COLUMN_WIDTH = 262
+
+
+def short_path(path: Path) -> str:
+    """``~/Department/Resources`` for a folder under home; others in full."""
+    try:
+        return "~/" + path.relative_to(Path.home()).as_posix()
+    except ValueError:
+        return str(path)
+
+
+class StatusLabel(ElidedLabel):
+    """Asks for its whole text's width but gives way (eliding in the middle)
+    when the window is narrow, so a long status never sets the window's
+    minimum width (#103)."""
+
+    def __init__(self) -> None:
+        # The tooltip is the longer explanation the page sets, not the text.
+        super().__init__(mode=Qt.TextElideMode.ElideMiddle, auto_tooltip=False)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+
+    def setText(self, text: str) -> None:  # noqa: N802
+        super().setText(text)
+        self.updateGeometry()
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        width = self.fontMetrics().horizontalAdvance(self.text()) + 6
+        return QSize(width, super().sizeHint().height())
 
 
 def counts_detail(counts: LibraryCounts) -> str:
@@ -54,40 +87,59 @@ class LibraryPage(QWidget):
         self._last_stats: IndexStats | None = None
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(32, 28, 32, 24)
-        root.setSpacing(16)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
-        head = QHBoxLayout()
-        head.setSpacing(12)
-        titles = QVBoxLayout()
-        titles.setSpacing(4)
-        titles.addWidget(make_label("Resources", "title"))
-        self.subtitle = make_label(str(service.root), "subtitle")
-        titles.addWidget(self.subtitle)
-        head.addLayout(titles, 1)
-        self.index_status = make_label("", "faint")
-        head.addWidget(self.index_status, 0, Qt.AlignmentFlag.AlignBottom)
-        root.addLayout(head)
+        # -- one header line: Library, the folder, what is in the index
+        header = QWidget()
+        header.setObjectName("PanelHeader")
+        header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        head = QHBoxLayout(header)
+        head.setContentsMargins(28, 16, 28, 12)
+        head.setSpacing(14)
+        head.addWidget(make_label("Library", "title"), 0, Qt.AlignmentFlag.AlignBaseline)
+        # The folder is elided in the middle, whole in the tooltip: a deep
+        # path never widens the window past its minimum (#103).
+        self.subtitle = ElidedLabel(mode=Qt.TextElideMode.ElideMiddle, auto_tooltip=False)
+        self.subtitle.setProperty("role", "subtitle")
+        head.addWidget(self.subtitle, 1, Qt.AlignmentFlag.AlignBaseline)
+        self.index_status = StatusLabel()
+        self.index_status.setProperty("role", "faint")
+        head.addWidget(self.index_status, 0, Qt.AlignmentFlag.AlignBaseline)
+        root.addWidget(header)
 
         self.progress = QProgressBar()
+        self.progress.setObjectName("RunProgress")
         self.progress.setRange(0, 1000)
         self.progress.setTextVisible(False)
         self.progress.hide()
         root.addWidget(self.progress)
 
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.results = QListWidget()
-        self.results.setObjectName("ResultList")
-        self.results.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+        root.addLayout(body, 1)
+
+        # -- the left column: search, filters, the tree or the results
+        self.column = ResourcesPanel()
+        column = QWidget()
+        column.setObjectName("LibraryColumn")
+        column.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        column.setFixedWidth(COLUMN_WIDTH)
+        column_layout = QVBoxLayout(column)
+        column_layout.setContentsMargins(0, 14, 0, 4)
+        column_layout.addWidget(self.column)
+        body.addWidget(column)
+        self.results = self.column.results
         self.results.currentItemChanged.connect(self._on_result)
-        self.results.hide()
+
+        # -- the preview, with the use bar
         self.preview = PreviewPane(service, config.general.theme)
-        self.splitter.addWidget(self.results)
-        self.splitter.addWidget(self.preview)
-        self.splitter.setStretchFactor(0, 2)
-        self.splitter.setStretchFactor(1, 3)
-        self.splitter.setChildrenCollapsible(False)
-        root.addWidget(self.splitter, 1)
+        preview_host = QWidget()
+        preview_layout = QVBoxLayout(preview_host)
+        preview_layout.setContentsMargins(24, 18, 24, 18)
+        preview_layout.addWidget(self.preview)
+        body.addWidget(preview_host, 1)
         self.refresh_status()
 
     # -- state -----------------------------------------------------------
@@ -110,11 +162,13 @@ class LibraryPage(QWidget):
             self.index_status.setToolTip(counts_detail(counts))
         if not self.service.root_set:
             self.subtitle.setText("No folder chosen yet: set it in Settings")
+            self.subtitle.setToolTip("")
         else:
             self.subtitle.setText(
-                str(self.service.root)
+                short_path(self.service.root)
                 + ("" if self.service.root_exists else "   (folder not found)")
             )
+            self.subtitle.setToolTip(str(self.service.root))
 
     def set_theme(self, theme: str) -> None:
         self.preview.set_theme(theme)
@@ -136,7 +190,7 @@ class LibraryPage(QWidget):
     def _run_search(self) -> None:
         self.results.clear()  # invalidates the row wrappers too, unlike QStandardItemModel (#54)
         if not self.query:
-            self.results.hide()
+            self.column.show_results(False)
             return
         kinds: list[Kind] | None = None if self.kind == "all" else [self.kind]  # type: ignore[list-item]
         hits = self.service.search(self.query, kinds=kinds, include_hidden=self.show_hidden)
@@ -144,7 +198,7 @@ class LibraryPage(QWidget):
             add_result_row(self.results, hit, REL_ROLE)
         if not hits:
             no_matches_row(self.results)
-        self.results.show()
+        self.column.show_results(True)
 
     def _on_result(self, current: QListWidgetItem | None) -> None:
         if current is None:
@@ -171,7 +225,8 @@ class LibraryPage(QWidget):
             self.refresh_status()
             return
         if not self.service.root_exists:
-            self.index_status.setText(f"Folder not found: {self.service.root}. Set it in Settings.")
+            # The folder itself is in the header, elided (#103).
+            self.index_status.setText("Folder not found: set it in Settings.")
             return
         self.progress.setValue(0)
         self.progress.show()

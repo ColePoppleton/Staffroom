@@ -29,25 +29,42 @@ writing your own. It is `hidden`, so it is not in the launcher sidebar, but
 
 ## Where it sits in the sidebar
 
-The sidebar, and the `⌘1`–`⌘9` shortcuts that follow it top to bottom, list
-the shipped tools in the order a teacher meets them (`WORKFLOW_ORDER` in
-`core/discovery.py`): classroom, marks, worksheet, parsons, quiz, trace,
-bugs, fade, pseudocode. Two optional class attributes on the plugin change
-where a tool goes; both are read with `getattr`, so a tool that sets
-neither needs no change and lands after the shipped tools, alphabetically.
+The sidebar groups tools by the shape of a teacher's week (`GROUPS` in
+`core/plugin.py`), and the `⌘1`–`⌘9` shortcuts follow it top to bottom:
+
+| Group | Shipped tools | Shortcuts |
+| --- | --- | --- |
+| Lessons | (Library), classroom | ⌘K, ⌘1 |
+| Sheets & quizzes | worksheet, quiz | ⌘2, ⌘3 |
+| From a program | parsons, trace, bugs, fade, pseudocode | ⌘4 – ⌘8 |
+| After a test | marks | ⌘9 |
+
+The Library is the shell's own page, not a tool, so it has ⌘K rather than a
+number. Four optional class attributes on the plugin say where a tool goes and
+how it looks; all are read with `getattr`, so a tool that sets none needs no
+change: it is listed under **Other**, after every group, A-Z, with a generic
+glyph.
 
 ```python
 class MyToolPlugin:
     name = "my_tool"
     ...
-    order = 15  # lower comes first; the shipped tools use 0, 10, 20, …
+    group = "From a program"  # one of core.plugin.GROUPS, or a name of your own
+    glyph = "code"  # a file in shell/assets/glyphs/ (without .svg)
+    order = 35  # within the group: lower first; shipped tools use 10 × their WORKFLOW_ORDER place
     hidden = True  # not in the sidebar or on a shortcut; still a CLI tool
 ```
 
-`order` places the tool among the shipped ones (15 puts it between marks
-and worksheet). `hidden` is for reference and developer tools: `staff list`
-still shows them, marked `[hidden]`, and `staffroom --tool <name>` still
-opens them for a screenshot.
+`group` names one of the four groups; a name of your own makes a new group
+after them. `glyph` picks one of the bundled monochrome glyphs (`books`,
+`screen`, `page`, `question`, `blocks`, `table`, `bug`, `taper`, `code`,
+`chart`, `tool`); the shell paints it in the theme's colours, so the tool
+stays Qt-free. To add a glyph, drop a 24×24 line drawing that uses
+`currentColor` for its stroke into `shell/assets/glyphs/`. `order` places the
+tool among the shipped ones in its group (35 puts it between parsons and
+trace in *From a program*). `hidden` is for reference and developer tools:
+`staff list` still shows them, marked `[hidden]`, and `staffroom --tool <name>`
+still opens them for a screenshot.
 
 ## 2. Write the logic
 
@@ -93,6 +110,72 @@ PanelSpec(
 
 Input keys become the keys of the `inputs` dict passed to `run()`; output keys
 are what `run()` must put in `RunResult.tables` / `RunResult.images`.
+
+The shell lays every panel out as a workbench: the inputs in a column on the
+left with the run button at its foot (⌘↵ runs it), the outputs on the right.
+Outputs are *main* views, shown as tabs in spec order, or sit *below* them.
+An `ActionTable` goes below by default and everything else is a main view; set
+`place="below"` on a secondary output (notes, a view-only table) or
+`place="main"` on a list that is the point of the tool, as classroom's
+sessions are. The run log sits behind a one-line *Details* toggle at the foot
+of the output pane in every panel; listing `LogArea()` is optional.
+
+How the run went is not an output you declare. The result strip on top of the
+output pane shows a tick or a cross, `RunResult.outcome` (a short line such as
+`"10 questions · seed 42"`; the part before ` · ` is the headline; without it
+the strip shows `summary`), one button per file in `RunResult.files` and a
+*Folder* button. A file's button is named from its file name (`stem` / `stem_key`
+become *Sheet* / *Key*); name one yourself with `RunResult.labels`
+(`labels={chart: "Chart"}`). Raise anything the teacher should act on with
+`ctx.warn("…")` rather than `ctx.log`: it is logged as `Warning: …` and the strip
+counts it ("3 warnings ▸").
+
+For a tool whose result is a report rather than one view, `tools/marks` is
+the reference:
+
+- `StatTiles(key)` is a row of headline numbers over the main view
+  (`place="top"` by default). Fill it with
+  `tables[key] = stat_table([Stat("Mean", "75%", "29.9 / 40"), ...])`;
+  `Stat(..., action=True)` marks the one that asks the teacher to act (the only
+  result that takes the accent colour).
+- `PanelSpec(main_layout="row")` puts the main views side by side, each in a
+  titled card, instead of tabs; they stack when the pane is too narrow.
+- `BarChart(key, category=..., value=..., detail=..., detail_format="{:.0f}%")`
+  draws bars from `tables[key]` in the theme's colours with a *Table* switch;
+  `texts[key]` is its caption. A file for reports still comes from the tool.
+- `ResultsTable(..., bars=(BarColumn("Facility", 1.0),), tag_column="Reteach",
+  hidden_columns=("Note",))` draws an inline bar beside a 0–1 number, tags a
+  row under its first cell (the column itself is not shown), and moves
+  columns into the row's tooltip. `collapsed=True` on a `place="below"` table
+  folds it under its label until opened.
+
+On the input side, `FilePicker(..., chip=True)` shows the chosen file as a
+chip; `TablePreview(..., summary=fn, flag="MAX", compact=True)` replaces the
+rows with a few `Note` lines from `fn(table)` and a *Preview rows* link;
+`EditableTable(..., compact=True, choice=Choice(...))` draws a two-column
+table as a grid of label and number cells with a segmented switch above it
+(its value reaches `run()` under the choice's key); `Choice` also works on
+its own; and `OptionsForm(..., fields=(...))` shows only the named fields.
+
+A tool that works on a program takes it with `CodeSource(key="source")`: a
+chip naming the file over a numbered, highlighted, read-only view of it, with
+*Paste instead* for code in no file. Its value is `CodeValue(path, text)`;
+turn it into source text with `core.codeinput.code_from_inputs(inputs)`, which
+also accepts the command line's `{"source": Path}` or `{"pasted": str}`.
+`CodeSource(..., choice=Choice(...))` puts a switch about the code between
+the chip and the code. `ResultsTable(..., line_column="Line")` links a table
+whose rows name program lines to the view (trace, bugs), `TextView(...,
+code=True)` shows an output as numbered code (pseudocode), and
+`PanelSpec(suggest=fn)` lets choices follow what was picked or pasted:
+`fn(inputs)` is pure and returns `{choice_key: value}`.
+
+The panel's first `CodeSource`, `ResourcePicker` or (opening) `FilePicker` is its **main
+file input**, and the extensions it declares (`filter_ext=".py"`, several as
+`filter_ext=(".py", ".txt")`, or the `*.ext` patterns in `filters`) put the
+tool on the Library's use bar for files of that type: a teacher previewing a
+`.py` sees a button that opens your tool with the file already picked. Nothing
+in the library needs changing (`core.panel.main_file_input`). A picker that
+takes any file (no `filter_ext`) is not offered there; hidden tools never are.
 
 ## 4. Wire `run()`
 
@@ -158,9 +241,14 @@ sandbox.
 Build a `core.export.Document`, add blocks to `doc.section()` and to
 `doc.section("Answer key", answers=True)`, then call
 `export(doc, ctx.output_dir, stem, formats)`. That writes the sheet and a
-separate key in each format with the house header and footer. `to_text(doc)`
-gives a preview for a `TextView`. `tools/worksheet` and `tools/parsons` are
-the references. The blocks are `Heading`, `Paragraph`, `Code`, `Numbered`,
+separate key in each format with the house header and footer. Show what was
+written with `PagePreview(key="pages")` and
+`pages={"pages": pages_from(files, sheet_text=..., key_text=...)}` in the
+result: the panel gets *Sheet* and *Key* tabs with the real PDF pages, page
+thumbnails, *Open PDF* and *Print…*; a run that wrote Word only shows a note
+over `to_text` of the sheet and key instead. Keep `texts["preview"] =
+to_text(...)` for the command line's `--preview`. `tools/worksheet` and
+`tools/parsons` are the references. The blocks are `Heading`, `Paragraph`, `Code`, `Numbered`,
 `TableBlock`, `HintBox`, `BoxedBlocks` (numbered cut-out cells with dashed
 cut lines, laid out in columns), `AnswerGrid` (empty boxes headed by
 position) and `PageBreak`. A new block goes in `core/export/model.py` with a
@@ -182,7 +270,8 @@ passes them on.
 ## Presets for an editable table
 
 `EditableTable(..., presets=(("OCR J277", rows), ...), preset_action="save_preset")`
-shows a preset dropdown with Apply and Save as preset. Saving calls
+shows a preset dropdown with Apply and Save as preset (with `compact=True`,
+choosing a preset applies it and *Save as preset* sits in the group heading). Saving calls
 `plugin.act("save_preset", {"name": str, "table": Table}, ctx)`; persist it
 in `ctx.config.tool("<tool>")` and build the `presets` tuple from config in
 `panel_spec()` so it is there next launch. `tools/marks` is the reference.
@@ -201,4 +290,4 @@ refreshed table under the same key. `tools/classroom` is the reference.
 
 Do not build it in the tool. Add a dataclass to `core/panel.py`, a widget to
 `shell/widgets/`, a rendering branch in `shell/tool_panel.py` (inputs) or
-`shell/widgets/results.py` (outputs), and a test. Then use it from the spec.
+`shell/widgets/output_pane.py` (outputs), and a test. Then use it from the spec.

@@ -6,7 +6,7 @@ same two rules, so once you know them for one you know them for all.
 ## Where files go
 
 The output folder is decided before you press Run, in this order, and the
-run bar names it:
+line under the Run button names it:
 
 1. **The folder set in Settings** (*Settings › Output folder*), if you set
    one. Every tool then writes there.
@@ -20,13 +20,18 @@ run bar names it:
    `~/TeachingSessions/outputs/worksheet/` and a Parsons sheet made from a
    library resource in `~/TeachingSessions/outputs/parsons/`.
 
-Never the folder the app happened to be started from. **Open output
-folder** on the run bar works before and after a run; the log line at the
-end of a run repeats the folder. From the terminal, `--out <folder>` on
+Never the folder the app happened to be started from. Before the first run
+the result strip offers **Open output folder**; after a run its **Folder**
+button opens where the files went, and each file has a button of its own.
+The log line at the end of a run (under *Details*) repeats the folder. From the terminal, `--out <folder>` on
 any `make`, `run` or `export` command overrides all three.
 
 A second run with the same input and settings overwrites the previous
-files; change the seed or the input name to keep both.
+files; change the seed or the input name to keep both. Quiz also says so:
+when one of its files was already in the folder, the log and the summary
+name it (`replaced question_bank_donow_s1.pdf`). It still overwrites rather
+than numbering a copy, because the same name means the same bank, kind of
+sheet, date and seed: a regenerated sheet, not a second one.
 
 ## What files are called
 
@@ -43,7 +48,7 @@ input, so its stem is built from its options.
 | Bugs | `<stem>_bug1.py` … `<stem>_bugN.py`, then `<stem>_bugs.docx` / `.pdf` and `<stem>_bugs_key` | one `.py` per variant, so a variant can be opened in Thonny as it is |
 | Fade | `<stem>_faded.docx` / `.pdf` and `<stem>_faded_key` (the complete solution) | |
 | Pseudocode | `<stem>.ocr.txt`, `<stem>.aqa.txt` or `<stem>.py`, by target language | the panel writes unless *Save output* is `none`; the terminal only with `--save` |
-| Quiz | `<bank stem>_kahoot.xlsx` + `_kahoot.csv`, `<bank stem>_forms.txt`, or `<bank stem>_donow.docx` / `.pdf` + `_donow_key` | by export format |
+| Quiz | export: `<bank stem>_<format>_s<seed>`, so `question_bank_kahoot_s1.xlsx` + `.csv`, `question_bank_forms_s1.txt`, or `question_bank_donow_s1.docx` / `.pdf` + `question_bank_donow_s1_key`. Retrieval: `<bank stem>_retrieval_<date>_<format>_s<seed>`, so `question_bank_retrieval_2026-10-09_donow_s1.pdf` + `_key` | the date is the *As of* date the questions were picked for; a do-now and a retrieval starter from one bank never share a name |
 | Classroom | `<sessions folder>/<date>/<lesson label>/<original name>`; *Promote* writes `<original name>_v2.py` beside the original (then `_v3`, never overwriting) | lesson copies, not outputs: they follow the sessions folder, not the rules above |
 
 Every sheet comes from one document model ([house style](house-style.md)):

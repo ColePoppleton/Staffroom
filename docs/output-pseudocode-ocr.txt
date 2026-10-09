@@ -1,0 +1,16 @@
+// Average of five test scores
+scores = [45, 62, 58, 71, 39]
+total = 0
+count = 0
+for score_index = 0 to scores.length - 1
+    score = scores[score_index]
+    total = total + score
+    count = count + 1
+next score_index
+average = total / count
+if average >= 50 then
+    print("Well done")
+else
+    print("Keep going")
+endif
+print("Average:", average)

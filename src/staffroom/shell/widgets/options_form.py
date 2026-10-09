@@ -34,6 +34,14 @@ from PySide6.QtWidgets import (
 from staffroom.core.panel import OptionsPreset, matching_preset
 
 CUSTOM = "Custom"
+LABEL_MAX_WIDTH = 112
+
+
+def _narrow(combo: QComboBox) -> None:
+    """Size a combo to a short entry, not its longest one (the popup still
+    shows every entry in full), so a form fits the narrow inputs pane."""
+    combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+    combo.setMinimumContentsLength(10)
 
 
 class OptionsFormWidget(QWidget):
@@ -44,6 +52,8 @@ class OptionsFormWidget(QWidget):
         schema: type,
         presets: Iterable[OptionsPreset] = (),
         parent: QWidget | None = None,
+        *,
+        fields: Iterable[str] = (),
     ) -> None:
         super().__init__(parent)
         if not dataclasses.is_dataclass(schema):
@@ -66,6 +76,7 @@ class OptionsFormWidget(QWidget):
         if self.presets:
             self.preset_combo = QComboBox()
             self.preset_combo.setObjectName("optionsPreset")
+            _narrow(self.preset_combo)
             for p in self.presets:
                 self.preset_combo.addItem(p.name)
             self.preset_combo.setToolTip(
@@ -79,7 +90,10 @@ class OptionsFormWidget(QWidget):
 
         hints = typing.get_type_hints(schema)
         defaults = schema()
+        shown = set(fields)
         for f in dataclasses.fields(schema):
+            if shown and f.name not in shown:
+                continue  # left at its default (another input may set it)
             label_text = f.metadata.get("label", f.name.replace("_", " ").capitalize())
             widget, getter, setter, edited = self._make_widget(
                 hints[f.name], getattr(defaults, f.name), f.metadata
@@ -88,6 +102,12 @@ class OptionsFormWidget(QWidget):
                 widget.setToolTip(help_text)
             label = QLabel(label_text)
             label.setProperty("role", "muted")
+            # A long label wraps in its column rather than pushing the form
+            # wider than the narrow inputs pane.
+            label.setWordWrap(True)
+            natural = label.fontMetrics().horizontalAdvance(label_text) + 4
+            label.setMinimumWidth(min(natural, LABEL_MAX_WIDTH))
+            label.setMaximumWidth(LABEL_MAX_WIDTH)
             layout.addRow(label, widget)
             self.widgets[f.name] = widget
             self._getters[f.name] = getter
@@ -97,6 +117,10 @@ class OptionsFormWidget(QWidget):
 
     def value(self) -> Any:
         return self.schema(**{name: get() for name, get in self._getters.items()})
+
+    def set_field(self, name: str, value: Any) -> None:
+        """Set one shown field, as if the teacher had edited it."""
+        self._setters[name](value)
 
     # -- presets -----------------------------------------------------------
     def current_preset(self) -> str:
@@ -160,6 +184,7 @@ class OptionsFormWidget(QWidget):
         if origin is typing.Literal:
             choices = [str(c) for c in typing.get_args(hint)]
             combo = QComboBox()
+            _narrow(combo)
             combo.addItems(choices)
             combo.setCurrentText(str(default))
             return (
@@ -172,6 +197,7 @@ class OptionsFormWidget(QWidget):
         if isinstance(hint, type) and issubclass(hint, enum.Enum):
             members = list(hint)
             combo = QComboBox()
+            _narrow(combo)
             for m in members:
                 combo.addItem(str(m.value), m)
             combo.setCurrentIndex(members.index(default))

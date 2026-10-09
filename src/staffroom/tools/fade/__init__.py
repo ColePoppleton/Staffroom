@@ -6,7 +6,7 @@ from typing import Any
 
 from staffroom.core.codeinput import code_from_inputs
 from staffroom.core.export import export, house_style_from, to_text
-from staffroom.core.panel import PanelSpec
+from staffroom.core.panel import PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.tools.fade import logic
 from staffroom.tools.fade.panel import panel_spec
@@ -21,6 +21,7 @@ class FadePlugin:
     name = "fade"
     description = "Worked solution → progressively faded versions with the solution as key."
     version = "0.1.0"
+    group, glyph = "From a program", "taper"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.fade.cli import register
@@ -61,10 +62,14 @@ class FadePlugin:
             style=house_style_from(ctx.config),
         )
         ctx.progress(1.0, "Done")
+        sheet_text, key_text = to_text(doc.sheet()), to_text(doc.key())
         return RunResult(
-            texts={"preview": to_text(doc.sheet()) + "\n\n" + to_text(doc.key())},
+            texts={"preview": sheet_text + "\n\n" + key_text},  # the CLI's --preview
+            pages={"pages": pages_from(files, sheet_text=sheet_text, key_text=key_text)},
             files=files,
             summary=f"Wrote {', '.join(f.name for f in files)} to {ctx.output_dir}",
+            outcome=f"{len(versions)} versions · blanks "
+            + ", ".join(str(logic.blank_count(v)) for v in versions),
         )
 
 

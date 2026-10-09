@@ -5,7 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QFileDialog, QHBoxLayout, QLineEdit, QPushButton, QWidget
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from staffroom.core.library.service import ResourceService
 from staffroom.core.panel import ResourcePicker
@@ -23,22 +30,27 @@ class ResourcePickerWidget(QWidget):
         super().__init__(parent)
         self.spec = spec
         self.resources = resources
-        layout = QHBoxLayout(self)
+        # Two rows, so the path keeps the inputs pane's full width: the field,
+        # then the two ways to fill it. The pane's one primary button is Run.
+        layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(6)
         self.edit = QLineEdit()
         self.edit.setPlaceholderText("Choose a resource from the library, or a file…")
         self.edit.setClearButtonEnabled(True)
         self.edit.editingFinished.connect(self._emit)
         self.library_button = QPushButton("From library…")
-        self.library_button.setProperty("role", "primary")
         self.library_button.clicked.connect(self.pick_from_library)
         self.library_button.setEnabled(resources is not None)
         self.browse_button = QPushButton("Browse…")
         self.browse_button.clicked.connect(self.browse)
-        layout.addWidget(self.edit, 1)
-        layout.addWidget(self.library_button)
-        layout.addWidget(self.browse_button)
+        buttons = QHBoxLayout()
+        buttons.setSpacing(8)
+        buttons.addWidget(self.library_button)
+        buttons.addWidget(self.browse_button)
+        buttons.addStretch(1)
+        layout.addWidget(self.edit)
+        layout.addLayout(buttons)
 
     def value(self) -> Path | None:
         """Absolute path. Text typed or shown relative to the library root is
@@ -75,7 +87,7 @@ class ResourcePickerWidget(QWidget):
     def browse(self) -> None:
         current = self.value()
         start = str(current.parent) if current else str(Path.home())
-        pattern = f"*{self.spec.filter_ext}" if self.spec.filter_ext else "*"
+        pattern = " ".join(f"*{ext}" for ext in self.spec.extensions) or "*"
         chosen, _ = QFileDialog.getOpenFileName(self, self.spec.label, start, f"Files ({pattern})")
         if chosen:
             self.set_path(Path(chosen))

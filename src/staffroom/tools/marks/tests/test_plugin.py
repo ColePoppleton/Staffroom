@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 from staffroom.cli import app
 from staffroom.core.config import load_config
 from staffroom.core.csvio import read_table, write_table
-from staffroom.core.panel import EditableTable
+from staffroom.core.panel import EditableTable, stats_from_table
 from staffroom.core.plugin import RunContext
 from staffroom.core.table import Table
 from staffroom.tools.marks import plugin, presets
@@ -163,3 +163,54 @@ def test_saved_chart_is_light_whatever_the_theme(example_marks_max: Path, tmp_pa
     assert (tmp_path / "dark" / "marks_10x_max_distribution.png").read_bytes() == (
         tmp_path / "light" / "marks_10x_max_distribution.png"
     ).read_bytes()
+
+
+def test_report_tables_are_on_screen_only_and_the_csvs_keep_their_content(
+    example_marks_max: Path, tmp_path: Path
+) -> None:
+    # #87: the panel shows a headline and the questions hardest first; what is
+    # saved is what was saved before: distribution and questions in paper order.
+    ctx = RunContext(config=load_config(), output_dir=tmp_path)
+    result = plugin.run({"marks": example_marks_max, "unit": "percent"}, ctx)
+    headline = {s.label: (s.value, s.detail) for s in stats_from_table(result.tables["headline"])}
+    assert headline == {
+        "Scripts": ("10", ""),
+        "Mean": ("75%", "29.9 / 40"),
+        "Median grade": ("8", "9 of 10 at 4+"),
+        "Reteach first": ("q6, q3, q4", "facility under 0.75"),
+    }
+    assert result.tables["questions"].column("Question")[0] == "q6"  # hardest first
+    assert "worst" not in result.tables
+    assert result.texts["distribution"] == "OCR J277 · %"
+    saved = read_table(tmp_path / "marks_10x_max_questions.csv")
+    assert saved.columns == ["Question", "Max", "Mean", "Facility", "Discrimination", "Note"]
+    assert saved.rows == [
+        ["q1", 4, 3.3, 0.83, 0.42, None],
+        ["q2", 6, 4.6, 0.77, 0.5, None],
+        ["q3", 8, 5.8, 0.73, 0.5, None],
+        ["q4", 6, 4.4, 0.73, 0.44, None],
+        ["q5", 10, 7.5, 0.75, 0.43, None],
+        ["q6", 6, 4.3, 0.72, 0.5, None],
+    ]
+    dist = read_table(tmp_path / "marks_10x_max_distribution.csv")
+    assert dist.rows[:2] == [[9, 4, 40.0], [8, 3, 30.0]] and len(dist) == 10
+    # Nothing a headline or a tag adds reaches a file.
+    for p in tmp_path.glob("*.csv"):
+        text = p.read_text()
+        assert "reteach" not in text and "Median" not in text and "Discr." not in text
+
+
+def test_unit_input_overrides_the_options_default(example_marks_max: Path, tmp_path: Path) -> None:
+    logs: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path, log=logs.append)
+    result = plugin.run({"marks": example_marks_max, "options": Options(), "unit": "raw"}, ctx)
+    assert any("above the paper total of 40" in m for m in logs)
+    assert result.texts["distribution"] == "OCR J277 · raw"
+
+
+def test_cli_prints_the_headline(example_marks_max: Path, tmp_path: Path) -> None:
+    r = runner.invoke(app, ["marks", "run", str(example_marks_max), "--out", str(tmp_path)])
+    assert r.exit_code == 0, r.output
+    assert "Reteach first: q6, q3, q4  (facility under 0.75)" in r.output
+    assert "Median grade:  8  (9 of 10 at 4+)" in r.output
+    assert "Questions, hardest first" in r.output and "Worst questions" not in r.output

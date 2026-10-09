@@ -241,3 +241,111 @@ def test_analyse_whole_cohort_in_seconds_not_minutes() -> None:
     assert elapsed < 3.0, f"analyse took {elapsed:.1f}s for 3,000 x 30"
     assert len(a.grades) == 3000 and len(a.questions) == 30
     assert all(-1.0 <= logic.as_mark(row[4]) <= 1.0 for row in a.questions.rows)  # discrimination
+
+
+# ---------------------------------------------------------------- the report's headline (#87)
+def test_headline_numbers_by_hand(marks: Table) -> None:
+    # Totals 37, 40, 30, 30, 37, 20, 31, 15, 36, 23: sum 299 of 10 x 40.
+    a = logic.analyse(marks, OCR)
+    h = a.headline
+    assert h.scripts == 10 and h.total_max == 40
+    assert h.mean_total == pytest.approx(29.9)
+    assert h.mean_percent == pytest.approx(74.75)
+    # Sorted 15, 20, 23, 30, 30, 31, 36, 37, 37, 40: median (30 + 31) / 2 = 30.5 = 76.25% -> 8.
+    assert h.median_total == 30.5 and h.median_grade == "8"
+    # Grades 9, 9, 8, 8, 9, 5, 8, 3, 9, 6: all but the 3 are at grade 4 or above.
+    assert h.pass_grade == "4" and h.at_or_above_pass == 9
+    # Facility q6 0.717, q3 0.725, q4 0.733 are below the paper's 0.7475; q5 0.75 is not.
+    assert h.reteach_below == pytest.approx(0.7475)  # = the mean %, with no blanks
+    assert h.reteach == ["q6", "q3", "q4"]
+
+
+def test_median_of_odd_and_even_counts() -> None:
+    assert logic.median([3.0]) == 3.0
+    assert logic.median([5.0, 1.0, 3.0]) == 3.0
+    assert logic.median([4.0, 1.0, 3.0, 2.0]) == 2.5
+    assert logic.median([]) == 0.0
+
+
+def test_pass_grade_is_4_else_the_lowest_grade_above_zero() -> None:
+    ocr = logic.parse_boundaries(OCR, "percent", 40)
+    assert logic.pass_grade(ocr) == "4"
+    a_level = logic.parse_boundaries(preset_table(BUILTIN_PRESETS["A-level (A*-E)"]), "percent", 40)
+    assert logic.pass_grade(a_level) == "E"
+    pass_fail = logic.parse_boundaries(
+        Table(["Grade", "Minimum"], [["Pass", 50], ["Fail", 0]]), "percent", 40
+    )
+    assert logic.pass_grade(pass_fail) == "Pass"
+    assert logic.pass_grade([logic.Boundary("U", 0.0)]) is None
+
+
+def test_count_at_or_above_follows_the_boundary_order() -> None:
+    order = ["9", "8", "7", "6", "5", "4", "3", "2", "1", "U"]
+    assert logic.count_at_or_above(["9", "4", "3", "U", "5"], order, "4") == 3
+    assert logic.count_at_or_above(["9", "4"], order, "missing") == 0
+
+
+def test_reteach_is_below_the_paper_lowest_first_at_most_n() -> None:
+    facility = {"q1": 0.9, "q2": 0.5, "q3": 0.6, "q4": 0.55, "q5": 0.8}
+    assert logic.reteach(facility, overall=0.7, n=5) == ["q2", "q4", "q3"]
+    assert logic.reteach(facility, overall=0.7, n=2) == ["q2", "q4"]
+    assert logic.reteach(facility, overall=0.4, n=5) == []  # nothing below the paper
+    assert logic.reteach({"a": 0.5, "b": 0.5}, overall=0.9, n=1) == ["a"]  # ties: paper order
+
+
+def test_report_questions_hardest_first_with_reteach_marked(marks: Table) -> None:
+    a = logic.analyse(marks, OCR)
+    report = a.report_questions
+    assert report.columns == ["Question", "Mean", "Facility", "Discr.", "Reteach", "Note"]
+    assert report.column("Question") == ["q6", "q3", "q4", "q5", "q2", "q1"]
+    assert report.column("Reteach") == ["reteach", "reteach", "reteach", "", "", ""]
+    by_q = {row[0]: row for row in report.rows}
+    assert by_q["q1"][1:4] == ["3.3 / 4", 0.83, 0.42]  # the same numbers as the saved CSV
+    assert by_q["q5"][1] == "7.5 / 10"
+    # The saved questions table keeps paper order and its columns.
+    assert a.questions.column("Question") == ["q1", "q2", "q3", "q4", "q5", "q6"]
+    assert a.questions.columns[-2:] == ["Discrimination", "Note"]
+
+
+def test_headline_with_no_scripts_above_zero_max() -> None:
+    t = Table(["row", "q1"], [["MAX", 0], [1, 0], [2, 0]])
+    a = logic.analyse(t, RAW_AB, logic.Options(unit="raw"))
+    assert a.headline.mean_percent == 0.0 and a.headline.reteach == []
+
+
+# ---------------------------------------------------------------- load summary (#87)
+def test_load_summary_of_a_clean_file(marks: Table) -> None:
+    assert logic.load_summary(marks) == [
+        (True, "10 scripts × 6 questions · MAX row found (paper out of 40)"),
+        (True, "No identifier columns · ignored: row"),
+    ]
+
+
+def test_load_summary_without_max_row_and_with_dropped_columns(example_marks: Path) -> None:
+    t = read_table(example_marks)
+    t.dropped_columns = ["Name"]
+    lines = logic.load_summary(t)
+    assert lines[0] == (
+        False,
+        "10 scripts × 6 questions · no MAX row: set Max marks, or the highest mark seen is used",
+    )
+    assert lines[1] == (True, "Identifier column dropped, never used: Name")
+
+
+def test_load_summary_of_a_file_with_no_questions() -> None:
+    lines = logic.load_summary(Table(["mark", "total"], [[3, 4]]))
+    assert lines == [(False, "No question columns (q1, q2, …): Analyse needs them")]
+
+
+def test_a_question_with_a_max_of_0_is_never_tagged_for_reteaching(
+    example_marks_messy: Path,
+) -> None:
+    # q3's MAX is 0: its facility is reported as 0 with a warning, not as "reteach".
+    a = logic.analyse(read_table(example_marks_messy), OCR)
+    assert "q3" not in a.headline.reteach
+    by_q = {row[0]: row for row in a.report_questions.rows}
+    assert by_q["q3"][4] == ""
+    # Blanks are left out of facility, so the paper's facility leaves them out
+    # too: q1 3.5/4, q2 4.33/6, q4 7.33/10 -> 15.17/20, not the mean total's 53%.
+    assert a.headline.reteach_below == pytest.approx((3.5 + 13 / 3 + 22 / 3) / 20)
+    assert a.headline.reteach == ["q2", "q4"]

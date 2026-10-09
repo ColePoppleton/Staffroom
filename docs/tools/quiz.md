@@ -15,9 +15,14 @@ See [Question banks](../guide/question-banks.md) for the file format.
 | forms | numbered text with lettered options and a separate answers block |
 | donow | house-style docx and PDF with the key split off |
 
-Files are named after the bank: `<bank>_kahoot.xlsx` and `.csv`,
-`<bank>_forms.txt`, `<bank>_donow.docx` / `.pdf` and `<bank>_donow_key`
-([Outputs](../guide/outputs.md)). Retrieval mode looks at the topics taught
+Files are named after the bank, the kind of sheet and the seed:
+`<bank>_kahoot_s1.xlsx` and `.csv`, `<bank>_forms_s1.txt`,
+`<bank>_donow_s1.docx` / `.pdf` and `<bank>_donow_s1_key`. A retrieval run
+adds the date it picked for, `<bank>_retrieval_2026-10-08_donow_s1.pdf`, so
+it never replaces the do-now made before it. A run that does replace a file
+of the same name (same bank, kind, date and seed) says so: a warning in the
+result strip, and the summary; change the seed to keep both ([Outputs](../guide/outputs.md)).
+Retrieval mode looks at the topics taught
 one, three and six weeks ago, each with three days' leeway, and draws
 questions round-robin across the three windows; the run log lists what fell
 in each, and names any taught-log column other than `date` and `topic` as
@@ -42,8 +47,9 @@ A short answer with fewer than three distinct distractors available anywhere
 in the bank is left out of the Kahoot file, and so is an mcq whose only
 correct option is the fifth or later. The summary and the chosen-questions
 table describe the file that was written, not the pick:
-`3 of 5 written; 2 short answers skipped: Q5, Q7 → …`, with the reason for
-each in the log. If nothing could be written the export stops with a message
+`3 of 5 written; 2 short answers skipped: Q5, Q7 → …`, and each skipped
+question is a warning in the result strip with its reason (so are clipped text,
+dropped options and distractors borrowed from another topic). If nothing could be written the export stops with a message
 instead of leaving an empty file.
 
 ```bash

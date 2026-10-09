@@ -6,6 +6,152 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Changed
+- Worksheet, Parsons, Trace, Bugs, Fade and the quiz do-now show the PDF the run
+  wrote instead of an ASCII rendering of it (#85): *Sheet* and *Key* tabs with
+  their page counts, the current page large and whole, thumbnails of every page
+  of both down the side (drawn off the GUI thread, and only once they scroll
+  into view, so a 17-page bugs sheet opens as fast as one page), *Open PDF* and
+  *Print…* (the system print dialog, then the pages as shown). A run told to
+  write Word only says so over the text of the sheet, never an empty page. The
+  quiz's Kahoot and Forms text moves to a *Paste text* tab shown only for those
+  formats; Bugs' table is *What each bug does* and Trace's *Completed table*.
+  The command line's `--preview` text is unchanged. The vocabulary gains
+  `PagePreview`, `Pages` / `pages_from`, `RunResult.pages` and
+  `TextView.optional`; screenshots take `--tab` and `--option field=value`.
+- The five code tools (Parsons, Trace, Bugs, Fade, Pseudocode) take their program
+  in one input (#86): a chip naming the file (its Library path, *Change ▾* for From
+  library or Browse) over the program itself, read-only, highlighted and numbered
+  the way the sheets number it, instead of a *Python file* picker and an empty
+  *Or paste code* box. *Paste instead* empties the view for a paste; *Use a file*
+  goes back. It is not an editor: a file saved again in Thonny is shown again and
+  the run reads it afresh. Trace's table and the Bugs key point at the program:
+  click a row and its line lights up, click a line and its rows are selected.
+  Pseudocode shows the source beside the translation (numbered too), the
+  could-not-translate notes under it; *Language* under the file follows the
+  guess the moment a file is chosen or code pasted (#62), and *To* moves off it.
+  The vocabulary gains `CodeSource` (value `CodeValue(path, text)`, read by
+  `core.codeinput`), `ResultsTable.line_column`, `TextView.code` and
+  `PanelSpec.suggest`.
+- The Library hands a file to a tool (#88). It is one page: the tree and search
+  in one column (search results replace the tree while there is a query), the
+  file beside it with its tags as chips (*+ tag* inline, × to remove, the note
+  behind one link) and a use bar: *Open for class* with the lesson label typed
+  inline (Enter or ⌘O opens it), then one button per tool that takes this kind
+  of file (`.py` → Parsons, Trace, Bugs, Fade, Pseudocode; `.md` → Quiz;
+  `.csv`/`.xlsx` → Marks), each opening the tool with the file already picked.
+  Opening a file for class from the Library is 3 actions instead of 8 and runs
+  Classroom's own `run`, so the original is never touched. The buttons come
+  from each tool's main file input (`core.panel.main_file_input`), so a new tool
+  appears with no library change; `filter_ext` (ResourcePicker, CodeSource) may name several
+  extensions. Office files keep *Open externally* as the main action. A long
+  resources-folder path no longer widens the window past its minimum (#103).
+- A run's result is one strip along the top of the output pane (#84): a tick or a
+  cross, a short outcome ("10 questions · seed 42", or the failure in plain words),
+  one button per file written (*PDF Sheet*, *PDF Key*, *DOCX Sheet* …; click opens
+  it in its app, right-click shows it in Finder) and a *Folder* button. Warnings
+  (marks, quiz, bugs, pseudocode) show as "3 warnings ▸" that opens the list. The
+  per-panel Log card is gone: the run log sits behind a one-line *Details ▸* footer,
+  closed by default and remembered per tool for the session. The foot of the inputs
+  is the Run button and where it writes; the truncated status line and the second
+  "Writes to" label are gone. Tools say what they made with `RunResult.outcome`,
+  may name a file's button with `RunResult.labels`, and raise warnings with
+  `ctx.warn()`; `staffroom --expand` opens the warnings for a screenshot.
+- Every tool is now a workbench (#83): the inputs in a 390 px column on the left
+  with the run button pinned at its foot (⌘↵ runs it from anywhere in the
+  window), the results filling the right, tabbed when a tool has more than one
+  (Trace: *Completed trace table* · *Preview*). Lists to act on and notes sit
+  under the main result; inputs are hairline-separated groups instead of a card
+  each. Nothing scrolls on its own any more and the inputs stay beside the
+  result, so the first result is in view after a run in 9 of 9 tools at
+  1240×780 (2 of 9 before). A panel can mark an output `place="main"` or
+  `"below"` (`core.panel`); the header loses the version chip.
+- The sidebar and the app's identity are redesigned (#89). The brand row (mark,
+  *Staffroom* in Fraunces, a settings gear), a library search field, then the
+  places grouped by a teacher's week: **Lessons** (Library, Classroom),
+  **Sheets & quizzes** (Worksheet, Quiz), **From a program** (Parsons, Trace,
+  Bugs, Fade, Pseudocode), **After a test** (Marks). One line per tool with a
+  monochrome glyph instead of a red letter badge and a truncated description
+  (the description is the tooltip). The Library is a place in the sidebar, not
+  a Tools/Resources mode switch, with its tree and search in their own column.
+  The red accent marks only where you are, primary buttons, links and focus.
+  The footer has the version with *up to date* or an *update* link, and
+  **Activity log**. The theme switch moves to Settings only (plus ⇧⌘L).
+  ⌘1–⌘9 follow the new order: Classroom, Worksheet, Quiz, Parsons, Trace,
+  Bugs, Fade, Pseudocode, Marks (the Library is ⌘K). Group and glyph are
+  optional plugin data (`group`, `glyph`, read like `order`); a tool without
+  them is listed under **Other**. The app now uses the brand type, bundled
+  under the SIL OFL with their licences: Source Sans 3 for text, Fraunces for
+  titles, IBM Plex Mono for code and logs.
+- The docs home page leads with what a teacher gets (#90): a headline, the
+  pinned two-line install, and a fan of real first pages (worksheet, trace
+  table, Parsons) above the fold at 1240×780 in both colour schemes; a
+  three-column privacy strip (stored / never stored / check it yourself) whose
+  every claim is tested against the Privacy page; and a *What comes out*
+  gallery with one real output per tool. The pages are rendered from the
+  example files by `just screenshots`. The site nav puts the teachers' pages
+  first (Install, Tools, Privacy, Guides, as header tabs) and moves Process,
+  Roadmap, Phases and the audits under one *Contributing* section at the end.
+- Marks is a one-screen report (#87): after *Analyse*, four headline tiles
+  (scripts, mean %, median grade with how many reached grade 4, the questions to
+  reteach first), the grade chart with counts and percentages under the bars
+  beside **one** question table sorted hardest first with an inline facility bar
+  and the reteach rows tagged, and the per-script grades folded under "view only,
+  never saved". 5.2 screens → 0.87 at 1240×780 (20 questions: 1.54). The
+  separate distribution table (now *Table* on the chart) and "Worst questions"
+  card are gone; the saved CSVs are unchanged and still aggregates only. Inputs:
+  the file as a chip with what was found in it instead of an 11-row preview, and
+  the boundaries as a 5 × 2 grid with the preset and a % / raw switch. New in the
+  vocabulary and kit for any tool: `StatTiles`, `BarChart`, `ResultsTable` bars,
+  tags and folding, `main_layout="row"`, compact `EditableTable` and
+  `TablePreview`, `Choice`, `FilePicker(chip=True)`. The CLI prints the same
+  headline; the saved chart gains the percentages too.
+- CI and the release workflow run on Linux instead of macOS, which uses a tenth of the
+  Actions allowance on a private repo. macOS-only packaging tests skip there.
+
+### Added
+- Product and design audit 2026-10-09 (`docs/audits/2026-10-09.md`): the first with a
+  design pass over every section, eight redesigns shown as mockups beside today's screens
+  (`docs/audits/2026-10-09/`), and the "Phase 9: The workbench" milestone (#80–#92).
+
+### Fixed
+- `staffroom --settings` no longer leaves the last tool highlighted beside the
+  Settings page (#89): every route to a page now sets the sidebar from what is
+  shown.
+- Classroom's **Past sessions** no longer lists the tools' shared output folder
+  (#97). A worksheet made with no input of its own goes to
+  `<sessions folder>/outputs/worksheet/`, and it showed up as a lesson on day
+  `outputs` with Diff and Promote buttons. Only real sessions are listed now: a
+  date-named day folder holding lesson folders with a `.origin.json`
+  (`classroom.logic.is_session_folder`); stray files and hand-made folders are
+  left out too.
+- Quiz no longer overwrites one kind of sheet with another (#82). A retrieval
+  run is named for its date, `question_bank_retrieval_2026-10-09_donow_s1.pdf`,
+  and every export carries its seed, `question_bank_donow_s1.pdf`,
+  `question_bank_kahoot_s1.xlsx`, `question_bank_forms_s1.txt`, so a do-now and
+  the retrieval starter made after it both stay in the folder. A run that
+  replaces a file of the same name still overwrites it, but the log and the
+  summary now name it (`replaced question_bank_donow_s1.pdf`).
+- Classroom's run bar now says where **Open for class** really puts the copy,
+  *Copies to ~/TeachingSessions/<today>/<label>*, following the label as it is
+  typed, and its *Open sessions folder* link opens that folder (created on
+  demand) instead of an output folder the copy never goes to (#81). A tool can
+  name its own destination with `PanelSpec.writes_to` (`core.panel.WritesTo`);
+  every other tool still shows *Writes to* its output folder. A row action such
+  as Promote no longer moves the run bar's folder.
+
+- The docs home page, the Install guide and the README now install from GitHub,
+  pinned to the latest release:
+  `uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.6.0`
+  (#80). They used to lead with installing by name from PyPI, where Staffroom
+  is not published, so the first instruction failed. The Install guide says
+  plainly that the repository is private for now, so the line works only for
+  an account that can see it, and Updating explains that a pinned install is
+  upgraded by re-running the line with the newer tag. `--python 3.12` stops uv
+  picking an older Python that Staffroom cannot run on. A new test fails if the
+  README or docs tell anyone to install by name while `extra.published_on_pypi`
+  in mkdocs.yml is false, and the *Install line* workflow runs the documented
+  line in CI.
 
 ## [0.6.0] - 2026-10-09
 ### Added

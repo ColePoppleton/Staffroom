@@ -1,5 +1,5 @@
-"""The running version is visible in the window (#69): the sidebar header
-under the app name, and Settings > Updates with the commit off a release tag."""
+"""The running version is visible in the window (#69): the sidebar footer
+(since #89), and Settings > Updates with the commit off a release tag."""
 
 from __future__ import annotations
 
@@ -15,13 +15,20 @@ from staffroom.shell.settings_page import SettingsPage
 from staffroom.shell.sidebar import Sidebar
 
 
-def test_sidebar_header_shows_the_version_and_tool_count(qtbot: QtBot) -> None:
-    plugins = visible_plugins()
-    sidebar = Sidebar(plugins)
+def test_sidebar_footer_shows_the_version_and_update_state(qtbot: QtBot) -> None:
+    """The version moved from under the brand to the footer (#89) and says
+    whether a release is waiting once Settings has checked."""
+    sidebar = Sidebar(visible_plugins())
     qtbot.addWidget(sidebar)
-    text = sidebar.brand_sub.text()
-    assert __version__ in text
-    assert text == f"v{__version__} · {len(plugins)} tools"
+    assert sidebar.version_label.text() == f"v{__version__}"  # not checked yet
+    sidebar.set_update_available(False)
+    assert sidebar.version_label.text() == f"v{__version__} · up to date"
+    assert sidebar.update_button.isHidden()
+    sidebar.set_update_available(True)
+    assert sidebar.version_label.text().startswith(f"v{__version__}")
+    assert not sidebar.update_button.isHidden()
+    with qtbot.waitSignal(sidebar.settings_requested):
+        sidebar.update_button.click()
 
 
 def test_settings_updates_card_states_the_running_version(qtbot: QtBot) -> None:

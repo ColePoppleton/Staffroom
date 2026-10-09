@@ -1,11 +1,26 @@
 # Using the launcher
 
-The window has two sidebar roots: **Tools** and **Resources**.
+The sidebar lists every place in the app, grouped by the shape of a
+teacher's week rather than alphabetically:
 
-The tools are listed in the order a lesson meets them, not alphabetically:
-Classroom, Marks, Worksheet, Parsons, Quiz, Trace, Bugs, Fade, Pseudocode.
-A fresh install opens on Classroom. (`hello`, the developers' reference
-tool, is not in the list; `staff hello` still works from the terminal.)
+- **Lessons**: Library, Classroom
+- **Sheets & quizzes**: Worksheet, Quiz
+- **From a program**: Parsons, Trace, Bugs, Fade, Pseudocode
+- **After a test**: Marks
+
+One line per tool with a small glyph; hover a tool for what it does and its
+shortcut. The red accent marks only where you are. Above the list, the gear
+opens Settings and the search field searches the library (typing carries on
+in the Library's own search box). At the foot: the running version (with
+*up to date* or an *update* link once the app has checked) and **Activity
+log**, which opens the log drawer.
+
+A fresh install opens on Classroom; after that the app opens where you left
+it, a tool or the Library. (`hello`, the developers' reference tool, is not in
+the list; `staff hello` still works from the terminal.) A tool someone adds
+without a group is listed under **Other**, at the end.
+
+![The launcher with the marks tool open](../launcher-dark.png)
 
 The very first start shows a card asking for the resources folder; choose
 one or skip it and set it later in Settings.
@@ -15,7 +30,7 @@ one or skip it and set it later in Settings.
 ### How files are counted
 
 Every file count the library reports comes from one tally, so the sidebar
-footer, the Resources header, `staff library status` and the index summary
+count beside Library, the Library column's footer, `staff library status` and the index summary
 always agree. A file is **indexed** when it is under the resources folder and
 the exclusion list allows it; the excluded are never counted. Hidden cruft
 (`.DS_Store`, `__pycache__`, zips, dot-files), cloud placeholders and files
@@ -26,24 +41,41 @@ indexed, the tree lists 563, and turning *Hidden* on makes it `587 files
 (incl. 24 hidden)`. `staff library status` prints the long form:
 `587 indexed: 563 shown, 24 hidden, 2 cloud-only, 3 name only`.
 
-Pick a tool, fill in its panel top to bottom, press the big button. Results
-appear below the inputs and files are written to the output folder, which the
-run bar names before you press Run: next to the input by default,
+Pick a tool, fill in the inputs down the left, press the button at their foot
+(or ⌘↵). Results appear on the right, beside the inputs, so you can change one
+setting and run again without scrolling; a tool with more than one result shows
+them as tabs (Trace: the completed table, then the sheet and the key). A tool
+that writes a sheet shows the PDF itself, page by page, under *Sheet* and *Key*
+tabs: the current page large, every page as a thumbnail beside it, *Open PDF*
+and *Print…* under them. Told to write Word only, it says so over the plain
+text instead. Files are
+written to the output folder, named under the Run button before you press it:
+next to the input by default,
 `~/TeachingSessions/outputs/<tool>/` for tools with no input file, or
 wherever Settings says ([Outputs](outputs.md) has the rule and every tool's
-file names). **Open output folder** works before and after the run. The log
-at the bottom of each panel says exactly what happened in that run; the
-log drawer (⌘L) and the log file hold the app-wide log, described in
+file names).
+
+After a run, the strip along the top of the results says how it went: a tick
+and what was made ("10 questions · seed 42"), or a cross and why it stopped.
+Each file written is a button beside it (*PDF Sheet*, *PDF Key*, *DOCX Sheet*
+…): click to open it in its app, right-click to show it in Finder. *Folder*
+opens the output folder (before the first run, *Open output folder* does).
+Warnings show as a count ("3 warnings ▸") that opens the list. **Details ▸**
+at the foot of the results opens the log of that run, exactly what happened;
+it stays open or closed per tool until you quit. The log drawer (⌘L) and the
+log file hold the app-wide log, described in
 [Privacy](privacy.md#what-the-log-contains).
 
 ## Shortcuts
 
 | Keys | Does |
 | --- | --- |
-| ⌘K | Jump to the Resources search box |
+| ⌘↵ | Run the tool on screen (its button at the foot of the inputs) |
+| ⌘K | The Library, with its search box ready |
 | ⌘O | Classroom with the library picker open |
-| ⌘1 – ⌘9 | Switch tool, top to bottom: ⌘1 Classroom, ⌘2 Marks, ⌘3 Worksheet, ⌘4 Parsons, ⌘5 Quiz, ⌘6 Trace, ⌘7 Bugs, ⌘8 Fade, ⌘9 Pseudocode |
-| ⌘L | Show or hide the log drawer |
+| ⌘1 – ⌘9 | Switch tool, in sidebar order (the Library is ⌘K): ⌘1 Classroom, ⌘2 Worksheet, ⌘3 Quiz, ⌘4 Parsons, ⌘5 Trace, ⌘6 Bugs, ⌘7 Fade, ⌘8 Pseudocode, ⌘9 Marks |
+| ⌘L | Show or hide the activity log |
+| ⇧⌘L | Switch between the dark and light theme (also in Settings) |
 | ⌘, | Settings |
 
 ## Settings

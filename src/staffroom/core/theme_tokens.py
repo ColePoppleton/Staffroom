@@ -27,12 +27,14 @@ class Palette:
     on_accent: str
     danger: str
     success: str
+    warning: str
     selection: str
     scrollbar: str
     code_string: str
     code_number: str
     code_builtin: str
     code_name: str
+    paper: str = "#ffffff"  # a printed page, in both themes
 
 
 DARK = Palette(
@@ -52,6 +54,7 @@ DARK = Palette(
     on_accent="#1b1a17",
     danger="#ff7a6e",
     success="#5ad48f",
+    warning="#f2b86b",
     selection="#4a2a27",
     scrollbar="#3b372f",
     code_string="#9fd6a4",
@@ -77,6 +80,7 @@ LIGHT = Palette(
     on_accent="#ffffff",
     danger="#b3261e",
     success="#1f7a3a",
+    warning="#a3490a",
     selection="#f1d5d1",
     scrollbar="#d9d2bf",
     code_string="#1f7a3a",

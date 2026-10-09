@@ -6,6 +6,7 @@ from staffroom.core.panel import (
     FilePicker,
     LogArea,
     OptionsForm,
+    PagePreview,
     PanelSpec,
     ResourcePicker,
     ResultsTable,
@@ -39,7 +40,9 @@ def panel_spec() -> PanelSpec:
         ),
         outputs=(
             ResultsTable(key="chosen", label="Chosen questions"),
-            TextView(key="preview", label="Preview", copy_button=True),
+            PagePreview(key="pages", label="Do-now"),
+            # Kahoot rows or Forms text: what to paste or import (a do-now prints instead).
+            TextView(key="paste", label="Paste text", copy_button=True, optional=True),
             LogArea(),
         ),
         run_label="Export",

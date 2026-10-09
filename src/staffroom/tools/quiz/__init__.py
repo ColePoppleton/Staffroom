@@ -8,7 +8,7 @@ from typing import Any
 
 from staffroom.core.csvio import read_table
 from staffroom.core.export import house_style_from, to_text
-from staffroom.core.panel import PanelSpec
+from staffroom.core.panel import Pages, PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.core.table import Table
 from staffroom.tools.quiz import logic
@@ -48,6 +48,15 @@ def load_taught_log(path: Path, ctx: RunContext) -> Table:
     return table
 
 
+def _names_in(folder: Path) -> set[str]:
+    """The file names already in the output folder, so a run can say which of
+    its files replaced an earlier one rather than overwriting it silently."""
+    try:
+        return {p.name for p in folder.iterdir()}
+    except OSError:  # not there yet, or unreadable: nothing to replace
+        return set()
+
+
 def _as_of(text: str) -> date:
     """The retrieval date from the option, today when blank."""
     if not text.strip():
@@ -60,12 +69,16 @@ def _as_of(text: str) -> date:
         ) from None
 
 
+FORMAT_NAMES = {"kahoot": "Kahoot", "forms": "Forms", "donow": "do now"}
+
+
 class QuizPlugin:
     name = "quiz"
     description = (
         "Markdown question bank → Kahoot, Forms text, printable do-now; retrieval scheduler."
     )
     version = "0.1.0"
+    group, glyph = "Sheets & quizzes", "question"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.quiz.cli import register
@@ -82,10 +95,11 @@ class QuizPlugin:
             raise ToolError("Choose a question bank first.")
         bank = load_bank(source)
         for err in bank.errors:
-            ctx.log("Bank: " + err)
+            ctx.warn("Bank: " + err)
         pool = logic.filter_questions(bank.questions, options.topics, options.spec)
         ctx.log(f"{len(bank.questions)} questions in the bank, {len(pool)} after filters")
 
+        today: date | None = None
         if options.retrieval:
             log_path: Path | None = inputs.get("taught_log")
             if log_path is None:
@@ -107,9 +121,12 @@ class QuizPlugin:
                 raise ToolError("No questions match those filters.")
 
         notes: list[str] = []
-        stem = source.stem
+        stem = logic.output_stem(source.stem, options, today)
+        existing = _names_in(ctx.output_dir)
         written = chosen
         count_phrase = f"{len(chosen)} questions"
+        pages: dict[str, Pages] = {}
+        texts: dict[str, str] = {}
         ctx.progress(0.6, "Writing")
         if options.fmt == "kahoot":
             # Distractors come from the whole bank, not only the chosen questions,
@@ -129,23 +146,41 @@ class QuizPlugin:
             count_phrase = logic.kahoot_report(sheet, len(chosen))
             files = write_kahoot(sheet.rows, ctx.output_dir, stem)
             preview = kahoot_csv_text(sheet.rows).replace("\r\n", "\n")
+            texts["paste"] = preview
         elif options.fmt == "forms":
             files = write_forms(chosen, ctx.output_dir, stem, options.title)
             preview = files[0].read_text(encoding="utf-8")
+            texts["paste"] = preview
         else:
             files = write_donow(
                 chosen, ctx.output_dir, stem, options.title, house_style_from(ctx.config)
             )
             doc = donow_document(chosen, options.title)
-            preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
+            sheet_text, key_text = to_text(doc.sheet()), to_text(doc.key())
+            preview = sheet_text + "\n\n" + key_text
+            pages["pages"] = pages_from(files, sheet_text=sheet_text, key_text=key_text)
         for n in notes:
-            ctx.log("Note: " + n)
+            ctx.warn(n)
+        summary = f"{count_phrase} → {', '.join(f.name for f in files)} in {ctx.output_dir}"
+        replaced = [f.name for f in files if f.name in existing]
+        if replaced:
+            ctx.warn(
+                "Replaced the earlier file(s) of the same name: "
+                + ", ".join(replaced)
+                + ". Change the seed to keep both."
+            )
+            summary += "; replaced " + ", ".join(replaced)
         ctx.progress(1.0, "Done")
         return RunResult(
             tables={"chosen": logic.selection_table(written)},
-            texts={"preview": preview},
+            texts={"preview": preview, **texts},  # "preview" is the CLI's --preview
+            pages=pages,
             files=files,
-            summary=f"{count_phrase} → {', '.join(f.name for f in files)} in {ctx.output_dir}",
+            summary=summary,
+            outcome=(
+                f"{len(written)} question{'s' if len(written) != 1 else ''} · "
+                f"{FORMAT_NAMES.get(options.fmt, options.fmt)}, seed {options.seed}"
+            ),
         )
 
 

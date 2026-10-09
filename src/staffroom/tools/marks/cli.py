@@ -24,7 +24,9 @@ def register(app: typer.Typer) -> None:
         ),
         unit: Annotated[str, typer.Option("--unit", help="percent or raw")] = "percent",
         max_marks: Annotated[str, typer.Option("--max", help="e.g. 4,6,8 or 10")] = "",
-        worst: Annotated[int, typer.Option("--worst", help="How many worst questions")] = 5,
+        worst: Annotated[
+            int, typer.Option("--worst", help="Reteach at most this many questions")
+        ] = 5,
         out: Annotated[Path | None, typer.Option("--out", "-o", help="Output folder")] = None,
     ) -> None:
         """Grade SOURCE and save class-level aggregates (distribution, questions, chart)."""
@@ -54,9 +56,9 @@ def register(app: typer.Typer) -> None:
         except ToolError as exc:
             typer.secho(str(exc), fg=typer.colors.RED, err=True)
             raise typer.Exit(1) from None
+        _print_headline(result.tables["headline"])
         _print_table("Grade distribution", result.tables["distribution"])
-        _print_table("Per-question analysis", result.tables["questions"])
-        _print_table("Worst questions", result.tables["worst"])
+        _print_table("Questions, hardest first", result.tables["questions"])
         typer.echo(result.summary)
         for f in result.files:
             typer.echo(f"  {f}")
@@ -69,6 +71,17 @@ def register(app: typer.Typer) -> None:
         for name, rows in presets.all_presets(config).items():
             kind = "saved" if name in saved else "built-in"
             typer.echo(f"{name}  ({kind}): " + ", ".join(f"{g}≥{m:g}" for g, m in rows))
+
+
+def _print_headline(table: object) -> None:
+    from staffroom.core.panel import stats_from_table
+    from staffroom.core.table import Table
+
+    assert isinstance(table, Table)
+    typer.echo("")
+    for stat in stats_from_table(table):
+        detail = f"  ({stat.detail})" if stat.detail else ""
+        typer.echo(f"{stat.label + ':':<15}{stat.value}{detail}")
 
 
 def _print_table(title: str, table: object) -> None:

@@ -1,15 +1,37 @@
 # Marks
 
-Raw marks per question, one row per script, **no names** → grades, a
-distribution table and chart, facility and discrimination per question, and
-the questions to reteach. Only class-level aggregates are ever saved.
+Raw marks per question, one row per script, **no names** → a one-screen
+report: how the class did and which questions to reteach. Only class-level
+aggregates are ever saved.
 
 ![Marks panel](../marks-dark.png)
+
+After *Analyse* the report reads top to bottom:
+
+- **Four headline tiles.** *Scripts*; *Mean* as a percentage of the paper
+  (with the mean mark out of the total); *Median grade*, the grade of the
+  median total, with how many scripts reached grade 4 (or, for boundaries
+  without a 4, the lowest grade above zero: E for A-level, Pass for
+  Pass/Fail); and *Reteach first*.
+- **The grade chart**, with the count over each bar and the share of scripts
+  under it. *Table* flips it to the numbers (to one decimal place, and the
+  *Incomplete scripts* row when there is one).
+- **Questions, hardest first**: one table sorted by facility, lowest first,
+  with the mean out of the max, an inline facility bar and discrimination.
+  The questions to reteach are tagged *reteach*: the lowest-facility
+  questions the class did worse on than on the paper as a whole, at most
+  *Reteach at most* of them (5 by default). A question's note (*hard*,
+  *easy*, *weak discriminator*) is in its tooltip and in the saved CSV.
+- **Per-script grades**, folded under one line that says *view only, never
+  saved*. Open it to check a script; it is never written to a file.
 
 ## Input file
 
 A CSV or XLSX with question columns `q1`, `q2`, … (see
-[Marks files](../guide/marks-files.md)). Max marks come from a row flagged
+[Marks files](../guide/marks-files.md)). Once chosen, the file shows as a
+chip with what was found in it: how many scripts and questions, whether a
+`MAX` row gives the paper total, and which columns were dropped as
+identifiers or ignored. *Preview rows* opens the rows themselves. Max marks come from a row flagged
 `MAX` (the word can be in any cell, including a name column that is about
 to be dropped), from the *Max marks* option, or, with a warning, from the
 highest mark seen. Identifier columns are dropped on load; what that catches
@@ -33,21 +55,26 @@ The run log warns, before you trust the numbers, when:
 Nothing in the list stops the run. `examples/marks_messy.csv` makes every
 warning fire if you want to see them.
 
-![Marks run on the messy example: every warning in the log](../marks-warnings-light.png)
+The result strip counts them ("3 warnings ▸"); click the count for the list.
+Each is also in the run log under *Details*.
+
+![Marks run on the messy example: the warnings, counted in the result strip](../marks-warnings-light.png)
 
 ## Boundaries
 
-An editable grid of grade and minimum (percent of the paper or raw marks).
+A compact grid of grade and minimum, five to a line: click a number to edit
+it. *Boundaries in* switches between percent of the paper and raw marks.
 Built-in presets for OCR J277, AQA 8525 and A-level are starting points:
-edit them to the published boundaries and *Save as preset*.
+choose one, edit it to the published boundaries and *Save as preset*.
 
 ## Outputs
 
 | On screen | Saved |
 | --- | --- |
-| Per-script grades (view only) | never |
-| Grade distribution | `<stem>_distribution.csv` and `.png` |
-| Per-question analysis, worst five | `<stem>_questions.csv` |
+| Headline tiles | never (worked out again on every run) |
+| Grade chart (and its table) | `<stem>_distribution.csv` and `.png` |
+| Questions, hardest first, reteach tagged | `<stem>_questions.csv` (in paper order) |
+| Per-script grades (folded, view only) | never |
 
 The chart is drawn for paper and slides, white background whatever theme
 the launcher is using, so it can go straight into a report.
@@ -63,3 +90,7 @@ next to the input unless Settings says otherwise ([Outputs](../guide/outputs.md)
 staff marks run marks.csv --preset "OCR J277 (GCSE 9-1)" --unit percent --max 4,6,8,6,10,6
 staff marks presets
 ```
+
+The command line prints the same report: the four headline numbers, the
+grade distribution and the questions hardest first (`--worst N` sets
+*Reteach at most*).
