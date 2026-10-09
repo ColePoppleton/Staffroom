@@ -20,12 +20,16 @@ def build_document(
     truncated: bool,
     error: str | None,
     today: date | None = None,
+    preset: str = "",
 ) -> Document:
+    """``preset`` is printed in the header so a teacher can tell a Year 9 sheet
+    from the full trace of the same program."""
+    steps = f"{len(completed)} steps" + (" (capped)" if truncated else "")
     doc = Document(
         title=f"Trace table: {name}",
         topic="Python",
         date=today or date.today(),
-        subtitle=f"{len(completed)} steps" + (" (capped)" if truncated else ""),
+        subtitle=f"{preset} · {steps}" if preset else steps,
     )
     sheet = doc.section()
     sheet.add(

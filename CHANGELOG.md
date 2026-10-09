@@ -6,6 +6,17 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Added
+- Trace has a Preset dropdown with **Full trace** (the default, as before) and
+  **Year 9** (#33): the Year 9 preset turns on the new *Top-level variables
+  only* option (`--top-level-only` on the CLI), which leaves out the lines run
+  inside functions and their locals, so the sheet has no Scope column and only
+  the program's own variables. Every trace sheet now names its preset in the
+  header (Full trace, Year 9 or Custom) so a teacher can tell which one they
+  handed out. Presets for an options form are part of the shared panel
+  vocabulary (`OptionsForm.presets`, `core.panel.preset`) and widget kit, so
+  any tool can offer them.
+
 ### Changed
 - The `/audit` skill now has a design pass (task flow, hierarchy, structure, density,
   consistency per section) that shows any proposed redesign as a rendered mockup beside the

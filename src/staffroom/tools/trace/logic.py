@@ -6,10 +6,12 @@ import ast
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from staffroom.core.panel import OptionsPreset, matching_preset, preset
 from staffroom.core.table import Row, Table
 
 Kind = Literal["assign", "loop", "if", "call", "other"]
 TIMEOUT = 10.0  # seconds a traced run may take; the panel description quotes it
+CUSTOM = "Custom"  # what the sheet says when the options match no preset
 
 
 @dataclass
@@ -19,6 +21,16 @@ class Options:
     loops: bool = field(default=True, metadata={"label": "Record loop headers"})
     ifs: bool = field(default=True, metadata={"label": "Record if / elif"})
     calls: bool = field(default=True, metadata={"label": "Record calls (print, input…)"})
+    top_level_only: bool = field(
+        default=False,
+        metadata={
+            "label": "Top-level variables only",
+            "help": (
+                "Leave out the lines run inside functions and their local variables, "
+                "so the table has no Scope column. The Year 9 preset turns this on."
+            ),
+        },
+    )
     variables: str = field(
         default="",
         metadata={
@@ -42,6 +54,23 @@ class Options:
         if self.calls:
             chosen.add("call")
         return chosen
+
+
+# What a preset pins: every setting that shapes the table. Steps and output
+# format are left to the teacher, so changing them keeps the preset's name.
+_TABLE_SHAPE = {"assignments": True, "loops": True, "ifs": True, "calls": True, "variables": ""}
+PRESETS: tuple[OptionsPreset, ...] = (
+    preset("Full trace", top_level_only=False, **_TABLE_SHAPE),
+    preset("Year 9", top_level_only=True, **_TABLE_SHAPE),
+)
+
+
+def preset_name(options: Options) -> str:
+    """The preset these options amount to, for the sheet header: "Full trace",
+    "Year 9" or "Custom". Decided from the values, not the dropdown, so the CLI
+    and a hand-edited form agree with what is printed."""
+    match = matching_preset(PRESETS, options)
+    return match.name if match else CUSTOM
 
 
 @dataclass(frozen=True)
@@ -141,16 +170,34 @@ def _ordinal(n: int) -> str:
     return f"{n}{suffix}"
 
 
-def select_steps(result: TraceResult, source: str, kinds: set[Kind]) -> list[Step]:
+def select_steps(
+    result: TraceResult, source: str, kinds: set[Kind], *, top_level_only: bool = False
+) -> list[Step]:
+    """The steps to record: those whose line is one of ``kinds`` and, with
+    ``top_level_only``, those run at module level (a step inside a function
+    carries its function's name as ``scope``)."""
     by_line = line_kinds(source)
-    return [s for s in result.steps if by_line.get(s.line, "other") in kinds]
+    return [
+        s
+        for s in result.steps
+        if by_line.get(s.line, "other") in kinds and not (top_level_only and s.scope)
+    ]
 
 
-def chosen_variables(result: TraceResult, wanted: str) -> list[str]:
+def chosen_variables(
+    result: TraceResult, wanted: str, steps: list[Step] | None = None
+) -> list[str]:
+    """The columns: the names in ``wanted`` (comma-separated) if any, else every
+    variable the run touched, in first-seen order. With ``steps``, only variables
+    that appear in one of those steps, so dropping function scopes drops their
+    locals too."""
+    available = result.variables
+    if steps is not None:
+        available = [v for v in available if any(v in s.values for s in steps)]
     if wanted.strip():
         names = [n.strip() for n in wanted.split(",") if n.strip()]
-        return [n for n in names if n in result.variables] or names
-    return list(result.variables)
+        return [n for n in names if n in available] or names
+    return list(available)
 
 
 def trace_table(

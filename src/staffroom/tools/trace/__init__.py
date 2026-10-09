@@ -84,14 +84,19 @@ class TracePlugin:
             # Nothing is written: a one-row sheet for a program that never got
             # its input is not a worksheet, it is a mistake to fix and rerun.
             raise ToolError(logic.missing_input_message(name, stdin, result.inputs_read))
-        steps = logic.select_steps(result, source, options.kinds())
-        variables = logic.chosen_variables(result, options.variables)
+        steps = logic.select_steps(
+            result, source, options.kinds(), top_level_only=options.top_level_only
+        )
+        variables = logic.chosen_variables(
+            result, options.variables, steps if options.top_level_only else None
+        )
+        preset = logic.preset_name(options)
         completed = logic.trace_table(steps, variables)
         blank = logic.trace_table(
             steps, variables, blank=True, line_numbers=options.blank_line_numbers
         )
         ctx.log(
-            f"{len(result.steps)} steps executed, {len(steps)} recorded; "
+            f"{preset}: {len(result.steps)} steps executed, {len(steps)} recorded; "
             f"variables: {', '.join(variables) or 'none'}"
             + (f"; ended with {result.error}" if result.error else "")
             + ("; capped" if result.truncated else "")
@@ -104,6 +109,7 @@ class TracePlugin:
             result.stdout,
             truncated=result.truncated,
             error=result.error,
+            preset=preset,
         )
         ctx.progress(0.7, "Writing files")
         files = export(

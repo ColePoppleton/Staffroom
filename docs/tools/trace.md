@@ -6,12 +6,21 @@ for pupils and a completed one for you.
 ![Trace panel](../trace-dark.png)
 
 Each row is one executed line with every variable's value **after** that
-line and anything it printed. Choose which lines to record (assignments,
-loop headers, ifs, calls) and which variables to show (*Variables*, or
-`--vars`; by default every variable the program touched, including a
-function's locals, with a *Scope* column whenever a function ran, which is
-more than a Year 9 table needs). *Max steps* (60 by default) caps the rows
-and the sheet says when it was hit. Programs that read input take it from
+line and anything it printed. The *Preset* dropdown picks the shape of the
+table: **Full trace** (the default) records every line, including those run
+inside functions, with a *Scope* column naming the function and a column for
+each of its locals; **Year 9** (*Top-level variables only*, or
+`--top-level-only`) leaves the function's own steps and locals out, so the
+sheet has just the program's top-level variables and no Scope column. The
+header of every sheet names the preset it came from; a table whose settings
+match neither says *Custom*. You can still choose which lines to record
+(assignments, loop headers, ifs, calls) and which variables to show
+(*Variables*, or `--vars`). *Max steps* (60 by default) caps the rows and the
+sheet says when it was hit.
+
+![Trace options with the Year 9 preset chosen](../trace-preset-dark.png)
+
+Programs that read input take it from
 the *Inputs* box, one line per `input()`. If the program asks for more
 input than the box holds, the run stops with a message that says so and
 nothing is written: fill in the box and run again. A program that ends with
@@ -31,4 +40,5 @@ a security sandbox: see [Running pupil code](../guide/running-code.md).
 
 ```bash
 staff trace make program.py --stdin "5\n3" --steps 60 --vars total,count
+staff trace make program.py --top-level-only   # the Year 9 preset
 ```

@@ -19,6 +19,13 @@ def register(app: typer.Typer) -> None:
         stdin: Annotated[str, typer.Option("--stdin", help="Inputs, use \\n between lines")] = "",
         steps: Annotated[int, typer.Option("--steps", help="Max steps")] = 60,
         variables: Annotated[str, typer.Option("--vars", help="Comma-separated columns")] = "",
+        top_level_only: Annotated[
+            bool,
+            typer.Option(
+                "--top-level-only",
+                help="The Year 9 preset: leave out function scopes and their locals",
+            ),
+        ] = False,
         fmt: Annotated[str, typer.Option("--format", "-f", help="both, docx or pdf")] = "both",
         out: Annotated[Path | None, typer.Option("--out", "-o")] = None,
         preview: Annotated[
@@ -35,7 +42,12 @@ def register(app: typer.Typer) -> None:
             progress=lambda _f, msg: typer.secho(msg, dim=True, err=True),
             log=lambda msg: typer.echo(msg, err=True),
         )
-        options = Options(max_steps=steps, variables=variables, formats=fmt)  # type: ignore[arg-type]
+        options = Options(
+            max_steps=steps,
+            top_level_only=top_level_only,
+            variables=variables,
+            formats=fmt,  # type: ignore[arg-type]
+        )
         try:
             result = plugin.run(
                 {"source": source, "stdin": stdin.replace("\\n", "\n"), "options": options}, ctx

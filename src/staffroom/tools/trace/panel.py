@@ -12,7 +12,7 @@ from staffroom.core.panel import (
     TextView,
 )
 from staffroom.core.runner import limits_note
-from staffroom.tools.trace.logic import TIMEOUT, Options
+from staffroom.tools.trace.logic import PRESETS, TIMEOUT, Options
 
 
 def panel_spec() -> PanelSpec:
@@ -41,7 +41,7 @@ def panel_spec() -> PanelSpec:
                 placeholder="One line per input() call",
                 help="What the program reads from input(), one line each.",
             ),
-            OptionsForm(key="options", schema=Options),
+            OptionsForm(key="options", schema=Options, presets=PRESETS),
         ),
         outputs=(
             ResultsTable(key="table", label="Completed trace table"),

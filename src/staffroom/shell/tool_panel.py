@@ -161,7 +161,7 @@ class ToolPanel(QWidget):
                 )
             elif isinstance(spec, OptionsForm):
                 card = Card(spec.label)
-                form = OptionsFormWidget(spec.schema)
+                form = OptionsFormWidget(spec.schema, spec.presets)
                 card.add(form)
                 self.forms[spec.key] = form
             elif isinstance(spec, EditableTable):

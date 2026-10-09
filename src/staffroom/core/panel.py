@@ -34,8 +34,9 @@ widget kit. Do not put UI code in a tool.
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 from staffroom.core.table import Cell
 
@@ -100,15 +101,49 @@ class TextArea:
 
 
 @dataclass(frozen=True)
+class OptionsPreset:
+    """A named set of field values an :class:`OptionsForm` applies in one go.
+
+    ``values`` pins some of the schema's fields; the others keep whatever the
+    user has set. The form's Preset dropdown shows the first preset whose
+    pinned fields all equal the current values, or "Custom" when none does,
+    and the same rule (:func:`matching_preset`) lets a tool print the preset's
+    name on its output, so a sheet says which preset it came from even when
+    the options were typed on the command line. Build one with :func:`preset`.
+    """
+
+    name: str
+    values: tuple[tuple[str, Any], ...]
+
+    def matches(self, options: object) -> bool:
+        return all(getattr(options, name) == value for name, value in self.values)
+
+
+def preset(name: str, **values: Any) -> OptionsPreset:
+    """``preset("Year 9", top_level_only=True)``: an :class:`OptionsPreset`."""
+    return OptionsPreset(name, tuple(values.items()))
+
+
+def matching_preset(presets: tuple[OptionsPreset, ...], options: object) -> OptionsPreset | None:
+    """The first preset whose pinned fields all match ``options``, if any."""
+    return next((p for p in presets if p.matches(options)), None)
+
+
+@dataclass(frozen=True)
 class OptionsForm:
     """A form generated from a dataclass. Field types drive the widgets:
     ``bool`` -> checkbox, ``int``/``float`` -> spin box, ``str`` -> line edit,
     ``Literal[...]`` or ``Enum`` -> combo box. Field ``metadata`` may carry
-    ``label``, ``help``, ``min``, ``max`` and ``step``."""
+    ``label``, ``help``, ``min``, ``max`` and ``step``.
+
+    ``presets`` adds a Preset dropdown above the fields: choosing one sets the
+    fields it pins (see :class:`OptionsPreset`); editing a field afterwards
+    moves the dropdown back to whichever preset still matches, or "Custom"."""
 
     key: str
     schema: type
     label: str = "Options"
+    presets: tuple[OptionsPreset, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -238,6 +273,16 @@ class PanelSpec:
             if isinstance(w, TablePreview) and w.source not in sources:
                 msg = f"TablePreview {w.key!r} refers to unknown FilePicker {w.source!r}"
                 raise ValueError(msg)
+            if isinstance(w, OptionsForm) and w.presets:
+                names = {f.name for f in dataclasses.fields(w.schema)}
+                for p in w.presets:
+                    unknown = sorted(set(dict(p.values)) - names)
+                    if unknown:
+                        msg = (
+                            f"preset {p.name!r} of OptionsForm {w.key!r} pins fields "
+                            f"{unknown} that {w.schema.__name__} does not have"
+                        )
+                        raise ValueError(msg)
 
     def input_keys(self) -> list[str]:
         return [w.key for w in self.inputs if not isinstance(w, TablePreview)]

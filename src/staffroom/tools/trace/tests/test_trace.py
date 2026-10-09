@@ -192,3 +192,101 @@ def test_other_runtime_errors_still_make_the_sheet_and_say_so(tmp_path: Path) ->
     assert "ended with ZeroDivisionError: division by zero" in result.summary
     assert "ends with an error: ZeroDivisionError" in result.texts["preview"]
     assert len(result.files) == 2 and all(f.exists() for f in result.files)
+
+
+# A Year 9 style program with one function: the full trace shows the call's own
+# steps with a Scope column and the locals w, h and result; the Year 9 preset
+# keeps only the top-level lines and variables.
+AREA = (
+    "def area(w, h):\n    result = w * h\n    return result\n\n"
+    "width = 4\nheight = 3\nspace = area(width, height)\nprint(space)\n"
+)
+AREA_FULL = [
+    (5, "", "4", "", "", "", "", "", ""),
+    (6, "", "4", "3", "", "", "", "", ""),
+    (7, "", "4", "3", "", "", "", "12", ""),
+    (2, "area", "", "", "4", "3", "12", "", ""),
+    (3, "area", "", "", "4", "3", "12", "", ""),
+    (8, "", "4", "3", "", "", "", "12", "12"),
+]
+AREA_YEAR9 = [
+    (5, "4", "", "", ""),
+    (6, "4", "3", "", ""),
+    (7, "4", "3", "12", ""),
+    (8, "4", "3", "12", "12"),
+]
+
+
+def test_year9_function_program_matches_hand_written_tables_in_both_settings() -> None:
+    result = run_trace(AREA, "", 100)
+    assert result.error is None and not result.truncated
+    full = Options()
+    steps = logic.select_steps(result, AREA, full.kinds(), top_level_only=full.top_level_only)
+    table = logic.trace_table(steps, logic.chosen_variables(result, full.variables))
+    assert table.columns == [
+        "Line", "Scope", "width", "height", "w", "h", "result", "space", "Output"
+    ]  # fmt: skip
+    assert [tuple(row) for row in table.rows] == AREA_FULL
+
+    year9 = Options(top_level_only=True)
+    steps = logic.select_steps(result, AREA, year9.kinds(), top_level_only=year9.top_level_only)
+    table = logic.trace_table(steps, logic.chosen_variables(result, year9.variables, steps))
+    assert table.columns == ["Line", "width", "height", "space", "Output"], "no Scope, no locals"
+    assert [tuple(row) for row in table.rows] == AREA_YEAR9
+    # Asking for a local by name still gets that column, so --vars keeps working.
+    assert logic.chosen_variables(result, "space, result", steps) == ["space"]
+
+
+def test_year9_example_without_functions_is_the_same_in_both_settings() -> None:
+    source = (Path(__file__).parents[4].parent / "examples" / "year9.py").read_text()
+    result = run_trace(source, "", 100)
+    kinds = Options().kinds()
+    full = logic.trace_table(
+        logic.select_steps(result, source, kinds), logic.chosen_variables(result, "")
+    )
+    steps = logic.select_steps(result, source, kinds, top_level_only=True)
+    year9 = logic.trace_table(steps, logic.chosen_variables(result, "", steps))
+    assert "Scope" not in full.columns and full.columns == year9.columns and full.rows == year9.rows
+    assert full.columns == ["Line", "scores", "total", "count", "score", "average", "Output"]
+
+
+def test_preset_is_named_from_the_values_and_printed_on_the_sheet() -> None:
+    assert logic.preset_name(Options()) == "Full trace"
+    assert logic.preset_name(Options(top_level_only=True)) == "Year 9"
+    # Steps and output format are the teacher's business; the table shape is not.
+    tweaked = Options(top_level_only=True, max_steps=200, formats="pdf")
+    assert logic.preset_name(tweaked) == "Year 9"
+    assert logic.preset_name(Options(top_level_only=True, calls=False)) == "Custom"
+    assert logic.preset_name(Options(variables="total")) == "Custom"
+    table = logic.trace_table([], [])
+    doc = build_document(
+        "area", AREA, table, table, "", truncated=False, error=None, preset="Year 9"
+    )
+    assert doc.subtitle == "Year 9 · 0 steps"
+    assert "Year 9" in to_text(doc.sheet()).splitlines()[2], "the header meta line"
+    plain = build_document("area", AREA, table, table, "", truncated=True, error=None)
+    assert plain.subtitle == "0 steps (capped)"
+
+
+def test_top_level_only_through_the_plugin_and_cli(tmp_path: Path) -> None:
+    ctx = RunContext(config=load_config(), output_dir=tmp_path)
+    logged: list[str] = []
+    ctx.log = logged.append
+    result = plugin.run(
+        {"pasted": AREA, "options": Options(top_level_only=True, formats="pdf")}, ctx
+    )
+    assert result.tables["table"].columns == ["Line", "width", "height", "space", "Output"]
+    assert "Year 9" in result.texts["preview"].splitlines()[2]
+    assert logged[0].startswith(
+        "Year 9: 7 steps executed, 4 recorded; variables: width, height, space"
+    )
+    src = tmp_path / "area.py"
+    src.write_text(AREA)
+    r = runner.invoke(
+        app, ["trace", "make", str(src), "--top-level-only", "-f", "docx", "--out", str(tmp_path)]
+    )
+    assert r.exit_code == 0, r.output
+    assert "Line  width  height  space  Output" in r.output and "Scope" not in r.output
+    r = runner.invoke(app, ["trace", "make", str(src), "-f", "docx", "--out", str(tmp_path)])
+    assert r.exit_code == 0, r.output
+    assert "Scope" in r.output and "Full trace" in r.output
