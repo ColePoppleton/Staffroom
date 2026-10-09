@@ -17,15 +17,19 @@ FolderPicker       ``pathlib.Path | None``
 ResourcePicker     ``pathlib.Path | None`` (from the Resource Library or a dialog)
 TextField          ``str``
 TextArea           ``str`` (multi-line)
+Choice             ``str`` (the chosen value)
 OptionsForm        an instance of the given dataclass
-EditableTable      :class:`~staffroom.core.table.Table`
+EditableTable      :class:`~staffroom.core.table.Table` (and its ``choice``, if
+                   any, under the choice's own key)
 TablePreview       (display only; never appears in ``inputs``)
 =================  =====================================================
 
-Output widgets fill from a ``RunResult``: ``ResultsTable`` and
-``ActionTable`` from ``tables[key]``, ``ImageView`` from ``images[key]``,
-``TextView`` from ``texts[key]``. An ``ActionTable`` additionally lets the
-user pick a row and press an action button; the shell then calls
+Output widgets fill from a ``RunResult``: ``ResultsTable``, ``ActionTable``,
+``StatTiles`` (build its table with :func:`stat_table`) and ``BarChart`` from
+``tables[key]``, ``ImageView`` from ``images[key]``, ``TextView`` from
+``texts[key]`` (and a ``BarChart`` takes a one-line caption from there). An
+``ActionTable`` additionally lets the user pick a row and press an action
+button; the shell then calls
 ``plugin.act(action_name, row, ctx)`` and applies the returned RunResult.
 
 Layout (the workbench)
@@ -33,12 +37,15 @@ Layout (the workbench)
 The shell lays every panel out the same way: the inputs in a column on the
 left with the run button at its foot, the outputs filling the right. Outputs
 are either *main* views (the reason for the visit: a table, a chart, a
-preview; more than one becomes tabs) or *below* (secondary: lists to act on,
-notes), stacked under the main view. :func:`main_outputs` and
-:func:`below_outputs` decide, from each widget's optional ``place`` hint:
-``ActionTable`` defaults to below, everything else to main, and a panel with
-no main view promotes its first output. ``LogArea`` is neither; the shell
-keeps it at the foot of the output pane.
+preview; more than one becomes tabs, or sits side by side with
+``PanelSpec.main_layout="row"``), *top* (a headline over the main view, such
+as ``StatTiles``) or *below* (secondary: lists to act on, notes, a folded
+detail table), stacked under the main view. :func:`top_outputs`,
+:func:`main_outputs` and :func:`below_outputs` decide, from each widget's
+optional ``place`` hint: ``StatTiles`` defaults to top, ``ActionTable`` to
+below, everything else to main, and a panel with no main view promotes its
+first output. ``LogArea`` is none of these; the shell keeps it at the foot of
+the output pane.
 
 At the foot of the inputs, the run bar says where the next run will write:
 the shared output folder (``Config.output_dir_for``) unless the panel sets
@@ -51,12 +58,12 @@ widget kit. Do not put UI code in a tool.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from staffroom.core.table import Cell
+from staffroom.core.table import Cell, Table
 
 if TYPE_CHECKING:
     from staffroom.core.config import Config
@@ -67,12 +74,17 @@ CellKind = Literal["text", "int", "float", "bool"]
 # ---------------------------------------------------------------- inputs
 @dataclass(frozen=True)
 class FilePicker:
+    """Choose a file. ``chip`` shows the chosen file as a chip (its type, its
+    name, a Change button; the full path in the tooltip) instead of a path
+    field: for an input that is read, not typed."""
+
     key: str
     label: str
     filters: tuple[str, ...] = ("Data files (*.csv *.xlsx)", "All files (*)")
     mode: Literal["open", "save"] = "open"
     help: str = ""
     required: bool = True
+    chip: bool = False
 
 
 @dataclass(frozen=True)
@@ -122,6 +134,29 @@ class TextArea:
 
 
 @dataclass(frozen=True)
+class Choice:
+    """One of a few exclusive values, shown as a segmented switch. ``choices``
+    are ``(value, text)`` pairs; the value handed to the tool is the chosen
+    ``value`` (``default``, or the first one, until the user picks)."""
+
+    key: str
+    label: str
+    choices: tuple[tuple[str, str], ...]
+    default: str | None = None
+    help: str = ""
+
+    def __post_init__(self) -> None:
+        values = [v for v, _ in self.choices]
+        if not values or (self.default is not None and self.default not in values):
+            msg = f"Choice {self.key!r} needs choices that include its default"
+            raise ValueError(msg)
+
+    @property
+    def initial(self) -> str:
+        return self.default if self.default is not None else self.choices[0][0]
+
+
+@dataclass(frozen=True)
 class OptionsPreset:
     """A named set of field values an :class:`OptionsForm` applies in one go.
 
@@ -159,12 +194,16 @@ class OptionsForm:
 
     ``presets`` adds a Preset dropdown above the fields: choosing one sets the
     fields it pins (see :class:`OptionsPreset`); editing a field afterwards
-    moves the dropdown back to whichever preset still matches, or "Custom"."""
+    moves the dropdown back to whichever preset still matches, or "Custom".
+
+    ``fields`` limits the form to the named fields (empty: all of them); the
+    rest keep their dataclass defaults, e.g. one a :class:`Choice` sets."""
 
     key: str
     schema: type
     label: str = "Options"
     presets: tuple[OptionsPreset, ...] = ()
+    fields: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -184,7 +223,16 @@ class EditableTable:
     ``presets`` are named row sets the user can apply from a dropdown. If
     ``preset_action`` is set, "Save as preset" calls
     ``plugin.act(preset_action, {"name": str, "table": Table}, ctx)`` so the
-    plugin can persist it (usually in ``config.tool(name)``)."""
+    plugin can persist it (usually in ``config.tool(name)``).
+
+    ``compact`` draws a two-column (label, number) table as a grid of small
+    cells, ``per_row`` to a line, each label beside its editable number: ten
+    grade boundaries in two lines instead of a ten-row table. Choosing a preset
+    applies it at once; rows are not added or removed.
+
+    ``choice`` adds a :class:`Choice` between the preset and the grid, for a
+    setting that says how to read the numbers (e.g. % of the paper or raw
+    marks). Its value reaches the tool under the choice's own key."""
 
     key: str
     label: str
@@ -194,16 +242,39 @@ class EditableTable:
     help: str = ""
     presets: tuple[tuple[str, PresetRows], ...] = ()
     preset_action: str | None = None
+    compact: bool = False
+    per_row: int = 5
+    choice: Choice | None = None
+
+
+@dataclass(frozen=True)
+class Note:
+    """One line of a load summary: ``ok`` lines get a tick, the others a warning mark."""
+
+    text: str
+    ok: bool = True
 
 
 @dataclass(frozen=True)
 class TablePreview:
-    """Read-only preview of the table behind a FilePicker (by its key)."""
+    """Read-only preview of the table behind a FilePicker (by its key).
+
+    ``flag`` is passed to ``core.csvio.read_table`` (e.g. ``"MAX"``) so the
+    preview sees the same flagged rows the tool will. ``summary`` turns the
+    loaded table into a few :class:`Note` lines (what was found, what was
+    dropped); it is pure and called on every file change.
+
+    ``compact`` shows only the summary, under the file picker in the same
+    group, with a *Preview rows* link that opens the rows on demand, instead
+    of a table of rows in its own group."""
 
     key: str
     source: str
     label: str = "Preview"
     max_rows: int = 200
+    flag: str | None = None
+    summary: Callable[[Table], Sequence[Note]] | None = None
+    compact: bool = False
 
 
 InputWidget = (
@@ -212,6 +283,7 @@ InputWidget = (
     | ResourcePicker
     | TextField
     | TextArea
+    | Choice
     | OptionsForm
     | EditableTable
     | TablePreview
@@ -219,15 +291,110 @@ InputWidget = (
 
 
 # ---------------------------------------------------------------- outputs
-Place = Literal["main", "below"]
-"""Where an output sits in the output pane: a ``"main"`` view (tabs when there
-are several) or ``"below"`` the main view. ``None`` lets the shell choose."""
+Place = Literal["top", "main", "below"]
+"""Where an output sits in the output pane: ``"top"`` (a headline over the
+main view), a ``"main"`` view (tabs when there are several, or side by side
+with ``PanelSpec.main_layout="row"``) or ``"below"`` the main view. ``None``
+lets the shell choose."""
+
+
+@dataclass(frozen=True)
+class BarColumn:
+    """A numeric column drawn with an inline bar beside its number, the bar
+    full at ``maximum`` (e.g. a facility index from 0 to 1)."""
+
+    name: str
+    maximum: float = 1.0
 
 
 @dataclass(frozen=True)
 class ResultsTable:
+    """A read-only table from ``tables[key]``.
+
+    ``bars`` draws the named numeric columns with an inline bar.
+    ``tag_column``'s non-empty text is shown as a small tag beside the first
+    cell of its row (e.g. "reteach") as a call to action, in the accent
+    colour with the row's bars; the column itself is not shown. ``hidden_columns`` are not shown
+    either; their values appear in the row's tooltip instead.
+
+    ``collapsed`` (for a ``"below"`` table) starts folded: only its label and
+    row count show until the user opens it."""
+
     key: str
     label: str = "Results"
+    place: Place | None = None
+    bars: tuple[BarColumn, ...] = ()
+    tag_column: str | None = None
+    hidden_columns: tuple[str, ...] = ()
+    collapsed: bool = False
+
+
+@dataclass(frozen=True)
+class Stat:
+    """One headline number: a label, the value as the teacher should read it
+    (already formatted, e.g. ``"75%"``), an optional detail line, and
+    ``action`` for the one tile that asks the teacher to act (it takes the
+    accent colour, which is otherwise kept for where you are and what you
+    can press)."""
+
+    label: str
+    value: str
+    detail: str = ""
+    action: bool = False
+
+
+STAT_COLUMNS = ["Label", "Value", "Detail", "Action"]
+
+
+def stat_table(stats: Iterable[Stat]) -> Table:
+    """The table a :class:`StatTiles` output fills from."""
+    return Table(list(STAT_COLUMNS), [[s.label, s.value, s.detail, s.action] for s in stats])
+
+
+def stats_from_table(table: Table) -> list[Stat]:
+    """Read back what :func:`stat_table` wrote (missing columns default)."""
+    out: list[Stat] = []
+    for record in table.to_dicts():
+        out.append(
+            Stat(
+                label=str(record.get("Label") or ""),
+                value=str(record.get("Value") if record.get("Value") is not None else ""),
+                detail=str(record.get("Detail") or ""),
+                action=bool(record.get("Action")),
+            )
+        )
+    return out
+
+
+@dataclass(frozen=True)
+class StatTiles:
+    """A row of headline numbers (``tables[key]``, built with :func:`stat_table`):
+    the first thing a teacher reads after a run. Sits over the main view."""
+
+    key: str
+    label: str = "Headline"
+    place: Place | None = None  # None: top
+
+
+@dataclass(frozen=True)
+class BarChart:
+    """A bar chart the shell draws in the theme's colours from ``tables[key]``:
+    one bar per row, ``category`` under it, ``value`` as its height and the
+    number over it, and ``detail`` (formatted with ``detail_format``, e.g.
+    ``"{:g}%"``) under the category. Rows whose category is in ``skip`` are
+    listed in the chart's table view but not drawn. A *Table* switch shows the
+    rows themselves. ``texts[key]``, if set, is a short caption in the heading.
+
+    The shell's chart is for the screen; a tool that saves a chart as a file
+    still draws that file itself (and lists it in ``RunResult.files``)."""
+
+    key: str
+    label: str = "Chart"
+    category: str = "Category"
+    value: str = "Count"
+    detail: str | None = None
+    detail_format: str = "{:g}"
+    skip: tuple[str, ...] = ()
     place: Place | None = None
 
 
@@ -280,13 +447,16 @@ class LogArea:
     label: str = "Log"
 
 
-OutputWidget = ResultsTable | ActionTable | ImageView | TextView | LogArea
-ViewWidget = ResultsTable | ActionTable | ImageView | TextView
+OutputWidget = ResultsTable | ActionTable | ImageView | TextView | StatTiles | BarChart | LogArea
+ViewWidget = ResultsTable | ActionTable | ImageView | TextView | StatTiles | BarChart
+MainLayout = Literal["tabs", "row"]
 
 
 def _placed(widget: ViewWidget) -> Place:
     if widget.place is not None:
         return widget.place
+    if isinstance(widget, StatTiles):
+        return "top"
     return "below" if isinstance(widget, ActionTable) else "main"
 
 
@@ -294,12 +464,18 @@ def _views(outputs: tuple[OutputWidget, ...]) -> list[ViewWidget]:
     return [w for w in outputs if not isinstance(w, LogArea)]
 
 
+def top_outputs(outputs: tuple[OutputWidget, ...]) -> list[ViewWidget]:
+    """The headline views over the main view, in spec order."""
+    return [w for w in _views(outputs) if _placed(w) == "top"]
+
+
 def main_outputs(outputs: tuple[OutputWidget, ...]) -> list[ViewWidget]:
-    """The output pane's main views, in spec order (tabs when more than one).
+    """The output pane's main views, in spec order (tabs when more than one,
+    unless the panel lays them out in a row).
 
     A panel whose outputs are all ``"below"`` gets its first one promoted, so
     the pane never opens on nothing but secondary lists."""
-    views = _views(outputs)
+    views = [w for w in _views(outputs) if _placed(w) != "top"]
     main = [w for w in views if _placed(w) == "main"]
     return main or views[:1]
 
@@ -307,7 +483,7 @@ def main_outputs(outputs: tuple[OutputWidget, ...]) -> list[ViewWidget]:
 def below_outputs(outputs: tuple[OutputWidget, ...]) -> list[ViewWidget]:
     """The secondary views stacked under the main view, in spec order."""
     main = main_outputs(outputs)
-    return [w for w in _views(outputs) if w not in main]
+    return [w for w in _views(outputs) if w not in main and _placed(w) != "top"]
 
 
 # ---------------------------------------------------------------- destination
@@ -340,18 +516,34 @@ class PanelSpec:
     outputs: tuple[OutputWidget, ...] = field(default=(LogArea(),))
     run_label: str = "Run"
     writes_to: WritesTo | None = None  # None: the shared output folder
+    main_layout: MainLayout = "tabs"  # "row": main views side by side, not tabs
 
     def __post_init__(self) -> None:
         keys = [w.key for w in self.inputs] + [w.key for w in self.outputs]
+        keys += [w.choice.key for w in self.inputs if isinstance(w, EditableTable) and w.choice]
         dupes = {k for k in keys if keys.count(k) > 1}
         if dupes:
             msg = f"duplicate widget keys in panel {self.title!r}: {sorted(dupes)}"
             raise ValueError(msg)
         sources = {w.key for w in self.inputs if isinstance(w, FilePicker)}
+        seen: set[str] = set()
         for w in self.inputs:
+            seen.add(w.key)
             if isinstance(w, TablePreview) and w.source not in sources:
                 msg = f"TablePreview {w.key!r} refers to unknown FilePicker {w.source!r}"
                 raise ValueError(msg)
+            if isinstance(w, TablePreview) and w.compact and w.source not in seen:
+                msg = f"compact TablePreview {w.key!r} must come after its FilePicker {w.source!r}"
+                raise ValueError(msg)
+            if isinstance(w, EditableTable) and w.compact and len(w.columns) != 2:
+                msg = f"compact EditableTable {w.key!r} needs two columns (label, number)"
+                raise ValueError(msg)
+            if isinstance(w, OptionsForm) and w.fields:
+                names = {f.name for f in dataclasses.fields(w.schema)}
+                unknown = sorted(set(w.fields) - names)
+                if unknown:
+                    msg = f"OptionsForm {w.key!r} lists fields {unknown} that are not in its schema"
+                    raise ValueError(msg)
             if isinstance(w, OptionsForm) and w.presets:
                 names = {f.name for f in dataclasses.fields(w.schema)}
                 for p in w.presets:
@@ -364,7 +556,9 @@ class PanelSpec:
                         raise ValueError(msg)
 
     def input_keys(self) -> list[str]:
-        return [w.key for w in self.inputs if not isinstance(w, TablePreview)]
+        keys = [w.key for w in self.inputs if not isinstance(w, TablePreview)]
+        keys += [w.choice.key for w in self.inputs if isinstance(w, EditableTable) and w.choice]
+        return keys
 
     def refresh_actions(self) -> list[str]:
         return [

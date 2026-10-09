@@ -5,10 +5,16 @@ Top to bottom:
 
 * ``strip_slot``: an empty layout on the pane's top edge, kept for the result
   strip (#84) that will say what the run did and which files it wrote.
+* Headline views (``place="top"``, e.g. :class:`StatTilesWidget`), shown once
+  filled.
 * The main view: one tab per main output (see :func:`core.panel.main_outputs`).
   A single main output still gets its one tab, so the title sits in the same
   place in every tool. Each tab shows a short hint until its first result.
-* Secondary outputs (ActionTable lists, notes) as sections under the main view.
+  With ``main_layout="row"`` the main outputs sit side by side instead, each
+  in a titled card (a report: chart beside table), stacking when the pane is
+  too narrow for them.
+* Secondary outputs (ActionTable lists, notes) as sections under the main view;
+  a ``collapsed`` table folds under a one-line heading the user opens.
 * The run log, until the result strip replaces it (#84).
 
 The pane scrolls as a whole only when the secondary sections do not fit; the
@@ -22,6 +28,8 @@ from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QBoxLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
@@ -36,19 +44,27 @@ from PySide6.QtWidgets import (
 
 from staffroom.core.panel import (
     ActionTable,
+    BarChart,
     ImageView,
     LogArea,
+    MainLayout,
     OutputWidget,
     ResultsTable,
+    StatTiles,
     TextView,
     ViewWidget,
     below_outputs,
     main_outputs,
+    stats_from_table,
+    top_outputs,
 )
 from staffroom.core.plugin import RunResult
 from staffroom.shell.widgets.action_table import ActionTableWidget
+from staffroom.shell.widgets.bar_chart import BarChartWidget
+from staffroom.shell.widgets.card import make_label
 from staffroom.shell.widgets.image_view import ImageViewWidget
 from staffroom.shell.widgets.input_group import eyebrow
+from staffroom.shell.widgets.stat_tiles import StatTilesWidget
 from staffroom.shell.widgets.table_view import TableModel, TableWidget
 from staffroom.shell.widgets.text_view import TextViewWidget
 
@@ -57,10 +73,113 @@ MAIN_SHARE = 0.6  # ...nor below this share of the visible height
 BELOW_TABLE_ROWS = 8
 LOG_HEIGHT = 96
 BELOW_TEXT_MIN, BELOW_TEXT_MAX = 72, 240
+ROW_TABLE_ROWS = 40  # a report's table shows its rows; the pane scrolls past this
+ROW_SPACING = 12
+COMPACT_COLUMN = 40  # narrowest column of a hinted (report) table
+CARD_PADDING = 10
+FOLD_CLOSED, FOLD_OPEN = "▸", "▾"
+QWIDGETSIZE_MAX = 16777215
 
 
 def _copy_text(view: QPlainTextEdit) -> None:
     QApplication.clipboard().setText(view.toPlainText())
+
+
+class ReportCard(QFrame):
+    """One main view of a ``"row"`` layout: a heading (title, a short caption,
+    room for a switch) over the view."""
+
+    def __init__(self, title: str, content: QWidget, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ReportCard")
+        self.content = content
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(CARD_PADDING, 10, CARD_PADDING, 10)
+        layout.setSpacing(8)
+        head = QHBoxLayout()
+        head.setSpacing(8)
+        self.title = make_label(title, "section")
+        self.caption = make_label("", "faint")
+        self.caption.setVisible(False)
+        head.addWidget(self.title)
+        head.addStretch(1)
+        head.addWidget(self.caption)
+        self.trailing = QHBoxLayout()
+        self.trailing.setSpacing(4)
+        head.addLayout(self.trailing)
+        layout.addLayout(head)
+        if isinstance(content, TableWidget):  # fitted to its rows; spare height under it
+            layout.addWidget(content)
+            layout.addStretch(1)
+        else:  # a chart fills the card (to its maximum), so cards in a row match
+            layout.addWidget(content, 1)
+            layout.addStretch(0)
+
+    def set_caption(self, text: str) -> None:
+        self.caption.setText(text)
+        self.caption.setVisible(bool(text))
+
+    def natural_width(self) -> int:
+        """The width the view needs without squeezing: a chart's bars at their
+        ease, a table's fitted columns."""
+        content = self.content
+        if isinstance(content, BarChartWidget):
+            inner = content.sizeHint().width()
+        elif isinstance(content, TableWidget):
+            inner = content.horizontalHeader().length() + content.frameWidth() * 2 + 2
+        else:
+            inner = 280
+        return inner + 2 * CARD_PADDING + 2
+
+    def minimum_width(self) -> int:
+        """The narrowest it can go beside another card: a chart squeezes its
+        bars, a table does not (it would scroll sideways)."""
+        if isinstance(self.content, BarChartWidget):
+            return self.content.minimumSizeHint().width() + 2 * CARD_PADDING + 2
+        return self.natural_width()
+
+    def grows(self) -> bool:
+        """Whether it takes a share of spare width (tables keep their fit)."""
+        return not isinstance(self.content, TableWidget)
+
+
+class MainRow(QWidget):
+    """The main views side by side; stacked when the pane is narrower than
+    their minimum widths. Tables keep their fitted width; charts and other
+    views share what is left."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.cards: list[ReportCard] = []
+        self.box = QBoxLayout(QBoxLayout.Direction.LeftToRight, self)
+        self.box.setContentsMargins(0, 0, 0, 0)
+        self.box.setSpacing(ROW_SPACING)
+
+    def add(self, card: ReportCard) -> None:
+        self.box.addWidget(card, 1 if card.grows() else 0)
+        self.cards.append(card)
+
+    def needed_width(self) -> int:
+        return sum(c.minimum_width() for c in self.cards) + ROW_SPACING * (len(self.cards) - 1)
+
+    def stacked(self) -> bool:
+        return self.box.direction() == QBoxLayout.Direction.TopToBottom
+
+    def relayout(self) -> None:
+        stack = self.width() < self.needed_width()
+        want = QBoxLayout.Direction.TopToBottom if stack else QBoxLayout.Direction.LeftToRight
+        if self.box.direction() != want:
+            self.box.setDirection(want)
+        for card in self.cards:
+            if stack or card.grows():
+                card.setMinimumWidth(0 if stack else card.minimum_width())
+                card.setMaximumWidth(QWIDGETSIZE_MAX)
+            else:
+                card.setFixedWidth(card.natural_width())
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self.relayout()
 
 
 class OutputPane(QWidget):
@@ -72,6 +191,7 @@ class OutputPane(QWidget):
         parent: QWidget | None = None,
         *,
         empty_text: str = "Results appear here after a run.",
+        main_layout: MainLayout = "tabs",
     ) -> None:
         super().__init__(parent)
         self.setObjectName("OutputPane")
@@ -80,16 +200,25 @@ class OutputPane(QWidget):
         self.action_tables: dict[str, ActionTableWidget] = {}
         self.text_views: dict[str, TextViewWidget] = {}
         self.images: dict[str, ImageViewWidget] = {}
+        self.tiles: dict[str, StatTilesWidget] = {}
+        self.charts: dict[str, BarChartWidget] = {}
         self.copy_buttons: dict[str, QPushButton] = {}
+        self.corner_buttons: dict[str, QPushButton] = {}  # per main view, shown with its tab
+        self.cards: dict[str, ReportCard] = {}
+        self.folds: dict[str, QPushButton] = {}  # collapsed below sections: their toggles
         self.log_view: QPlainTextEdit | None = None
-        # Each view's container: its tab page (main) or its section (below).
+        # Each view's container: its tab page or card (main), or its section.
         self.sections: dict[str, QWidget] = {}
         self.empty_text = empty_text
+        self.main_layout = main_layout
         self._waiting: dict[str, QStackedLayout] = {}  # main views before their first result
         self._below_hidden: set[str] = set()  # below sections shown once filled
         self._fit_below_text: set[str] = set()  # below text views sized to their text
+        self._specs: dict[str, ViewWidget] = {w.key: w for w in top_outputs(outputs)}
         main = main_outputs(outputs)
+        self._specs.update({w.key: w for w in [*main, *below_outputs(outputs)]})
         self.main_keys = [w.key for w in main]
+        self.top_keys = [w.key for w in top_outputs(outputs)]
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -111,44 +240,119 @@ class OutputPane(QWidget):
         self.scroll_area.setWidget(body)
         root.addWidget(self.scroll_area, 1)
 
-        self.tabs = QTabWidget()
-        self.tabs.setObjectName("OutputTabs")
-        bar = self.tabs.tabBar()
-        bar.setDrawBase(False)  # the pane's top border is the one hairline
-        bar.setExpanding(False)
-        bar.setUsesScrollButtons(False)
-        bar.setElideMode(Qt.TextElideMode.ElideRight)
-        self.tabs.setMinimumHeight(MAIN_MIN_HEIGHT)
-        corner = QWidget()
-        corner.setObjectName("TabCorner")
-        self._corner = QHBoxLayout(corner)
-        self._corner.setContentsMargins(0, 0, 0, 4)
-        self._corner.setSpacing(6)
-        for spec in main:
-            index = self.tabs.addTab(self._main_page(spec), spec.label)
-            self.tabs.setTabToolTip(index, spec.label)
-        self.tabs.setCornerWidget(corner, Qt.Corner.TopRightCorner)
-        self.tabs.currentChanged.connect(self._show_corner)
-        self._show_corner(self.tabs.currentIndex())
-        self.body_layout.addWidget(self.tabs, 1)
-        self.tabs.setVisible(bool(main))
+        for spec in top_outputs(outputs):
+            self.body_layout.addWidget(self._top_section(spec))
+
+        self.row: MainRow | None = None
+        self._row_stack: QStackedLayout | None = None
+        self.tabs: QTabWidget | None = None
+        if main_layout == "row" and main:
+            self.body_layout.addWidget(self._main_row(main))
+        else:
+            self._build_tabs(main)
 
         for spec in below_outputs(outputs):
             self.body_layout.addWidget(self._below_section(spec))
 
         for log_spec in (o for o in outputs if isinstance(o, LogArea)):
             self.body_layout.addWidget(self._log_section(log_spec, fill=not main))
-        if not main:
+        if not main or main_layout == "row":
             self.body_layout.addStretch(1)
+
+    def _build_tabs(self, main: list[ViewWidget]) -> None:
+        tabs = QTabWidget()
+        self.tabs = tabs
+        tabs.setObjectName("OutputTabs")
+        bar = tabs.tabBar()
+        bar.setDrawBase(False)  # the pane's top border is the one hairline
+        bar.setExpanding(False)
+        bar.setUsesScrollButtons(False)
+        bar.setElideMode(Qt.TextElideMode.ElideRight)
+        tabs.setMinimumHeight(MAIN_MIN_HEIGHT)
+        corner = QWidget()
+        corner.setObjectName("TabCorner")
+        self._corner = QHBoxLayout(corner)
+        self._corner.setContentsMargins(0, 0, 0, 4)
+        self._corner.setSpacing(6)
+        for spec in main:
+            index = tabs.addTab(self._main_page(spec), spec.label)
+            tabs.setTabToolTip(index, spec.label)
+        tabs.setCornerWidget(corner, Qt.Corner.TopRightCorner)
+        tabs.currentChanged.connect(self._show_corner)
+        self._show_corner(tabs.currentIndex())
+        self.body_layout.addWidget(tabs, 1)
+        tabs.setVisible(bool(main))
+
+    def _main_row(self, main: list[ViewWidget]) -> QWidget:
+        """The ``"row"`` layout: a hint until the first result, then the cards."""
+        holder = QWidget()
+        holder.setObjectName("MainRowHolder")
+        stack = QStackedLayout(holder)
+        stack.setContentsMargins(0, 0, 0, 0)
+        empty = QLabel(self.empty_text)
+        empty.setProperty("role", "placeholder")
+        empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty.setWordWrap(True)
+        empty.setMinimumHeight(MAIN_MIN_HEIGHT)
+        self.row = MainRow()
+        for spec in main:
+            content, extras = self._content(spec)
+            if isinstance(content, TableWidget):  # fitted to its columns: never sideways
+                content.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            card = ReportCard(spec.label, content)
+            for extra in extras:
+                card.trailing.addWidget(extra)
+            self.cards[spec.key] = card
+            self.sections[spec.key] = card
+            self.row.add(card)
+        stack.addWidget(empty)
+        stack.addWidget(self.row)
+        self._row_stack = stack
+        return holder
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
         """The main view takes at least 60% of the visible height; secondary
         sections that do not fit under it are a scroll away, never the result."""
         super().resizeEvent(event)
-        visible = self.scroll_area.viewport().height()
-        self.tabs.setMinimumHeight(max(MAIN_MIN_HEIGHT, int(visible * MAIN_SHARE)))
+        if self.tabs is not None:
+            visible = self.scroll_area.viewport().height()
+            self.tabs.setMinimumHeight(max(MAIN_MIN_HEIGHT, int(visible * MAIN_SHARE)))
 
     # -- building --------------------------------------------------------
+    def _content(self, spec: ViewWidget) -> tuple[QWidget, list[QWidget]]:
+        """The bare view for ``spec`` (registered by key) and any buttons that
+        belong in its heading."""
+        if isinstance(spec, StatTiles):
+            tiles = StatTilesWidget()
+            self.tiles[spec.key] = tiles
+            return tiles, []
+        if isinstance(spec, BarChart):
+            chart = BarChartWidget(spec)
+            self.charts[spec.key] = chart
+            return chart, [chart.toggle]
+        if isinstance(spec, ResultsTable):
+            _model, view, _caption = self._results_table(spec)
+            return view, []
+        if isinstance(spec, ImageView):
+            image = ImageViewWidget()
+            self.images[spec.key] = image
+            return image, []
+        if isinstance(spec, ActionTable):
+            return self._action_table(spec), []
+        text_view = self._text_view(spec)
+        extras: list[QWidget] = []
+        if spec.copy_button:
+            extras.append(self._copy_button(spec.key, text_view))
+        return text_view, extras
+
+    def _top_section(self, spec: ViewWidget) -> QWidget:
+        """A headline over the main view: no heading of its own, shown once filled."""
+        content, _extras = self._content(spec)
+        self.sections[spec.key] = content
+        self._below_hidden.add(spec.key)
+        content.setVisible(False)
+        return content
+
     def _main_page(self, spec: ViewWidget) -> QWidget:
         page = QWidget()
         page.setObjectName("OutputPage")
@@ -173,6 +377,14 @@ class OutputPane(QWidget):
             image = ImageViewWidget()
             self.images[spec.key] = image
             content_layout.addWidget(image, 1)
+        elif isinstance(spec, StatTiles | BarChart):
+            view_widget, extras = self._content(spec)
+            content_layout.addWidget(view_widget)
+            content_layout.addStretch(1)
+            for extra in extras:
+                self._corner.addWidget(extra)
+                if isinstance(extra, QPushButton):
+                    self.corner_buttons[spec.key] = extra
         else:
             text_view = self._text_view(spec)
             content_layout.addWidget(text_view, 1)
@@ -196,7 +408,11 @@ class OutputPane(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         head = QHBoxLayout()
-        head.addWidget(eyebrow(spec.label))
+        folded = isinstance(spec, ResultsTable) and spec.collapsed
+        if isinstance(spec, ResultsTable) and spec.collapsed:
+            head.addWidget(self._fold_button(spec))
+        else:
+            head.addWidget(eyebrow(spec.label))
         head.addStretch(1)
         layout.addLayout(head)
         self.sections[spec.key] = section
@@ -206,6 +422,18 @@ class OutputPane(QWidget):
             _model, view, caption = self._results_table(spec)
             layout.addWidget(view)
             layout.addWidget(caption)
+            if folded:
+                section.setObjectName("FoldSection")
+                section.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+                layout.setContentsMargins(12, 6, 12, 6)
+                view.setVisible(False)
+                caption.setVisible(False)
+            self._below_hidden.add(spec.key)
+        elif isinstance(spec, StatTiles | BarChart):
+            content, extras = self._content(spec)
+            layout.addWidget(content)
+            for extra in extras:
+                head.addWidget(extra)
             self._below_hidden.add(spec.key)
         elif isinstance(spec, ImageView):
             image = ImageViewWidget()
@@ -246,10 +474,41 @@ class OutputPane(QWidget):
         model = TableModel()
         view = TableWidget(model)
         view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        view.set_hints(
+            bars=spec.bars, tag_column=spec.tag_column, hidden_columns=spec.hidden_columns
+        )
         caption = QLabel("")
         caption.setProperty("role", "faint")
         self.tables[spec.key] = (model, view, caption)
         return model, view, caption
+
+    def _fold_button(self, spec: ResultsTable) -> QPushButton:
+        """The heading of a collapsed section: a toggle that opens and folds it."""
+        button = QPushButton(f"{FOLD_CLOSED} {spec.label}")
+        button.setProperty("role", "disclosure")
+        button.setCheckable(True)
+        button.setToolTip(spec.label)
+        button.toggled.connect(lambda on, key=spec.key: self.set_folded(key, not on))
+        self.folds[spec.key] = button
+        return button
+
+    def set_folded(self, key: str, folded: bool) -> None:
+        """Fold or open a collapsed below section."""
+        button = self.folds[key]
+        _model, view, caption = self.tables[key]
+        view.setVisible(not folded)
+        caption.setVisible(not folded and bool(caption.text()))
+        if button.isChecked() == folded:
+            button.blockSignals(True)
+            button.setChecked(not folded)
+            button.blockSignals(False)
+        spec = self._specs[key]
+        rows = view.model().rowCount() if view.model() else 0
+        count = f" · {rows} row{'s' if rows != 1 else ''}" if rows else ""
+        button.setText(f"{FOLD_CLOSED if folded else FOLD_OPEN} {spec.label}{count}")
+
+    def is_folded(self, key: str) -> bool:
+        return not self.tables[key][1].isVisibleTo(self.sections[key])
 
     def _action_table(self, spec: ActionTable) -> ActionTableWidget:
         widget = ActionTableWidget(spec)
@@ -271,9 +530,10 @@ class OutputPane(QWidget):
         return copy
 
     def _show_corner(self, index: int) -> None:
-        """Only the current tab's Copy button shows in the tab bar's corner."""
+        """Only the current tab's buttons (Copy, a chart's Table switch) show
+        in the tab bar's corner."""
         current = self.main_keys[index] if 0 <= index < len(self.main_keys) else None
-        for key, button in self.copy_buttons.items():
+        for key, button in [*self.copy_buttons.items(), *self.corner_buttons.items()]:
             if key in self.main_keys:
                 button.setVisible(key == current)
 
@@ -293,6 +553,8 @@ class OutputPane(QWidget):
             stack.setCurrentIndex(1)
         if key in self._below_hidden:
             self.sections[key].show()
+        if key in self.cards and self._row_stack is not None:
+            self._row_stack.setCurrentIndex(1)
 
     def _emptied(self, key: str) -> None:
         stack = self._waiting.get(key)
@@ -300,6 +562,8 @@ class OutputPane(QWidget):
             stack.setCurrentIndex(0)
         if key in self._below_hidden:
             self.sections[key].hide()
+        if key in self.cards and self._row_stack is not None:
+            self._row_stack.setCurrentIndex(0)
 
     def clear(self) -> None:
         """Before a run: tables and images go back to their empty state (text
@@ -310,6 +574,12 @@ class OutputPane(QWidget):
             self._emptied(key)
         for key, image in self.images.items():
             image.set_image(None)
+            self._emptied(key)
+        for key, tiles in self.tiles.items():
+            tiles.set_stats([])
+            self._emptied(key)
+        for key, chart in self.charts.items():
+            chart.set_table(None)
             self._emptied(key)
         if self.log_view:
             self.log_view.clear()
@@ -335,12 +605,39 @@ class OutputPane(QWidget):
             if table is None:
                 continue
             model.set_table(table)
-            view.fit_columns()
-            if key not in self.main_keys:
-                view.fit_rows(BELOW_TABLE_ROWS)
+            view.apply_hints()
+            spec = self._specs.get(key)
+            hinted = isinstance(spec, ResultsTable) and bool(spec.bars or spec.tag_column)
+            if hinted:
+                view.fit_columns(min_width=COMPACT_COLUMN, extra=0)
+            else:
+                view.fit_columns()
             rows, cols = table.shape
-            caption.setText(f"{rows} rows × {cols} columns")
+            if key in self.cards:  # a report's table: every row, no caption
+                view.fit_rows(ROW_TABLE_ROWS)
+                caption.setText("")
+                caption.hide()
+            else:
+                if key not in self.main_keys:
+                    view.fit_rows(BELOW_TABLE_ROWS)
+                caption.setText(f"{rows} rows × {cols} columns")
             self._filled(key)
+            if key in self.folds:
+                self.set_folded(key, True)  # a fresh result starts folded again
+        for key, tiles in self.tiles.items():
+            table = result.tables.get(key)
+            if table is not None:
+                tiles.set_stats(stats_from_table(table))
+                self._filled(key)
+        for key, chart in self.charts.items():
+            table = result.tables.get(key)
+            if table is not None:
+                chart.set_table(table)
+                if key in self.cards:
+                    self.cards[key].set_caption(result.texts.get(key, ""))
+                self._filled(key)
+        if self.row is not None:
+            self.row.relayout()
         for key, image in self.images.items():
             path = result.images.get(key)
             if path is None:

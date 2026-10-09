@@ -11,19 +11,23 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QPoint, Qt
-from PySide6.QtWidgets import QApplication, QLabel, QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 from pytestqt.qtbot import QtBot
 
 from staffroom.core import launch, paths
 from staffroom.core.config import load_config
 from staffroom.core.panel import (
     ActionTable,
+    BarChart,
     ImageView,
     LogArea,
     ResultsTable,
+    StatTiles,
+    TablePreview,
     TextView,
     below_outputs,
     main_outputs,
+    top_outputs,
 )
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.tool_panel import INPUTS_MIN_WIDTH, INPUTS_WIDTH, ToolPanel
@@ -90,6 +94,8 @@ def first_result(panel: ToolPanel) -> QWidget:
         return pane.images[key]
     if key in pane.text_views:
         return pane.text_views[key]
+    if key in pane.charts:
+        return pane.charts[key]
     return pane.action_tables[key]
 
 
@@ -114,6 +120,21 @@ def test_placement_defaults_and_hints() -> None:
     assert [w.key for w in below_outputs(outputs)] == ["sessions", "notes"]
 
 
+def test_headline_tiles_sit_on_top_and_never_become_a_tab() -> None:
+    outputs = (
+        StatTiles("headline"),
+        BarChart("chart"),
+        ResultsTable("table"),
+        ResultsTable("detail", place="below", collapsed=True),
+        LogArea(),
+    )
+    assert [w.key for w in top_outputs(outputs)] == ["headline"]
+    assert [w.key for w in main_outputs(outputs)] == ["chart", "table"]
+    assert [w.key for w in below_outputs(outputs)] == ["detail"]
+    # Only tiles: they are the headline, and nothing is promoted into the main view.
+    assert main_outputs((StatTiles("headline"),)) == []
+
+
 def test_a_panel_of_only_secondary_outputs_promotes_the_first() -> None:
     outputs = (ActionTable("sessions", "Sessions", actions=()), LogArea())
     assert [w.key for w in main_outputs(outputs)] == ["sessions"]
@@ -131,14 +152,21 @@ def test_every_panel_is_inputs_pane_plus_output_pane(window: MainWindow) -> None
         left = panel.inputs_pane.mapTo(panel, QPoint(0, 0)).x()
         right = panel.results.mapTo(panel, QPoint(0, 0)).x()
         assert left < right, plugin.name
-        # One hairline group per input; no Card per input.
+        # One hairline group per input (a compact preview joins its file's group);
+        # no Card per input.
         groups = panel.inputs_pane.findChildren(InputGroup)
-        assert len(groups) == len(panel.spec.inputs), plugin.name
+        own = [w for w in panel.spec.inputs if not (isinstance(w, TablePreview) and w.compact)]
+        assert len(groups) == len(own), plugin.name
         assert not panel.inputs_pane.findChildren(QWidget, "Card")
-        # A tab per main output, in spec order.
-        tabs = panel.results.tabs
-        labels = [tabs.tabText(i) for i in range(tabs.count())]
-        assert labels == [w.label for w in main_outputs(panel.spec.outputs)], plugin.name
+        # A tab per main output, in spec order; or a titled card each in a row.
+        main = [w.label for w in main_outputs(panel.spec.outputs)]
+        if panel.spec.main_layout == "row":
+            assert panel.results.tabs is None, plugin.name
+            assert [c.title.text() for c in panel.results.cards.values()] == main
+        else:
+            tabs = panel.results.tabs
+            assert tabs is not None
+            assert [tabs.tabText(i) for i in range(tabs.count())] == main, plugin.name
 
 
 def test_first_result_is_visible_after_a_run_in_every_tool(
@@ -210,12 +238,13 @@ def test_marks_keeps_the_view_only_label_below_the_main_view(
     panel = open_tool(window, "marks")
     grades = next(w for w in below_outputs(panel.spec.outputs) if w.key == "grades")
     assert grades.label == "Per-script grades (view only, never saved)"
+    assert isinstance(grades, ResultsTable) and grades.collapsed
     section = panel.results.sections["grades"]
     assert not section.isVisible()  # nothing to show before a run
     run(panel, qtbot)
     assert section.isVisible()
-    headings = [label.toolTip() for label in section.findChildren(QLabel)]
-    assert "Per-script grades (view only, never saved)" in headings
+    assert panel.results.folds["grades"].toolTip() == grades.label
+    assert panel.results.is_folded("grades")  # one click away, not in the way
 
 
 def test_output_pane_waits_with_a_hint_then_shows_the_result(

@@ -28,6 +28,7 @@ from staffroom.core.csvio import read_table
 from staffroom.core.library.service import ResourceService
 from staffroom.core.log import get_logger
 from staffroom.core.panel import (
+    Choice,
     EditableTable,
     FilePicker,
     FolderPicker,
@@ -40,9 +41,12 @@ from staffroom.core.panel import (
 )
 from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolError, ToolPlugin
 from staffroom.shell.widgets import (
+    ChoiceWidget,
+    CompactTableWidget,
     Divider,
     EditableTableWidget,
     InputGroup,
+    LoadSummaryWidget,
     OptionsFormWidget,
     OutputPane,
     PathPickerWidget,
@@ -90,8 +94,10 @@ class ToolPanel(QWidget):
         self._quiet = False
         self._action = False
         self.forms: dict[str, OptionsFormWidget] = {}
-        self.grids: dict[str, EditableTableWidget] = {}
+        self.grids: dict[str, EditableTableWidget | CompactTableWidget] = {}
+        self.choices: dict[str, ChoiceWidget] = {}
         self.previews: dict[str, TablePreviewWidget] = {}
+        self.summaries: dict[str, LoadSummaryWidget] = {}
         self.groups: dict[str, InputGroup] = {}
         self.worker: RunWorker | None = None
         self.last_result: RunResult | None = None
@@ -144,6 +150,7 @@ class ToolPanel(QWidget):
             self.spec.outputs,
             empty_text=f"Press {self.spec.run_label} ({RUN_SHORTCUT_TEXT}) "
             "and the result appears here.",
+            main_layout=self.spec.main_layout,
         )
         self.results.action_requested.connect(self.start_action)
         panes.addWidget(self.results, 1)
@@ -201,24 +208,48 @@ class ToolPanel(QWidget):
                 area = TextAreaWidget(spec)
                 group.add(area)
                 self.text_areas[spec.key] = area
+            elif isinstance(spec, TablePreview) and spec.compact:
+                # The summary sits under its file picker, in the same group.
+                summary = LoadSummaryWidget(spec)
+                source_group = self.groups[spec.source]
+                source_group.body.addWidget(summary)
+                source_group.add_trailing(summary.preview_button)
+                self.summaries[spec.key] = summary
+                self.pickers[spec.source].changed.connect(
+                    lambda path, s=spec, w=summary: self._load_preview(s, w, path)
+                )
+                self.groups[spec.key] = source_group
+                continue
             elif isinstance(spec, TablePreview):
                 group = InputGroup(spec.label)
                 preview = TablePreviewWidget(spec)
                 group.add(preview)
                 self.previews[spec.key] = preview
                 self.pickers[spec.source].changed.connect(
-                    lambda path, p=preview: self._load_preview(p, path)
+                    lambda path, s=spec, w=preview: self._load_preview(s, w, path)
                 )
+            elif isinstance(spec, Choice):
+                group = InputGroup(spec.label, spec.help)
+                choice = ChoiceWidget(spec)
+                group.add(choice)
+                self.choices[spec.key] = choice
             elif isinstance(spec, OptionsForm):
                 group = InputGroup(spec.label)
-                form = OptionsFormWidget(spec.schema, spec.presets)
+                form = OptionsFormWidget(spec.schema, spec.presets, fields=spec.fields)
                 group.add(form)
                 self.forms[spec.key] = form
             elif isinstance(spec, EditableTable):
                 group = InputGroup(spec.label, spec.help)
-                grid = EditableTableWidget(spec)
+                grid: EditableTableWidget | CompactTableWidget
+                if spec.compact:
+                    grid = CompactTableWidget(spec)
+                    group.add_trailing(grid.save_button)
+                else:
+                    grid = EditableTableWidget(spec)
                 group.add(grid)
                 self.grids[spec.key] = grid
+                if spec.choice is not None and grid.choice is not None:
+                    self.choices[spec.choice.key] = grid.choice
                 if spec.preset_action:
                     grid.preset_saved.connect(
                         lambda name, table, action=spec.preset_action: self._save_preset(
@@ -241,12 +272,17 @@ class ToolPanel(QWidget):
         if width != self.inputs_pane.width():
             self.inputs_pane.setFixedWidth(width)
 
-    def _load_preview(self, preview: TablePreviewWidget, path: Path | None) -> None:
+    def _load_preview(
+        self,
+        spec: TablePreview,
+        preview: TablePreviewWidget | LoadSummaryWidget,
+        path: Path | None,
+    ) -> None:
         if path is None:
             preview.set_table(None)
             return
         try:
-            table = read_table(path)
+            table = read_table(path, flag=spec.flag)
             preview.set_table(table)
             if table.dropped_columns:
                 self.results.append_log(
@@ -275,6 +311,8 @@ class ToolPanel(QWidget):
             values[key] = form.value()
         for key, grid in self.grids.items():
             values[key] = grid.value()
+        for key, choice in self.choices.items():
+            values[key] = choice.value()
         return values
 
     def set_input_path(self, key: str, path: Path | None) -> None:

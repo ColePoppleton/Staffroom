@@ -26,6 +26,11 @@ def distribution_chart(distribution: Table, path: Path, title: str = "") -> Path
     p = LIGHT
     grades = [str(g) for g in distribution.column("Grade")]
     counts = [int(c or 0) for c in distribution.column("Count")]
+    percents = (
+        [p_ or 0 for p_ in distribution.column("Percent")]
+        if "Percent" in distribution.columns
+        else []
+    )
 
     fig, ax = plt.subplots(figsize=(8, 3.6), dpi=150)
     fig.patch.set_facecolor(PAPER)
@@ -51,6 +56,9 @@ def distribution_chart(distribution: Table, path: Path, title: str = "") -> Path
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color(p.border_strong)
     ax.tick_params(colors=p.text_muted, labelsize=9, length=0)
+    if percents:  # the share under each grade, as the panel shows it (#87)
+        ax.set_xticks(range(len(grades)))
+        ax.set_xticklabels([f"{g}\n{v:g}%" for g, v in zip(grades, percents, strict=True)])
     ax.set_xlabel("Grade", color=p.text_muted, fontsize=9)
     ax.set_ylabel("Scripts", color=p.text_muted, fontsize=9)
     if title:

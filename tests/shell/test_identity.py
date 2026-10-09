@@ -78,7 +78,9 @@ def test_unknown_glyph_falls_back_and_paints(qapp: QApplication) -> None:
 
 
 _ACCENT_ALLOWED = re.compile(
+    # action: the one result a teacher is asked to act on (marks' reteach, #87)
     r"current|:checked|:focus|:selected|primary|link|::chunk|:pressed|Progress"
+    r'|\[action="true"\]'
 )
 
 

@@ -52,6 +52,8 @@ class OptionsFormWidget(QWidget):
         schema: type,
         presets: Iterable[OptionsPreset] = (),
         parent: QWidget | None = None,
+        *,
+        fields: Iterable[str] = (),
     ) -> None:
         super().__init__(parent)
         if not dataclasses.is_dataclass(schema):
@@ -88,7 +90,10 @@ class OptionsFormWidget(QWidget):
 
         hints = typing.get_type_hints(schema)
         defaults = schema()
+        shown = set(fields)
         for f in dataclasses.fields(schema):
+            if shown and f.name not in shown:
+                continue  # left at its default (another input may set it)
             label_text = f.metadata.get("label", f.name.replace("_", " ").capitalize())
             widget, getter, setter, edited = self._make_widget(
                 hints[f.name], getattr(defaults, f.name), f.metadata

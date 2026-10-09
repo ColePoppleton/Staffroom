@@ -295,6 +295,71 @@ QTabWidget#OutputTabs > QTabBar::tab:selected {{
 }}
 QTabWidget#OutputTabs > QTabBar::tab:hover:!selected {{ color: {p.text}; }}
 
+/* ---------------------------------------------------------- reports (stat tiles, charts, cards) */
+QFrame#StatTile {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: {RADIUS}px;
+}}
+QLabel[role="stat-value"] {{
+    font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: {p.text};
+}}
+/* The accent in a result marks only the call to action (marks: reteach first). */
+QLabel[role="stat-value"][action="true"] {{ color: {p.accent}; }}
+QFrame#ReportCard {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: {RADIUS}px;
+}}
+QFrame#ReportCard QTableView {{
+    border: none; border-top: 1px solid {p.border}; border-radius: 0px;
+}}
+QWidget#FoldSection {{
+    background: transparent; border: 1px dashed {p.border_strong}; border-radius: {RADIUS}px;
+}}
+QPushButton[role="disclosure"] {{
+    background: transparent; border: none; color: {p.text_muted}; font-weight: 600;
+    padding: 4px 0px; text-align: left;
+}}
+QPushButton[role="disclosure"]:hover {{ color: {p.text}; }}
+BarCanvas {{
+    qproperty-barColor: {p.text}; qproperty-textColor: {p.text};
+    qproperty-mutedColor: {p.text_muted}; qproperty-faintColor: {p.text_faint};
+    qproperty-axisColor: {p.border_strong};
+}}
+TableWidget {{
+    qproperty-barColor: {p.text_muted}; qproperty-trackColor: {p.border};
+    qproperty-textColor: {p.text};
+}}
+TableWidget[action="true"] {{ qproperty-actionColor: {p.accent}; }}
+QLabel[role="note-ok"] {{ color: {p.text_muted}; font-size: 12px; }}
+QLabel[role="note-warn"] {{ color: {p.text}; font-size: 12px; font-weight: 600; }}
+
+/* ---------------------------------------------------------- compact inputs (chip, switch, grid) */
+QFrame#FileChip {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
+}}
+QLabel#FileBadge {{
+    background: {p.surface}; color: {p.text_muted}; border: 1px solid {p.border};
+    border-radius: 4px; font-size: 9px; font-weight: 700; padding: 1px 4px;
+}}
+QLabel#FileName {{ font-weight: 600; }}
+QFrame#Segmented {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
+}}
+QPushButton#Segment {{
+    background: transparent; border: none; border-radius: 5px; padding: 4px 10px;
+    color: {p.text_muted}; font-weight: 600; min-height: 16px;
+}}
+QPushButton#Segment:checked {{
+    background: {p.surface}; color: {p.text}; border-bottom: 2px solid {p.accent};
+}}
+QPushButton#Segment:hover:!checked {{ color: {p.text}; }}
+QFrame#GridCell {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
+}}
+QLabel#GridLabel {{ font-weight: 700; }}
+QLineEdit#GridValue {{
+    background: transparent; border: none; border-radius: 0px; padding: 5px 6px 5px 2px;
+}}
+QLineEdit#GridValue:focus {{ border: none; border-bottom: 2px solid {p.accent}; }}
+
 /* ---------------------------------------------------------- buttons */
 QPushButton {{
     background: {p.surface_alt}; color: {p.text};

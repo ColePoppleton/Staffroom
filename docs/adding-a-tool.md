@@ -119,6 +119,33 @@ An `ActionTable` goes below by default and everything else is a main view; set
 `place="main"` on a list that is the point of the tool, as classroom's
 sessions are. The `LogArea` stays at the foot of the output pane.
 
+For a tool whose result is a report rather than one view, `tools/marks` is
+the reference:
+
+- `StatTiles(key)` is a row of headline numbers over the main view
+  (`place="top"` by default). Fill it with
+  `tables[key] = stat_table([Stat("Mean", "75%", "29.9 / 40"), ...])`;
+  `Stat(..., action=True)` marks the one that asks the teacher to act (the only
+  result that takes the accent colour).
+- `PanelSpec(main_layout="row")` puts the main views side by side, each in a
+  titled card, instead of tabs; they stack when the pane is too narrow.
+- `BarChart(key, category=..., value=..., detail=..., detail_format="{:.0f}%")`
+  draws bars from `tables[key]` in the theme's colours with a *Table* switch;
+  `texts[key]` is its caption. A file for reports still comes from the tool.
+- `ResultsTable(..., bars=(BarColumn("Facility", 1.0),), tag_column="Reteach",
+  hidden_columns=("Note",))` draws an inline bar beside a 0–1 number, tags a
+  row under its first cell (the column itself is not shown), and moves
+  columns into the row's tooltip. `collapsed=True` on a `place="below"` table
+  folds it under its label until opened.
+
+On the input side, `FilePicker(..., chip=True)` shows the chosen file as a
+chip; `TablePreview(..., summary=fn, flag="MAX", compact=True)` replaces the
+rows with a few `Note` lines from `fn(table)` and a *Preview rows* link;
+`EditableTable(..., compact=True, choice=Choice(...))` draws a two-column
+table as a grid of label and number cells with a segmented switch above it
+(its value reaches `run()` under the choice's key); `Choice` also works on
+its own; and `OptionsForm(..., fields=(...))` shows only the named fields.
+
 ## 4. Wire `run()`
 
 ```python
@@ -207,7 +234,8 @@ passes them on.
 ## Presets for an editable table
 
 `EditableTable(..., presets=(("OCR J277", rows), ...), preset_action="save_preset")`
-shows a preset dropdown with Apply and Save as preset. Saving calls
+shows a preset dropdown with Apply and Save as preset (with `compact=True`,
+choosing a preset applies it and *Save as preset* sits in the group heading). Saving calls
 `plugin.act("save_preset", {"name": str, "table": Table}, ctx)`; persist it
 in `ctx.config.tool("<tool>")` and build the `presets` tuple from config in
 `panel_spec()` so it is there next launch. `tools/marks` is the reference.

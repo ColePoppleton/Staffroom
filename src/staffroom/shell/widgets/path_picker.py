@@ -5,14 +5,27 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QFileDialog, QHBoxLayout, QLineEdit, QPushButton, QWidget
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QWidget,
+)
 
 from staffroom.core.panel import FilePicker, FolderPicker
+from staffroom.shell.widgets.elided_label import ElidedLabel
 
 
 class PathPickerWidget(QWidget):
     """A line edit plus a Browse button. ``changed`` fires with the new Path or
-    None whenever the value changes, from the dialog or by typing."""
+    None whenever the value changes, from the dialog or by typing.
+
+    A :class:`FilePicker` with ``chip`` shows the chosen file as a chip
+    instead: its type, its name (the full path in the tooltip) and *Change…*;
+    before a file is chosen, one *Choose a file…* button."""
 
     changed = Signal(object)
 
@@ -34,6 +47,44 @@ class PathPickerWidget(QWidget):
         self.button.clicked.connect(self.browse)
         layout.addWidget(self.edit, 1)
         layout.addWidget(self.button)
+        self.chip: QFrame | None = None
+        if isinstance(spec, FilePicker) and spec.chip:
+            self._build_chip(layout)
+
+    def _build_chip(self, layout: QHBoxLayout) -> None:
+        self.edit.hide()  # still holds the value; the chip shows it
+        self.button.setText("Choose a file…")
+        chip = QFrame()
+        chip.setObjectName("FileChip")
+        row = QHBoxLayout(chip)
+        row.setContentsMargins(8, 5, 6, 5)
+        row.setSpacing(8)
+        self.badge = QLabel("")
+        self.badge.setObjectName("FileBadge")
+        self.name = ElidedLabel("")
+        self.name.setObjectName("FileName")
+        self.change = QPushButton("Change…")
+        self.change.setProperty("role", "link")
+        self.change.setToolTip("Choose a different file")
+        self.change.clicked.connect(self.browse)
+        row.addWidget(self.badge)
+        row.addWidget(self.name, 1)
+        row.addWidget(self.change)
+        layout.insertWidget(0, chip, 1)
+        self.chip = chip
+        self.edit.textChanged.connect(self._show_chip)
+        self._show_chip()
+
+    def _show_chip(self, *_: object) -> None:
+        if self.chip is None:
+            return
+        path = self.value()
+        self.chip.setVisible(path is not None)
+        self.button.setVisible(path is None)
+        if path is not None:
+            self.badge.setText((path.suffix.lstrip(".") or "file").upper()[:4])
+            self.name.setText(path.name)
+            self.chip.setToolTip(str(path))
 
     # -- value ---------------------------------------------------------
     def value(self) -> Path | None:

@@ -9,7 +9,8 @@ term has a precise meaning in the code, this is that meaning.
 : For one question, the mean mark across the scripts divided by the
   question's maximum, so a number from 0 to 1. A facility of 0.35 means the
   class scored 35% of the available marks on it. Low facility is the
-  *reteach* signal; Marks lists the worst questions by it. Blank or
+  *reteach* signal; Marks sorts its question table by it and tags the
+  lowest ones that fall below the paper as a whole. Blank or
   non-numeric cells are left out of the mean.
 
 **Discrimination**
@@ -34,7 +35,7 @@ term has a precise meaning in the code, this is that meaning.
 
 **Boundary, preset**
 : A grade and the minimum needed for it, as a percentage of the paper or
-  as raw marks (*Boundary unit*). A preset is a saved table of boundaries;
+  as raw marks (*Boundaries in*). A preset is a saved table of boundaries;
   the built-in ones are starting points, not the published figures.
 
 **Identifier column**

@@ -36,7 +36,16 @@ class Options:
             "Leave empty to use a MAX row, else the highest mark seen.",
         },
     )
-    worst_n: int = field(default=5, metadata={"label": "Worst questions", "min": 1, "max": 50})
+    worst_n: int = field(
+        default=5,
+        metadata={
+            "label": "Reteach at most",
+            "help": "How many questions to mark for reteaching: the lowest facility first, "
+            "and only those the class did worse on than on the paper as a whole.",
+            "min": 1,
+            "max": 50,
+        },
+    )
 
 
 @dataclass(frozen=True)
@@ -45,13 +54,32 @@ class Boundary:
     minimum: float  # raw marks
 
 
+@dataclass(frozen=True)
+class Headline:
+    """The numbers a teacher wants first: how did they do, what do I reteach?
+    All class-level."""
+
+    scripts: int
+    total_max: float
+    mean_total: float
+    mean_percent: float
+    median_total: float
+    median_grade: str
+    pass_grade: str | None  # "4", else the lowest grade above zero (see pass_grade)
+    at_or_above_pass: int
+    reteach: list[str]  # question columns, lowest facility first
+    reteach_below: float  # the paper's facility: reteach questions fall under it
+
+
 @dataclass
 class Analysis:
     grades: Table  # per script: view only, never saved
     distribution: Table
-    questions: Table
+    questions: Table  # paper order: what is saved
     worst: Table
     max_marks: dict[str, float]
+    headline: Headline
+    report_questions: Table  # hardest first, reteach marked: what the panel shows
     warnings: list[str] = field(default_factory=list)
     incomplete_scripts: int = 0  # scripts with at least one blank or non-numeric cell
 
@@ -324,6 +352,131 @@ def worst_questions(questions: Table, n: int = 5) -> Table:
     return Table(list(ranked.columns), ranked.rows[:n])
 
 
+# ---------------------------------------------------------------- the headline (#87)
+PASS_GRADE = "4"
+RETEACH_TAG = "reteach"
+
+
+def median(values: list[float]) -> float:
+    """The middle value; the mean of the two middle ones for an even count."""
+    ordered = sorted(values)
+    n = len(ordered)
+    if not n:
+        return 0.0
+    mid = n // 2
+    return ordered[mid] if n % 2 else (ordered[mid - 1] + ordered[mid]) / 2
+
+
+def pass_grade(boundaries: list[Boundary]) -> str | None:
+    """The grade a "how many passed" count is measured against: 4 when the
+    boundaries have one (GCSE 9-1), otherwise the lowest grade with a minimum
+    above zero (E for A-level, Pass for Pass/Fail). None when every boundary is 0."""
+    if any(b.grade == PASS_GRADE for b in boundaries):
+        return PASS_GRADE
+    above_zero = [b for b in boundaries if b.minimum > 0]
+    return min(above_zero, key=lambda b: b.minimum).grade if above_zero else None
+
+
+def count_at_or_above(grades: list[str], order: list[str], grade: str) -> int:
+    """How many of ``grades`` are ``grade`` or better, ``order`` being best first."""
+    if grade not in order:
+        return 0
+    better = set(order[: order.index(grade) + 1])
+    return sum(g in better for g in grades)
+
+
+def reteach(facility: dict[str, float], overall: float, n: int) -> list[str]:
+    """Questions to reteach first: lowest facility first, at most ``n``, and
+    only those the class did worse on than on the paper as a whole
+    (``overall``, :func:`paper_facility`). Ties keep paper order. Pass only
+    questions with a max above 0: a 0 max has no facility."""
+    ranked = sorted(facility, key=lambda q: facility[q])  # stable: paper order on ties
+    return [q for q in ranked if facility[q] < overall - 1e-9][: max(n, 0)]
+
+
+def report_questions(questions: Table, facility: dict[str, float], marked: list[str]) -> Table:
+    """The per-question table as the report shows it: hardest first, the mean
+    beside the max (``"4.3 / 6"``), and a Reteach column for the marked
+    questions. The same numbers as ``questions`` (which is what is saved, in
+    paper order, with Max and Mean as numbers)."""
+    order = {q: i for i, q in enumerate(sorted(facility, key=lambda q: facility[q]))}
+    rows = sorted(questions.rows, key=lambda r: order.get(str(r[0]), len(order)))
+    out: list[Row] = []
+    for q, mx, mean, fac, disc, note in rows:
+        tag = RETEACH_TAG if q in marked else ""
+        out.append([q, f"{mean:g} / {mx:g}", fac, disc, tag, note])
+    return Table(["Question", "Mean", "Facility", "Discr.", "Reteach", "Note"], out)
+
+
+def paper_facility(facility: dict[str, float], maxes: dict[str, float]) -> float:
+    """The facility of the paper as a whole: the questions' mean marks over
+    their maxima, so each question weighs by its marks. Blank cells are left
+    out as they are for each question; with none it is the mean total over
+    the paper total. Questions with a max of 0 do not count."""
+    counted = [q for q in facility if maxes.get(q, 0) > 0]
+    paper = sum(maxes[q] for q in counted)
+    return sum(facility[q] * maxes[q] for q in counted) / paper if paper else 0.0
+
+
+def headline(
+    totals_: list[float],
+    grades: list[str],
+    order: list[str],
+    boundaries: list[Boundary],
+    maxes: dict[str, float],
+    facility: dict[str, float],
+    n_reteach: int,
+) -> Headline:
+    scripts = len(totals_)
+    total_max = sum(maxes.values())
+    mean_total = sum(totals_) / scripts if scripts else 0.0
+    overall = mean_total / total_max if total_max else 0.0
+    below = paper_facility(facility, maxes)
+    with_max = {q: f for q, f in facility.items() if maxes.get(q, 0) > 0}
+    mid = median(totals_)
+    passing = pass_grade(boundaries)
+    return Headline(
+        scripts=scripts,
+        total_max=total_max,
+        mean_total=mean_total,
+        mean_percent=100.0 * overall,
+        median_total=mid,
+        median_grade=grade_for(mid, boundaries),
+        pass_grade=passing,
+        at_or_above_pass=count_at_or_above(grades, order, passing) if passing else 0,
+        reteach=reteach(with_max, below, n_reteach),  # a 0 max is warned about, not reteached
+        reteach_below=below,
+    )
+
+
+# ---------------------------------------------------------------- load summary (#87)
+def load_summary(table: Table) -> list[tuple[bool, str]]:
+    """What a teacher should know about a file before analysing it, as
+    ``(ok, line)`` pairs: scripts and questions, whether a MAX row gives the
+    paper's maxima, and which columns were dropped or ignored. ``table`` comes
+    from ``core.csvio.read_table`` (identifier columns already dropped)."""
+    data, maxes = split_max_row(table)
+    qcols = question_columns(data.columns)
+    if not qcols:
+        return [(False, "No question columns (q1, q2, …): Analyse needs them")]
+    shape = f"{_plural(len(data), 'script')} × {_plural(len(qcols), 'question')}"
+    if maxes is not None:
+        lines = [(True, f"{shape} · MAX row found (paper out of {sum(maxes.values()):g})")]
+    else:
+        lines = [(False, f"{shape} · no MAX row: set Max marks, or the highest mark seen is used")]
+    dropped = list(table.dropped_columns)
+    if dropped:
+        noun = "column" if len(dropped) == 1 else "columns"
+        privacy = f"Identifier {noun} dropped, never used: {', '.join(dropped)}"
+    else:
+        privacy = "No identifier columns"
+    ignored = [c for c in data.columns if c not in qcols]
+    if ignored:
+        privacy += " · ignored: " + ", ".join(ignored)
+    lines.append((True, privacy))
+    return lines
+
+
 # ---------------------------------------------------------------- the whole thing
 def analyse(table: Table, boundaries: Table, options: Options | None = None) -> Analysis:
     options = options or Options()
@@ -352,14 +505,27 @@ def analyse(table: Table, boundaries: Table, options: Options | None = None) -> 
     order = [b.grade for b in bounds]
     if "U" not in order:
         order.append("U")
-    dist = distribution([str(g) for g in grades.column("Grade")], order, incomplete)
+    grade_list = [str(g) for g in grades.column("Grade")]
+    dist = distribution(grade_list, order, incomplete)
     questions = question_analysis(data, qcols, maxes)
+    fac = facility(data, qcols, maxes)
+    head = headline(
+        totals(data, qcols),
+        grade_list,
+        order,
+        bounds,
+        maxes,
+        fac,
+        options.worst_n,
+    )
     return Analysis(
         grades=grades,
         distribution=dist,
         questions=questions,
         worst=worst_questions(questions, options.worst_n),
         max_marks=maxes,
+        headline=head,
+        report_questions=report_questions(questions, fac, head.reteach),
         warnings=warnings,
         incomplete_scripts=incomplete,
     )

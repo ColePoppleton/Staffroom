@@ -42,6 +42,20 @@ with every change; `just release <part>` turns it into a version.
   example files by `just screenshots`. The site nav puts the teachers' pages
   first (Install, Tools, Privacy, Guides, as header tabs) and moves Process,
   Roadmap, Phases and the audits under one *Contributing* section at the end.
+- Marks is a one-screen report (#87): after *Analyse*, four headline tiles
+  (scripts, mean %, median grade with how many reached grade 4, the questions to
+  reteach first), the grade chart with counts and percentages under the bars
+  beside **one** question table sorted hardest first with an inline facility bar
+  and the reteach rows tagged, and the per-script grades folded under "view only,
+  never saved". 5.2 screens → 0.87 at 1240×780 (20 questions: 1.54). The
+  separate distribution table (now *Table* on the chart) and "Worst questions"
+  card are gone; the saved CSVs are unchanged and still aggregates only. Inputs:
+  the file as a chip with what was found in it instead of an 11-row preview, and
+  the boundaries as a 5 × 2 grid with the preset and a % / raw switch. New in the
+  vocabulary and kit for any tool: `StatTiles`, `BarChart`, `ResultsTable` bars,
+  tags and folding, `main_layout="row"`, compact `EditableTable` and
+  `TablePreview`, `Choice`, `FilePicker(chip=True)`. The CLI prints the same
+  headline; the saved chart gains the percentages too.
 - CI and the release workflow run on Linux instead of macOS, which uses a tenth of the
   Actions allowance on a private repo. macOS-only packaging tests skip there.
 
