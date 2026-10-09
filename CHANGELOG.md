@@ -14,6 +14,14 @@ with every change; `just release <part>` turns it into a version.
   it; older files (launcher-only) need no migration. Nothing is recorded when
   the config is `read_only` or the home folder cannot be written, and a
   failed write never fails the command.
+- Pseudocode works out the input language from the code itself when `--from`
+  is not given, instead of calling every non-`.py` file OCR ERL (#27): `def`
+  and `:` blocks mean Python, `endif`/`next`/`then` mean OCR, `←`/`OUTPUT`/
+  `USERINPUT` mean AQA, with the file name as the tie-breaker. The log and
+  summary say what was decided ("Treated input as AQA pseudocode (guessed
+  from the code)"); code with nothing to go on, or that already looks like
+  the target, stops with a message naming the `--from` to pass. The panel's
+  single *Direction* is now *From* (default `guess`) and *To*.
 
 
 ### Fixed

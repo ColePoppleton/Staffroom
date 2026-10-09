@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from staffroom.core.codeinput import code_from_inputs
@@ -27,7 +28,15 @@ class PseudocodePlugin:
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
         text, name = code_from_inputs(inputs)
-        src, dst = logic.split_direction(options.direction)
+        picked = inputs.get("source")
+        filename = picked.name if isinstance(picked, Path) else ""
+        dst = options.target
+        src, guessed = _resolve_source(options.source, text, filename, dst)
+        if guessed:
+            ctx.log(
+                f"Treated input as {logic.LANGUAGE_LABELS[src]} (guessed from the code); "
+                "pass --from, or set From in the panel, to override."
+            )
         ctx.progress(0.3, f"{logic.LANGUAGE_LABELS[src]} → {logic.LANGUAGE_LABELS[dst]}")
         try:
             result = logic.translate(text, src, dst)
@@ -49,12 +58,46 @@ class PseudocodePlugin:
             if result.clean
             else f"{len(result.dropped)} line(s) could not be translated"
         )
+        summary = f"{logic.LANGUAGE_LABELS[dst]}: {status}"
+        if guessed:
+            summary += f"; input guessed as {logic.LANGUAGE_LABELS[src]}"
+        if files:
+            summary += f"; wrote {files[0].name}"
         return RunResult(
-            texts={"output": result.text, "report": result.report()},
-            files=files,
-            summary=f"{logic.LANGUAGE_LABELS[dst]}: {status}"
-            + (f"; wrote {files[0].name}" if files else ""),
+            texts={"output": result.text, "report": result.report()}, files=files, summary=summary
         )
+
+
+def _resolve_source(
+    source: logic.Source, text: str, filename: str, target: logic.Language
+) -> tuple[logic.Language, bool]:
+    """The language to read the input as, and whether it was guessed.
+
+    An explicit source is taken as given. ``guess`` looks at the code first
+    and the file name second; what cannot be told apart, or turns out to be
+    the target language already, is a :class:`ToolError` that names the
+    option to pass instead of a silent wrong translation."""
+    others = " or ".join(f"--from {lang}" for lang in logic.LANGUAGES if lang != target)
+    if source != "guess":
+        if source == target:
+            raise ToolError(
+                f"From and To are both {logic.LANGUAGE_LABELS[target]}; choose a different To, "
+                f"or {others} on the command line."
+            )
+        return source, False
+    guess = logic.guess_dialect(text) or logic.dialect_from_name(filename)
+    if guess is None:
+        raise ToolError(
+            "Could not tell whether the input is Python, OCR ERL or AQA pseudocode: "
+            f"say which with {others} on the command line, or From in the panel."
+        )
+    if guess == target:
+        raise ToolError(
+            f"The input already looks like {logic.LANGUAGE_LABELS[target]}, the language asked "
+            f"for. Choose a different To, or say what the input is with {others} on the "
+            "command line."
+        )
+    return guess, True
 
 
 plugin = PseudocodePlugin()
