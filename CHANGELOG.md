@@ -6,6 +6,8 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+
+## [0.7.0] - 2026-10-09
 ### Changed
 - Worksheet, Parsons, Trace, Bugs, Fade and the quiz do-now show the PDF the run
   wrote instead of an ASCII rendering of it (#85): *Sheet* and *Key* tabs with
