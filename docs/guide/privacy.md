@@ -140,7 +140,7 @@ session (`docs/audits/2026-10-08.md` §2.3), with today's paths.
 | Config | `~/.config/staffroom/config.toml` | settings only: theme, folders, editor command, exam board, header and footer text, the library exclusion list |
 | Library index | `~/.config/staffroom/library.db` | path, size, modified time and kind for every file under the resources folder, and the text of searchable files except those indexed by name only |
 | Log | `~/.config/staffroom/logs/staffroom.log` (+ `.1` to `.3`) | tool names, file paths, names of dropped columns, warnings; never values |
-| Usage | `~/.config/staffroom/usage.toml` | run count and last-used date per tool |
+| Usage | `~/.config/staffroom/usage.toml` | run count (launcher and `staff` commands, with the CLI's share) and last-used date per tool; never what was run on |
 | Lesson copies | `<sessions folder>/<date>/<lesson label>/` | the copy you edited in class |
 | Session sidecar | `<sessions folder>/<date>/<lesson label>/.origin.json` | the lesson label and, for each copy, the absolute path of the original it came from |
 | Tag sidecar | `<resources folder>/.staffroom/tags.json` | tags and notes keyed by the resource's relative path |

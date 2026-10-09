@@ -6,6 +6,14 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Fixed
+- `staff usage` now counts CLI runs as well as launcher runs (#28): every
+  `staff <tool> <command>` that finishes without a `ToolError` is recorded by
+  the one wrapper in `cli.py`, so no tool needs its own call. The total stays
+  one number per tool, with the launcher's and the CLI's shares shown beside
+  it; older files (launcher-only) need no migration. Nothing is recorded when
+  the config is `read_only` or the home folder cannot be written, and a
+  failed write never fails the command.
 
 
 ### Fixed
