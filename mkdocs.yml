@@ -76,5 +76,6 @@ nav:
       - Adding a tool: adding-a-tool.md
       - Roadmap: ROADMAP.md
   - Audits:
+      - 2026-10-09: audits/2026-10-09.md
       - 2026-10-08: audits/2026-10-08.md
   - Changelog: changelog.md

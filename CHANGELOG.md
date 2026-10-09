@@ -6,6 +6,10 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Added
+- Product and design audit 2026-10-09 (`docs/audits/2026-10-09.md`): the first with a
+  design pass over every section, eight redesigns shown as mockups beside today's screens
+  (`docs/audits/2026-10-09/`), and the "Phase 9: The workbench" milestone (#80–#92).
 
 ## [0.6.0] - 2026-10-09
 ### Added
