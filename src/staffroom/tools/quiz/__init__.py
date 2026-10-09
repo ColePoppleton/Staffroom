@@ -6,11 +6,19 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from staffroom.core.csvio import read_table
 from staffroom.core.export import house_style_from, to_text
 from staffroom.core.panel import PanelSpec
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
+from staffroom.core.table import Table
 from staffroom.tools.quiz import logic
-from staffroom.tools.quiz.export import donow_document, write_donow, write_forms, write_kahoot
+from staffroom.tools.quiz.export import (
+    donow_document,
+    kahoot_csv_text,
+    write_donow,
+    write_forms,
+    write_kahoot,
+)
 from staffroom.tools.quiz.panel import panel_spec
 
 
@@ -25,6 +33,19 @@ def load_bank(path: Path) -> logic.Bank:
             "No questions found. Each question starts with '## ' (see examples/question_bank.md)."
         )
     return bank
+
+
+def load_taught_log(path: Path, ctx: RunContext) -> Table:
+    """The taught log as a table, through :func:`staffroom.core.csvio.read_table`
+    like every other table: a column that could identify a pupil (a name, a
+    class) is dropped there, before this tool sees it, and named here by its
+    header only. Missing, unreadable or wrong-kind files are ToolErrors."""
+    table = read_table(path)
+    if table.dropped_columns:
+        ctx.log(
+            "Log: dropped identifier column(s), never read: " + ", ".join(table.dropped_columns)
+        )
+    return table
 
 
 def _as_of(text: str) -> date:
@@ -69,20 +90,7 @@ class QuizPlugin:
             log_path: Path | None = inputs.get("taught_log")
             if log_path is None:
                 raise ToolError("Retrieval mode needs a taught log (date,topic CSV).")
-            try:
-                entries, errors = logic.parse_taught_log(log_path.read_text(encoding="utf-8"))
-            except FileNotFoundError:
-                raise ToolError(
-                    f"Could not find {log_path.name} (looked in {log_path.parent})."
-                ) from None
-            except OSError as exc:
-                reason = exc.strerror or exc.__class__.__name__
-                raise ToolError(f"Could not read {log_path.name}: {reason}.") from exc
-            except UnicodeDecodeError as exc:
-                raise ToolError(
-                    f"Could not read {log_path.name} as text: the taught log is a plain CSV "
-                    "with date,topic columns."
-                ) from exc
+            entries, errors = logic.parse_taught_log(load_taught_log(log_path, ctx))
             for err in errors:
                 ctx.log("Log: " + err)
             today = _as_of(options.today)
@@ -120,7 +128,7 @@ class QuizPlugin:
             written = list(sheet.written)
             count_phrase = logic.kahoot_report(sheet, len(chosen))
             files = write_kahoot(sheet.rows, ctx.output_dir, stem)
-            preview = (ctx.output_dir / f"{stem}_kahoot.csv").read_text(encoding="utf-8")
+            preview = kahoot_csv_text(sheet.rows).replace("\r\n", "\n")
         elif options.fmt == "forms":
             files = write_forms(chosen, ctx.output_dir, stem, options.title)
             preview = files[0].read_text(encoding="utf-8")

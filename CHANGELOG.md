@@ -27,10 +27,17 @@ with every change; `just release <part>` turns it into a version.
   the message says `Already promoted as year9_v2.py` (or that it matches the
   original). The CLI exits 0 and prints no path when nothing was written (#32).
 - `quiz` names any taught-log column other than `date` and `topic` in the run
-  log (`ignored column 'class' — the log is date and topic only`), by header
+  log (`ignored column 'room' — the log is date and topic only`), by header
   only; the column's contents are never read or shown (#32).
 
 ### Fixed
+- `quiz` reads the taught log through `core.csvio.read_table` like every other
+  table, so an identifier column (`name`, `class`, …) is dropped before the
+  tool sees it, with the usual dropped-column warning and a run-log line by
+  header only (#68). It used to parse the file as raw text, bypassing the
+  privacy filter. A new boundary test fails if any tool reads a `.csv`/`.xlsx`
+  without `core.csvio` (raw `open`/`read_text` of a table path, `csv.reader`,
+  `openpyxl.load_workbook`, or csvio's unfiltered `read_csv`/`read_xlsx`).
 - `staff` no longer dies with a `PermissionError` traceback when the config
   home (`~/.config/staffroom/` or `STAFFROOM_HOME`) cannot be written (#60).
   `setup_logging` used to create `logs/` and open the log file with no

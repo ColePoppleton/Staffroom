@@ -37,10 +37,16 @@ def write_kahoot(rows: list[list[str]], out_dir: Path, stem: str) -> list[Path]:
     xlsx = out_dir / f"{stem}_kahoot.xlsx"
     wb.save(xlsx)
     csv_path = out_dir / f"{stem}_kahoot.csv"
-    # Question banks never hold pupil data, but the pre-commit hook wants a
-    # marker on any committed CSV; keep outputs committable in examples/.
-    csv_path.write_text("# FAKE DATA\n" + kahoot_csv(rows), encoding="utf-8")
+    csv_path.write_text(kahoot_csv_text(rows), encoding="utf-8")
     return [xlsx, csv_path]
+
+
+def kahoot_csv_text(rows: list[list[str]]) -> str:
+    """The text of the Kahoot .csv, also used as the preview so nothing is read
+    back from disk. Question banks never hold pupil data, but the pre-commit
+    hook wants a marker on any committed CSV; keep outputs committable in
+    examples/."""
+    return "# FAKE DATA\n" + kahoot_csv(rows)
 
 
 def write_forms(questions: list[Question], out_dir: Path, stem: str, title: str) -> list[Path]:
