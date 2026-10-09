@@ -61,7 +61,7 @@ class LibraryPage(QWidget):
         head.setSpacing(12)
         titles = QVBoxLayout()
         titles.setSpacing(4)
-        titles.addWidget(make_label("Resources", "title"))
+        titles.addWidget(make_label("Library", "title"))
         self.subtitle = make_label(str(service.root), "subtitle")
         titles.addWidget(self.subtitle)
         head.addLayout(titles, 1)

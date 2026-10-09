@@ -42,6 +42,7 @@ class BugsPlugin:
     name = "bugs"
     description = "Inject one controlled error per copy; key says crash / wrong output / silent."
     version = "0.1.0"
+    group, glyph = "From a program", "bug"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.bugs.cli import register

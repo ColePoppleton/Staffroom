@@ -21,6 +21,7 @@ class ParsonsPlugin:
     name = "parsons"
     description = "Working code → Parsons problem worksheet + answer key."
     version = "0.1.0"
+    group, glyph = "From a program", "blocks"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.parsons.cli import register

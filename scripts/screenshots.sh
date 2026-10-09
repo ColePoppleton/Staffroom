@@ -45,13 +45,13 @@ shot launcher-dark  --tool marks --open examples/marks_10x.csv --run --theme dar
 shot first-run-dark --first-run --theme dark
 shot settings       --settings --theme dark
 
-# The sidebar header (app name, version, tool count) in both themes, cropped
-# from a full launcher render so it always matches the real window.
-header() {
+# The sidebar footer (version and update state) in both themes, cropped from
+# a full launcher render so it always matches the real window.
+footer() {
     local theme="$1"
     uv run staffroom --size "$size" --tool marks --theme "$theme" \
         --screenshot "$home/launcher-$theme.png" >/dev/null
-    uv run python - "$home/launcher-$theme.png" "docs/sidebar-header-$theme.png" "${size%x*}" <<'PY'
+    uv run python - "$home/launcher-$theme.png" "docs/sidebar-footer-$theme.png" "${size%x*}" <<'PY'
 import sys
 from PIL import Image
 
@@ -59,14 +59,15 @@ from staffroom.shell.sidebar import SIDEBAR_WIDTH
 
 image = Image.open(sys.argv[1])
 scale = image.width / int(sys.argv[3])  # the device pixel ratio of the render
-image.crop((0, 0, round(SIDEBAR_WIDTH * scale), round(108 * scale))).save(sys.argv[2])
+bottom = image.height
+image.crop((0, bottom - round(48 * scale), round(SIDEBAR_WIDTH * scale), bottom)).save(sys.argv[2])
 print("saved", sys.argv[2])
 PY
 }
-header dark
-header light
+footer dark
+footer light
 
-# Tool panels, in sidebar order
+# Tool panels
 shot classroom-dark            --tool classroom --open "$fixtures/Python/Year 9/average.py" --theme dark
 shot marks-dark                --tool marks --open examples/marks_10x_max.csv --run --theme dark
 shot marks-warnings-light      --tool marks --open examples/marks_messy.csv --run --theme light

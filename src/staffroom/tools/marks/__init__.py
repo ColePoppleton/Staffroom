@@ -19,6 +19,7 @@ class MarksPlugin:
     name = "marks"
     description = "Raw marks → grades, distribution chart, facility and discrimination."
     version = "0.1.0"
+    group, glyph = "After a test", "chart"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.marks.cli import register

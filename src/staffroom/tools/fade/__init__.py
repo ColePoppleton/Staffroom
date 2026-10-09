@@ -21,6 +21,7 @@ class FadePlugin:
     name = "fade"
     description = "Worked solution → progressively faded versions with the solution as key."
     version = "0.1.0"
+    group, glyph = "From a program", "taper"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.fade.cli import register

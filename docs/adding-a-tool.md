@@ -29,25 +29,42 @@ writing your own. It is `hidden`, so it is not in the launcher sidebar, but
 
 ## Where it sits in the sidebar
 
-The sidebar, and the `⌘1`–`⌘9` shortcuts that follow it top to bottom, list
-the shipped tools in the order a teacher meets them (`WORKFLOW_ORDER` in
-`core/discovery.py`): classroom, marks, worksheet, parsons, quiz, trace,
-bugs, fade, pseudocode. Two optional class attributes on the plugin change
-where a tool goes; both are read with `getattr`, so a tool that sets
-neither needs no change and lands after the shipped tools, alphabetically.
+The sidebar groups tools by the shape of a teacher's week (`GROUPS` in
+`core/plugin.py`), and the `⌘1`–`⌘9` shortcuts follow it top to bottom:
+
+| Group | Shipped tools | Shortcuts |
+| --- | --- | --- |
+| Lessons | (Library), classroom | ⌘K, ⌘1 |
+| Sheets & quizzes | worksheet, quiz | ⌘2, ⌘3 |
+| From a program | parsons, trace, bugs, fade, pseudocode | ⌘4 – ⌘8 |
+| After a test | marks | ⌘9 |
+
+The Library is the shell's own page, not a tool, so it has ⌘K rather than a
+number. Four optional class attributes on the plugin say where a tool goes and
+how it looks; all are read with `getattr`, so a tool that sets none needs no
+change: it is listed under **Other**, after every group, A-Z, with a generic
+glyph.
 
 ```python
 class MyToolPlugin:
     name = "my_tool"
     ...
-    order = 15  # lower comes first; the shipped tools use 0, 10, 20, …
+    group = "From a program"  # one of core.plugin.GROUPS, or a name of your own
+    glyph = "code"  # a file in shell/assets/glyphs/ (without .svg)
+    order = 35  # within the group: lower first; shipped tools use 10 × their WORKFLOW_ORDER place
     hidden = True  # not in the sidebar or on a shortcut; still a CLI tool
 ```
 
-`order` places the tool among the shipped ones (15 puts it between marks
-and worksheet). `hidden` is for reference and developer tools: `staff list`
-still shows them, marked `[hidden]`, and `staffroom --tool <name>` still
-opens them for a screenshot.
+`group` names one of the four groups; a name of your own makes a new group
+after them. `glyph` picks one of the bundled monochrome glyphs (`books`,
+`screen`, `page`, `question`, `blocks`, `table`, `bug`, `taper`, `code`,
+`chart`, `tool`); the shell paints it in the theme's colours, so the tool
+stays Qt-free. To add a glyph, drop a 24×24 line drawing that uses
+`currentColor` for its stroke into `shell/assets/glyphs/`. `order` places the
+tool among the shipped ones in its group (35 puts it between parsons and
+trace in *From a program*). `hidden` is for reference and developer tools:
+`staff list` still shows them, marked `[hidden]`, and `staffroom --tool <name>`
+still opens them for a screenshot.
 
 ## 2. Write the logic
 

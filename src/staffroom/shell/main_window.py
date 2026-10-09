@@ -1,5 +1,10 @@
-"""The launcher window: sidebar on the left, a stack of tool panels (and the
-settings page) on the right, a log drawer along the bottom."""
+"""The launcher window: sidebar on the left, a stack of destinations on the
+right (the Library, each tool's panel, Settings), a log drawer along the bottom.
+
+Navigation has one owner: every way of reaching a page (a sidebar click, a
+shortcut, ``--tool``, ``--settings``, the first-run card) ends in
+:meth:`MainWindow._show`, which switches the stack and then tells the sidebar
+what is showing, so the highlight cannot disagree with the page."""
 
 from __future__ import annotations
 
@@ -26,14 +31,36 @@ from staffroom.core.log import get_logger
 from staffroom.core.plugin import ToolPlugin
 from staffroom.shell.library.page import LibraryPage, counts_detail
 from staffroom.shell.library.picker import pick_resource
+from staffroom.shell.library.sidebar_panel import ResourcesPanel
 from staffroom.shell.log_drawer import LogDrawer
 from staffroom.shell.settings_page import SettingsPage
-from staffroom.shell.sidebar import Sidebar
-from staffroom.shell.theme import stylesheet
+from staffroom.shell.sidebar import LIBRARY, SETTINGS, Sidebar
+from staffroom.shell.theme import load_fonts, stylesheet
 from staffroom.shell.tool_panel import ToolPanel
 from staffroom.shell.widgets import FirstRunCard, make_label
 
 log = get_logger(__name__)
+LIBRARY_COLUMN_WIDTH = 262
+
+
+class LibraryView(QWidget):
+    """The Library destination: the folder tree, search and filters in their
+    own column, the results and preview beside them."""
+
+    def __init__(self, resources: ResourcesPanel, page: LibraryPage) -> None:
+        super().__init__()
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        column = QWidget()
+        column.setObjectName("LibraryColumn")
+        column.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        column.setFixedWidth(LIBRARY_COLUMN_WIDTH)
+        column_layout = QVBoxLayout(column)
+        column_layout.setContentsMargins(0, 14, 0, 4)
+        column_layout.addWidget(resources)
+        layout.addWidget(column)
+        layout.addWidget(page, 1)
 
 
 class WelcomePage(QWidget):
@@ -67,6 +94,7 @@ class MainWindow(QMainWindow):
         """``first_run`` forces the welcome card on or off; None (the default)
         shows it exactly when no resources folder is set."""
         super().__init__()
+        load_fonts()  # the brand type, before any widget measures text
         self.config = config
         self._config_save_warned = False
         # Every loadable tool; hidden ones can still be opened by name
@@ -92,10 +120,12 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.welcome = WelcomePage(bool(self.visible_plugins))
         self.settings = SettingsPage(config)
+        self.resources = ResourcesPanel()
         self.library_page = LibraryPage(self.library, config)
+        self.library_view = LibraryView(self.resources, self.library_page)
         self.stack.addWidget(self.welcome)
         self.stack.addWidget(self.settings)
-        self.stack.addWidget(self.library_page)
+        self.stack.addWidget(self.library_view)
         # The one-card welcome of a fresh install. None once a folder is set.
         show_card = not config.general.resources_root if first_run is None else first_run
         self.first_run: FirstRunCard | None = None
@@ -116,15 +146,15 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.log_drawer)
 
         self.sidebar.tool_selected.connect(self.show_tool)
+        self.sidebar.library_requested.connect(self.show_library)
         self.sidebar.settings_requested.connect(self.show_settings)
+        self.sidebar.search_requested.connect(self._on_sidebar_search)
         self.sidebar.log_toggled.connect(self.log_drawer.setVisible)
-        self.sidebar.theme_toggle_requested.connect(self.toggle_theme)
         self.settings.theme_changed.connect(self.apply_theme)
         self.settings.resources_root_changed.connect(self.set_resources_root)
         self.settings.library_exclude_changed.connect(self.set_library_exclude)
         self.settings.update_available.connect(self.sidebar.set_update_available)
-        self.sidebar.mode_changed.connect(self._on_mode)
-        res = self.sidebar.resources
+        res = self.resources
         res.search_changed.connect(self._on_search)
         res.kind_changed.connect(self.library_page.set_kind)
         res.show_hidden_toggled.connect(self._on_show_hidden)
@@ -135,28 +165,30 @@ class MainWindow(QMainWindow):
         self.library_page.resource_shown.connect(res.select)
         self.refresh_resources()
         QShortcut(QKeySequence("Ctrl+L"), self, self.sidebar.log_button.toggle)
-        QShortcut(QKeySequence("Ctrl+,"), self, self.sidebar.settings_button.click)
+        QShortcut(QKeySequence("Ctrl+Shift+L"), self, self.toggle_theme)
+        QShortcut(QKeySequence("Ctrl+,"), self, self.show_settings)
         QShortcut(QKeySequence("Ctrl+K"), self, self.focus_library_search)
         QShortcut(QKeySequence("Ctrl+O"), self, self.open_for_class)
-        # ⌘1-⌘9 follow the sidebar top to bottom, so they skip hidden tools.
-        for n, plugin in enumerate(self.visible_plugins[:9], 1):
-            QShortcut(
-                QKeySequence(f"Ctrl+{n}"), self, lambda name=plugin.name: self.go_to_tool(name)
-            )
+        # ⌘1-⌘9 are the tools as the sidebar lists them, group by group (the
+        # Library is ⌘K), so they skip hidden tools and follow any regrouping.
+        for n, name in enumerate(self.sidebar.tool_names()[:9], 1):
+            QShortcut(QKeySequence(f"Ctrl+{n}"), self, lambda name=name: self.go_to_tool(name))
 
         self.apply_theme(config.general.theme)
-        names = [p.name for p in self.visible_plugins]
+        names = self.sidebar.tool_names()
         initial = config.general.last_tool if config.general.last_tool in names else ""
         if not initial and names:
-            initial = names[0]  # a fresh config opens on the first workflow tool
+            initial = names[0]  # a fresh config opens on the first tool listed
         if self.first_run is not None:
             # The card comes first; Choose… or Not now then lands on ``initial``.
             self._first_run_target = initial
-            self.stack.setCurrentWidget(self.first_run)
+            self._show(self.first_run, "")
+        elif config.general.sidebar_mode == "resources":
+            self.show_library()  # the Library was the last place visited
         elif initial:
-            self.sidebar.select(initial)
-        if config.general.sidebar_mode == "resources" and self.first_run is None:
-            self.sidebar.set_mode("resources")
+            self.show_tool(initial)
+        else:
+            self._show(self.welcome, "")
         # A folder that was never fully indexed: empty, or an index that was
         # stopped early (closing the window mid-index keeps the files done so
         # far but stamps no ``last_indexed``) finishes now.
@@ -185,6 +217,19 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     # -- navigation ------------------------------------------------------
+    def _show(self, page: QWidget, key: str) -> None:
+        """The one place a page is shown: the stack switches and the sidebar
+        highlights ``key`` (a tool name, LIBRARY, SETTINGS or "" for none)."""
+        self.stack.setCurrentWidget(page)
+        self.sidebar.set_current(key)
+
+    def _remember_place(self, mode: str) -> None:
+        """ "tools" or "resources": where the next launch opens (config's
+        ``sidebar_mode``; the Library is "resources", a tool "tools")."""
+        if self.config.general.sidebar_mode != mode:
+            self.config.general.sidebar_mode = mode
+            self._save_config()
+
     def panel_for(self, name: str) -> ToolPanel:
         if name not in self.panels:
             plugin = next(p for p in self.plugins if p.name == name)
@@ -195,11 +240,16 @@ class MainWindow(QMainWindow):
 
     def show_tool(self, name: str) -> None:
         panel = self.panel_for(name)
-        self.stack.setCurrentWidget(panel)
+        self._show(panel, name)  # a hidden tool is in no row: nothing lit
+        self._remember_place("tools")
         if self.config.general.last_tool != name:
             self.config.general.last_tool = name
             self._save_config()
         log.debug("showing %s", name)
+
+    def show_library(self) -> None:
+        self._show(self.library_view, LIBRARY)
+        self._remember_place("resources")
 
     def _save_config(self) -> None:
         """Remember a choice (last tool, sidebar mode, theme…) in config.toml.
@@ -217,7 +267,7 @@ class MainWindow(QMainWindow):
                 )
 
     def show_settings(self) -> None:
-        self.stack.setCurrentWidget(self.settings)
+        self._show(self.settings, SETTINGS)
 
     # -- first run -------------------------------------------------------
     def _on_first_run_folder(self, root: str) -> None:
@@ -240,25 +290,28 @@ class MainWindow(QMainWindow):
         if self._first_run_target:
             self.go_to_tool(self._first_run_target)
         else:
-            self.stack.setCurrentWidget(self.welcome)
+            self._show(self.welcome, "")
 
     # -- shortcuts -------------------------------------------------------
     def focus_library_search(self) -> None:
-        """⌘K: jump to the Resources search box."""
-        self.sidebar.set_mode("resources")
-        self.stack.setCurrentWidget(self.library_page)
-        self.sidebar.resources.search.setFocus()
-        self.sidebar.resources.search.selectAll()
+        """⌘K: the Library, with its search box focused and selected."""
+        self.show_library()
+        self.resources.search.setFocus()
+        self.resources.search.selectAll()
+
+    def _on_sidebar_search(self, text: str) -> None:
+        """Typing in the sidebar's search field carries on in the Library's:
+        the text moves across and the cursor follows it."""
+        self.show_library()
+        self.resources.search.setText(text)
+        self.resources.search.setFocus()
+        self.resources.search.end(False)
+        self.sidebar.search.clear()
 
     def go_to_tool(self, name: str) -> None:
-        """Show ``name``: through the sidebar when it is listed, directly when
-        it is a hidden tool (``staffroom --tool hello``). Unknown names do nothing."""
-        self.sidebar.set_mode("tools")
-        if self.sidebar.select(name):
-            return
+        """Show ``name``, listed or hidden (``staffroom --tool hello``).
+        Unknown names do nothing."""
         if any(p.name == name for p in self.plugins):
-            self.sidebar.list.clearSelection()
-            self.sidebar.list.setCurrentRow(-1)
             self.show_tool(name)
 
     def open_for_class(self) -> None:
@@ -272,24 +325,10 @@ class MainWindow(QMainWindow):
             picker.pick_from_library()
 
     # -- resources -------------------------------------------------------
-    def _on_mode(self, mode: str) -> None:
-        if self.config.general.sidebar_mode != mode:
-            self.config.general.sidebar_mode = mode
-            self._save_config()
-        if mode == "resources":
-            self.stack.setCurrentWidget(self.library_page)
-        else:
-            current = self.config.general.last_tool
-            if self._first_run_pending and self.first_run is not None:
-                self.stack.setCurrentWidget(self.first_run)
-            elif current in self.panels or any(p.name == current for p in self.plugins):
-                self.show_tool(current)
-            else:
-                self.stack.setCurrentWidget(self.welcome)
-
     def _on_search(self, text: str) -> None:
         self.library_page.set_query(text)
-        self.stack.setCurrentWidget(self.library_page)
+        if text:
+            self.show_library()
 
     def _on_show_hidden(self, show: bool) -> None:
         self.config.general.show_hidden = show
@@ -298,12 +337,12 @@ class MainWindow(QMainWindow):
         self.refresh_resources()
 
     def _on_resource_selected(self, rel_path: str) -> None:
-        self.stack.setCurrentWidget(self.library_page)
+        self.show_library()
         self.library_page.show_resource(rel_path)
 
     def _on_indexed(self, stats: IndexStats) -> None:
         self.refresh_resources()
-        self.sidebar.resources.set_indexing(False)
+        self.resources.set_indexing(False)
         if self.first_run is not None and self._first_run_pending:
             self.first_run.finish_indexing(stats.summary())
             self.finish_first_run()
@@ -324,10 +363,12 @@ class MainWindow(QMainWindow):
             status, detail = "No folder chosen: set it in Settings", ""
         elif not self.library.root_exists:
             status, detail = "Folder not found: set it in Settings", ""
-        self.sidebar.resources.set_resources(resources, status, detail)
-        self.sidebar.resources.set_library_state(
+        self.resources.set_resources(resources, status, detail)
+        self.resources.set_library_state(
             can_index=self.library.available, can_search=self.library.searchable
         )
+        # The count beside Library is the same tally as the column's footer.
+        self.sidebar.set_library_count(str(len(resources)) if counts.indexed else "")
         self.library_page.refresh_status()
 
     def set_resources_root(self, root: str) -> None:
@@ -350,7 +391,7 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
         if app is not None and isinstance(app, QApplication):
             app.setStyleSheet(stylesheet(_as_theme(theme)))
-        self.sidebar.set_theme_label(theme)
+        self.sidebar.set_theme(_as_theme(theme))
         self.library_page.set_theme(theme)
         if self.settings.theme.currentText() != theme:
             self.settings.theme.blockSignals(True)

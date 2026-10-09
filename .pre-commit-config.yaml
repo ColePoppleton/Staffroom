@@ -6,6 +6,9 @@ repos:
       - id: trailing-whitespace
       - id: check-added-large-files
         args: ["--maxkb=500"]
+        # The bundled OFL fonts (#89): Source Sans 3's variable TTF is 631 KB
+        # and must ship unmodified (the licence reserves the name).
+        exclude: '^src/staffroom/shell/assets/fonts/.*\.ttf$'
       - id: check-toml
       - id: check-yaml
 

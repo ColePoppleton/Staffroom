@@ -1,11 +1,24 @@
 # Using the launcher
 
-The window has two sidebar roots: **Tools** and **Resources**.
+The sidebar lists every place in the app, grouped by the shape of a
+teacher's week rather than alphabetically:
 
-The tools are listed in the order a lesson meets them, not alphabetically:
-Classroom, Marks, Worksheet, Parsons, Quiz, Trace, Bugs, Fade, Pseudocode.
-A fresh install opens on Classroom. (`hello`, the developers' reference
-tool, is not in the list; `staff hello` still works from the terminal.)
+- **Lessons**: Library, Classroom
+- **Sheets & quizzes**: Worksheet, Quiz
+- **From a program**: Parsons, Trace, Bugs, Fade, Pseudocode
+- **After a test**: Marks
+
+One line per tool with a small glyph; hover a tool for what it does and its
+shortcut. The red accent marks only where you are. Above the list, the gear
+opens Settings and the search field searches the library (typing carries on
+in the Library's own search box). At the foot: the running version (with
+*up to date* or an *update* link once the app has checked) and **Activity
+log**, which opens the log drawer.
+
+A fresh install opens on Classroom; after that the app opens where you left
+it, a tool or the Library. (`hello`, the developers' reference tool, is not in
+the list; `staff hello` still works from the terminal.) A tool someone adds
+without a group is listed under **Other**, at the end.
 
 The very first start shows a card asking for the resources folder; choose
 one or skip it and set it later in Settings.
@@ -15,7 +28,7 @@ one or skip it and set it later in Settings.
 ### How files are counted
 
 Every file count the library reports comes from one tally, so the sidebar
-footer, the Resources header, `staff library status` and the index summary
+count beside Library, the Library column's footer, `staff library status` and the index summary
 always agree. A file is **indexed** when it is under the resources folder and
 the exclusion list allows it; the excluded are never counted. Hidden cruft
 (`.DS_Store`, `__pycache__`, zips, dot-files), cloud placeholders and files
@@ -44,10 +57,11 @@ log drawer (⌘L) and the log file hold the app-wide log, described in
 | Keys | Does |
 | --- | --- |
 | ⌘↵ | Run the tool on screen (its button at the foot of the inputs) |
-| ⌘K | Jump to the Resources search box |
+| ⌘K | The Library, with its search box ready |
 | ⌘O | Classroom with the library picker open |
-| ⌘1 – ⌘9 | Switch tool, top to bottom: ⌘1 Classroom, ⌘2 Marks, ⌘3 Worksheet, ⌘4 Parsons, ⌘5 Quiz, ⌘6 Trace, ⌘7 Bugs, ⌘8 Fade, ⌘9 Pseudocode |
-| ⌘L | Show or hide the log drawer |
+| ⌘1 – ⌘9 | Switch tool, in sidebar order (the Library is ⌘K): ⌘1 Classroom, ⌘2 Worksheet, ⌘3 Quiz, ⌘4 Parsons, ⌘5 Trace, ⌘6 Bugs, ⌘7 Fade, ⌘8 Pseudocode, ⌘9 Marks |
+| ⌘L | Show or hide the activity log |
+| ⇧⌘L | Switch between the dark and light theme (also in Settings) |
 | ⌘, | Settings |
 
 ## Settings

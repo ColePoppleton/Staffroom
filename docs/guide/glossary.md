@@ -141,8 +141,9 @@ term has a precise meaning in the code, this is that meaning.
 
 **Tool**
 : One panel in the sidebar and one `staff` subcommand over the same code.
-  Tools are listed in the order a lesson meets them, and ⌘1–⌘9 follow that
-  order top to bottom.
+  Tools are listed in groups that follow a teacher's week (Lessons, Sheets &
+  quizzes, From a program, After a test), and ⌘1–⌘9 follow that order top to
+  bottom.
 
 **Resources folder**
 : The folder of teaching resources the Resource Library indexes. Read-only

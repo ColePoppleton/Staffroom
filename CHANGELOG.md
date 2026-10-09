@@ -16,6 +16,23 @@ with every change; `just release <part>` turns it into a version.
   result, so the first result is in view after a run in 9 of 9 tools at
   1240×780 (2 of 9 before). A panel can mark an output `place="main"` or
   `"below"` (`core.panel`); the header loses the version chip.
+- The sidebar and the app's identity are redesigned (#89). The brand row (mark,
+  *Staffroom* in Fraunces, a settings gear), a library search field, then the
+  places grouped by a teacher's week: **Lessons** (Library, Classroom),
+  **Sheets & quizzes** (Worksheet, Quiz), **From a program** (Parsons, Trace,
+  Bugs, Fade, Pseudocode), **After a test** (Marks). One line per tool with a
+  monochrome glyph instead of a red letter badge and a truncated description
+  (the description is the tooltip). The Library is a place in the sidebar, not
+  a Tools/Resources mode switch, with its tree and search in their own column.
+  The red accent marks only where you are, primary buttons, links and focus.
+  The footer has the version with *up to date* or an *update* link, and
+  **Activity log**. The theme switch moves to Settings only (plus ⇧⌘L).
+  ⌘1–⌘9 follow the new order: Classroom, Worksheet, Quiz, Parsons, Trace,
+  Bugs, Fade, Pseudocode, Marks (the Library is ⌘K). Group and glyph are
+  optional plugin data (`group`, `glyph`, read like `order`); a tool without
+  them is listed under **Other**. The app now uses the brand type, bundled
+  under the SIL OFL with their licences: Source Sans 3 for text, Fraunces for
+  titles, IBM Plex Mono for code and logs.
 - CI and the release workflow run on Linux instead of macOS, which uses a tenth of the
   Actions allowance on a private repo. macOS-only packaging tests skip there.
 
@@ -25,6 +42,9 @@ with every change; `just release <part>` turns it into a version.
   (`docs/audits/2026-10-09/`), and the "Phase 9: The workbench" milestone (#80–#92).
 
 ### Fixed
+- `staffroom --settings` no longer leaves the last tool highlighted beside the
+  Settings page (#89): every route to a page now sets the sidebar from what is
+  shown.
 - Classroom's **Past sessions** no longer lists the tools' shared output folder
   (#97). A worksheet made with no input of its own goes to
   `<sessions folder>/outputs/worksheet/`, and it showed up as a lesson on day

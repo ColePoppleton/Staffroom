@@ -63,6 +63,7 @@ class TracePlugin:
     name = "trace"
     description = "Blank and completed trace tables from a sandboxed run."
     version = "0.1.0"
+    group, glyph = "From a program", "table"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.trace.cli import register

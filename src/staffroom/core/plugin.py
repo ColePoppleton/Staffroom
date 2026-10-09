@@ -59,21 +59,37 @@ DEFAULT_ORDER = 1000
 """Sidebar position for a plugin that declares no ``order``: after every tool
 that does, alphabetically."""
 
+GROUPS: tuple[str, ...] = ("Lessons", "Sheets & quizzes", "From a program", "After a test")
+"""The sidebar's groups, in the order of a teacher's week: things for this
+lesson, sheets and quizzes, things made from a program, after a test. A
+plugin's ``group`` names one of these (or a group of its own, which the
+sidebar shows after these, A-Z)."""
+
+OTHER_GROUP = "Other"
+"""Where a plugin that declares no ``group`` is listed: last."""
+
 
 @runtime_checkable
 class ToolPlugin(Protocol):
     """Required: ``name``, ``description``, ``version`` and the three methods.
 
-    Optional class attributes the host also reads (both are read with
+    Optional class attributes the host also reads (all are read with
     ``getattr`` so a plugin without them needs no change):
 
-    * ``order: int`` places the tool in the sidebar and the ``⌘1``-``⌘9``
-      shortcuts; lower comes first, ties break by name. Without it the tool
-      sits after every ordered one (see :func:`plugin_order`).
+    * ``order: int`` places the tool within its sidebar group, and so in the
+      ``⌘1``-``⌘9`` shortcuts; lower comes first, ties break by name. Without
+      it the tool sits after every ordered one (see :func:`plugin_order`).
     * ``hidden: bool`` keeps the tool out of the launcher sidebar and the
       number shortcuts. It still loads, still has its ``staff <name>`` commands,
       and ``staff list`` shows it with a marker. For reference and developer
       tools, not for anything a teacher should find.
+    * ``group: str`` is the sidebar group the tool is listed under, one of
+      :data:`GROUPS` (see :func:`plugin_group`). Without it the tool lands in
+      :data:`OTHER_GROUP`, after every named group.
+    * ``glyph: str`` names the tool's monochrome sidebar glyph, one of the
+      shell's bundled glyphs (``shell/assets/glyphs/<name>.svg``). An unknown
+      or missing name gets the shell's generic glyph. Plain data: the shell
+      draws it, so a tool still never touches Qt.
     """
 
     name: str
@@ -107,3 +123,15 @@ def plugin_order(plugin: ToolPlugin) -> int:
 def plugin_hidden(plugin: ToolPlugin) -> bool:
     """True when the plugin declares ``hidden = True``."""
     return bool(getattr(plugin, "hidden", False))
+
+
+def plugin_group(plugin: ToolPlugin) -> str:
+    """The plugin's declared ``group``, or :data:`OTHER_GROUP`."""
+    value = getattr(plugin, "group", None)
+    return value.strip() if isinstance(value, str) and value.strip() else OTHER_GROUP
+
+
+def plugin_glyph(plugin: ToolPlugin) -> str:
+    """The plugin's declared ``glyph`` name, or ``""`` for the generic one."""
+    value = getattr(plugin, "glyph", None)
+    return value.strip() if isinstance(value, str) else ""

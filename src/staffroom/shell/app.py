@@ -32,9 +32,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="staffroom", description="Staffroom launcher")
     parser.add_argument("--tool", help="tool to open on start")
     parser.add_argument("--open", type=Path, help="file to load into the tool's first file picker")
-    parser.add_argument(
-        "--resource", help="open the Resources view on this path (relative to root)"
-    )
+    parser.add_argument("--resource", help="open the Library on this path (relative to root)")
     parser.add_argument("--settings", action="store_true", help="open the Settings page")
     parser.add_argument(
         "--first-run",
@@ -73,9 +71,9 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         for form in window.panel_for(args.tool).forms.values():
             form.apply_preset(args.preset)
     if args.resource is not None:
-        window.sidebar.set_mode("resources")
+        window.show_library()
         if args.resource:
-            window.sidebar.resources.select(args.resource)
+            window.resources.select(args.resource)
     if args.settings:
         window.show_settings()
     return window

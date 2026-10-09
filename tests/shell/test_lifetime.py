@@ -165,26 +165,22 @@ def test_string_list_editor_creates_no_item_wrappers(qtbot: QtBot) -> None:
         gc.enable()
 
 
-def test_sidebar_item_wrappers_live_exactly_as_long_as_the_list(qapp: QApplication) -> None:
-    """The tool list is built once from ``QListWidgetItem()`` + ``addItem``,
-    which links each wrapper to the list; it is never cleared or edited, and
-    the list's destruction invalidates and releases the wrappers. ``select``
-    and ``tool_names`` read through ``item(i)`` without keeping anything (#54)."""
+def test_sidebar_holds_no_list_items_and_deletes_cleanly(qapp: QApplication) -> None:
+    """The sidebar is plain widgets since #89, one row per destination and no
+    ``QListWidgetItem`` wrappers to outlive a list (#54); its rows go with it."""
     gc.disable()
     try:
-        before = _list_item_wrappers()
-        base = {id(w) for w in before}
+        before = len(_list_item_wrappers())
         plugins = visible_plugins()
         sidebar = Sidebar(plugins)
-        fresh = [w for w in _list_item_wrappers() if id(w) not in base]
-        assert len(fresh) == len(plugins) and all(isValid(w) for w in fresh)
-        del fresh
-        assert sidebar.tool_names() == [p.name for p in plugins]
-        assert sidebar.select(plugins[-1].name)
-        assert sidebar.list.currentRow() == len(plugins) - 1
-        assert len(_list_item_wrappers()) == len(before) + len(plugins)
+        assert len(_list_item_wrappers()) == before
+        assert sorted(sidebar.tool_names()) == sorted(p.name for p in plugins)
+        row = sidebar.item(plugins[-1].name)
+        assert row is not None and isValid(row)
+        sidebar.set_current(plugins[-1].name)
+        assert row.current
         delete(sidebar)
-        assert len(_list_item_wrappers()) == len(before)
+        assert not isValid(row)
     finally:
         gc.enable()
 
@@ -238,7 +234,7 @@ def test_closing_the_window_stops_a_running_index_and_the_next_launch_finishes_i
     with qtbot.waitSignal(again.library_page.indexed, timeout=10000):
         pass
     assert library.last_indexed() is not None and library.count() > 0
-    assert again.sidebar.resources.status.text() == library.counts().status_line(
+    assert again.resources.status.text() == library.counts().status_line(
         show_hidden=False, sep="\n"
     )
 

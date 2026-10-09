@@ -16,7 +16,7 @@ ROOT = Path(SPECPATH).resolve().parent
 SRC = ROOT / "src"
 
 hidden = collect_submodules("staffroom")
-datas = collect_data_files("staffroom", includes=["**/*.svg", "**/*.png", "**/*.icns", "**/*.toml", "**/tracer_script.py"])
+datas = collect_data_files("staffroom", includes=["**/*.svg", "**/*.png", "**/*.icns", "**/*.toml", "**/tracer_script.py", "**/fonts/*.ttf", "**/fonts/*-OFL.txt"])
 datas += [(str(ROOT / "examples"), "examples")]
 
 a = Analysis(

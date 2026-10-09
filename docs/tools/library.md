@@ -1,10 +1,10 @@
 # Resource Library
 
-The **Resources** root in the sidebar indexes your resources folder: a
+The **Library**, first in the sidebar, indexes your resources folder: a
 searchable tree with previews, and tags and notes kept in a sidecar file so
 the resources themselves are never written.
 
-![Resources with a Python file previewed](../library-python-dark.png)
+![The Library with a Python file previewed](../library-python-dark.png)
 
 - Search covers file names and the text of `.py`, `.txt`, `.md`, `.csv` and
   `.pdf` files. Office files (`.doc`, `.docx`, `.ppt`, `.pptx`, `.pub`,

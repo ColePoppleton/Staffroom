@@ -23,13 +23,15 @@ for the details.
     uv run staff list  # list tools from the CLI
     uv run staff library index && uv run staff library search while
 
-The launcher has two sidebar roots: **Tools** (plugins) and **Resources**
-(the Resource Library: search, preview and tag the teaching resources
-folder; Office files open externally and are never parsed).
+The launcher's sidebar groups the tools by the teacher's week (Lessons,
+Sheets & quizzes, From a program, After a test), with the **Library** first
+(search, preview and tag the teaching resources folder; Office files open
+externally and are never parsed).
 
 `just install` puts a thin launcher in /Applications that runs this checkout;
 `staff update` (or Settings › Update now) pulls the latest code. Shortcuts: ⌘K
-library search, ⌘O open for class, ⌘1–9 tools, ⌘L log, ⌘, settings.
+library search, ⌘O open for class, ⌘1–9 tools in sidebar order, ⌘L log,
+⇧⌘L theme, ⌘, settings.
 
 Documentation: https://colepoppleton.github.io/Staffroom/ (built from
 `docs/` by MkDocs). MIT licensed.

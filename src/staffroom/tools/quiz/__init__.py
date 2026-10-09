@@ -75,6 +75,7 @@ class QuizPlugin:
         "Markdown question bank → Kahoot, Forms text, printable do-now; retrieval scheduler."
     )
     version = "0.1.0"
+    group, glyph = "Sheets & quizzes", "question"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.quiz.cli import register

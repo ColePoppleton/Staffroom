@@ -20,6 +20,7 @@ class WorksheetPlugin:
     name = "worksheet"
     description = "Seeded theory question sets (binary, logic, sizes, compression) with keys."
     version = "0.1.0"
+    group, glyph = "Sheets & quizzes", "page"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.worksheet.cli import register

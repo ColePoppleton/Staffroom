@@ -16,6 +16,7 @@ class PseudocodePlugin:
     name = "pseudocode"
     description = "Python ↔ OCR ERL / AQA pseudocode (GCSE subset) with a could-not-translate list."
     version = "0.1.0"
+    group, glyph = "From a program", "code"  # sidebar group and glyph (#89)
 
     def register_cli(self, app: Any) -> None:
         from staffroom.tools.pseudocode.cli import register

@@ -5,11 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from PySide6.QtGui import QShortcut
 from pytestqt.qtbot import QtBot
 
 from staffroom.core import usage
 from staffroom.core.config import load_config
 from staffroom.shell.main_window import MainWindow
+from staffroom.shell.sidebar import LIBRARY
 from staffroom.shell.tool_panel import ToolPanel
 
 
@@ -26,19 +28,44 @@ def window(qtbot: QtBot, tmp_path: Path) -> MainWindow:
 
 def test_cmd_k_focuses_library_search(window: MainWindow) -> None:
     window.focus_library_search()
-    assert window.sidebar.mode() == "resources"
-    assert window.stack.currentWidget() is window.library_page
+    assert window.sidebar.current() == LIBRARY
+    assert window.stack.currentWidget() is window.library_view
 
 
-def test_cmd_number_jumps_to_tool(window: MainWindow) -> None:
-    """⌘2 is the second *visible* tool (marks), the same as the sidebar shows."""
-    second = window.visible_plugins[1].name
-    assert second == "marks"
-    window.go_to_tool(second)
-    panel = window.stack.currentWidget()
-    assert isinstance(panel, ToolPanel) and panel.plugin.name == second
-    assert window.sidebar.mode() == "tools"
-    assert window.sidebar.list.currentRow() == 1
+def _shortcuts(window: MainWindow) -> dict[str, QShortcut]:
+    return {s.key().toString(): s for s in window.findChildren(QShortcut)}
+
+
+def test_cmd_numbers_follow_the_sidebar_top_to_bottom(window: MainWindow) -> None:
+    """⌘1-⌘9 are the nine tools in the order the grouped sidebar lists them
+    (the Library is ⌘K): Classroom, Worksheet, Quiz, Parsons, Trace, Bugs,
+    Fade, Pseudocode, Marks."""
+    order = window.sidebar.tool_names()
+    assert order == [
+        "classroom",
+        "worksheet",
+        "quiz",
+        "parsons",
+        "trace",
+        "bugs",
+        "fade",
+        "pseudocode",
+        "marks",
+    ]
+    shortcuts = _shortcuts(window)
+    for n, name in enumerate(order[:9], 1):
+        shortcuts[f"Ctrl+{n}"].activated.emit()
+        panel = window.stack.currentWidget()
+        assert isinstance(panel, ToolPanel) and panel.plugin.name == name
+        assert window.sidebar.current() == name
+        item = window.sidebar.item(name)
+        assert item is not None and f"(⌘{n})" in item.toolTip()
+
+
+def test_cmd_shift_l_switches_the_theme(window: MainWindow) -> None:
+    theme = window.config.general.theme
+    _shortcuts(window)["Ctrl+Shift+L"].activated.emit()
+    assert window.config.general.theme != theme
 
 
 def test_settings_board_and_house_style_persist(window: MainWindow) -> None:

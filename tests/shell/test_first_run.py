@@ -42,7 +42,7 @@ def test_fresh_install_opens_on_the_first_run_card(fresh_window: MainWindow) -> 
     win = fresh_window
     assert win.first_run is not None
     assert win.stack.currentWidget() is win.first_run
-    assert win.sidebar.list.currentRow() == -1  # no tool chosen yet
+    assert win.sidebar.current() == ""  # nothing lit: the card is not a destination
     text = _card_text(win.first_run)
     assert "choose your resources folder" in text
     assert "settings" in text
@@ -52,7 +52,7 @@ def test_fresh_install_opens_on_the_first_run_card(fresh_window: MainWindow) -> 
     assert str(Path.home()) not in text  # never the expanded home path in a screenshot
     assert win.first_run.choose_button.text() == "Choose…"
     assert win.first_run.later_button.text() == "Not now"
-    assert win.sidebar.resources.status.text() == "No folder chosen: set it in Settings"
+    assert win.resources.status.text() == "No folder chosen: set it in Settings"
 
 
 def test_card_suggests_no_folder(fresh_window: MainWindow) -> None:
@@ -73,7 +73,7 @@ def test_not_now_lands_on_the_first_tool_and_keeps_the_hint(fresh_window: MainWi
     assert isinstance(panel, ToolPanel) and panel.plugin.name == "classroom"
     assert win.config.general.resources_root == ""
     assert load_config().general.resources_root == ""
-    assert win.sidebar.resources.status.text() == "No folder chosen: set it in Settings"
+    assert win.resources.status.text() == "No folder chosen: set it in Settings"
     # Nothing else was written: the config holds only what the tool switch saved.
     assert load_config().general.last_tool == "classroom"
 
@@ -94,7 +94,7 @@ def test_choosing_a_folder_saves_indexes_and_lands_on_the_first_tool(
     assert isinstance(panel, ToolPanel) and panel.plugin.name == "classroom"
     counts = win.library.counts()
     assert counts.shown > 0
-    assert win.sidebar.resources.status.text() == counts.status_line(show_hidden=False, sep="\n")
+    assert win.resources.status.text() == counts.status_line(show_hidden=False, sep="\n")
     assert win.first_run.progress.value() == win.first_run.progress.maximum()
 
 
@@ -129,7 +129,7 @@ def test_configured_root_shows_no_card(qtbot: QtBot, tmp_path: Path) -> None:
     qtbot.addWidget(win)
     assert win.first_run is None
     assert isinstance(win.stack.currentWidget(), ToolPanel)
-    assert win.sidebar.resources.status.text() == "Folder not found: set it in Settings"
+    assert win.resources.status.text() == "Folder not found: set it in Settings"
 
 
 def test_first_run_flag_forces_the_card_for_screenshots(qtbot: QtBot, tmp_path: Path) -> None:

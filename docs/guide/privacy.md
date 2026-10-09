@@ -116,7 +116,7 @@ config folder cannot be written (a locked-down school account), the file is
 skipped: one warning line says so, the run carries on, and the log goes to
 stderr only. The Resource Library does the same with `library.db`: one
 warning line, *Resource Library unavailable: cannot write …* in the
-Resources sidebar and in `staff library status`, search on the last index
+Library and in `staff library status`, search on the last index
 read-only (or none, if there is no earlier index), no indexing, and every
 tool still runs. Each line is a time, a level, the module and a message, and the
 messages hold:
