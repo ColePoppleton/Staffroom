@@ -7,6 +7,10 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Changed
+- The `/audit` skill now has a design pass (task flow, hierarchy, structure, density,
+  consistency per section) that shows any proposed redesign as a rendered mockup beside the
+  current screen, with no cap and no quota on redesigns; `/next-task` treats a redesign
+  issue as a licence for structural change rather than the smallest diff.
 - `classroom` promote compares the copy with the original and with the latest
   promoted version before writing: an unchanged copy makes no new file and
   the message says `Already promoted as year9_v2.py` (or that it matches the
