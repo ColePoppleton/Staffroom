@@ -50,6 +50,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="after --run, open the strip's warnings list (for --screenshot)",
     )
+    parser.add_argument(
+        "--select-row",
+        type=int,
+        metavar="N",
+        help="after --run, select row N (from 1) of the table linked to the code, "
+        "so its line lights up (for --screenshot)",
+    )
     parser.add_argument("--screenshot", type=Path, help="render, save a PNG, and exit")
     parser.add_argument("--size", default="1240x780", help="window size for --screenshot, WxH")
     parser.add_argument("--version", action="version", version=__version__)
@@ -83,6 +90,13 @@ def build_window(args: argparse.Namespace) -> MainWindow:
     if args.settings:
         window.show_settings()
     return window
+
+
+def _select_row(panel: ToolPanel, row: int) -> None:
+    """Select a row of the first table linked to the code (trace, bugs)."""
+    for link in panel.line_links.values():
+        link.table.selectRow(row - 1)
+        return
 
 
 def _expand(panel: ToolPanel) -> None:
@@ -123,6 +137,9 @@ def main(argv: list[str] | None = None) -> int:
             panel = window.panel_for(args.tool)
             if args.expand:
                 panel.run_finished.connect(lambda _ok: _expand(panel))
+            if args.select_row:
+                row = args.select_row
+                panel.run_finished.connect(lambda _ok: _select_row(panel, row))
             panel.run_finished.connect(
                 lambda _ok: QTimer.singleShot(
                     200, lambda: _save_screenshot(app, window, args.screenshot)

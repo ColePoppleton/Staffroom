@@ -6,6 +6,8 @@ from staffroom.shell.widgets.action_table import ActionTableWidget
 from staffroom.shell.widgets.bar_chart import BarChartWidget
 from staffroom.shell.widgets.card import Card, Divider, make_label
 from staffroom.shell.widgets.choice import ChoiceWidget
+from staffroom.shell.widgets.code_source import CodeSourceWidget, LineLink
+from staffroom.shell.widgets.code_view import CodeViewWidget
 from staffroom.shell.widgets.compact_table import CompactTableWidget
 from staffroom.shell.widgets.first_run import FirstRunCard
 from staffroom.shell.widgets.image_view import ImageViewWidget
@@ -34,12 +36,15 @@ __all__ = [
     "BarChartWidget",
     "Card",
     "ChoiceWidget",
+    "CodeSourceWidget",
+    "CodeViewWidget",
     "CompactTableWidget",
     "Divider",
     "EditableTableWidget",
     "FirstRunCard",
     "ImageViewWidget",
     "InputGroup",
+    "LineLink",
     "LoadSummaryWidget",
     "OptionsFormWidget",
     "OutputPane",

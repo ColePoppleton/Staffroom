@@ -64,6 +64,7 @@ from staffroom.core.plugin import RunResult
 from staffroom.shell.widgets.action_table import ActionTableWidget
 from staffroom.shell.widgets.bar_chart import BarChartWidget
 from staffroom.shell.widgets.card import make_label
+from staffroom.shell.widgets.code_view import CodeViewWidget
 from staffroom.shell.widgets.elided_label import ElidedLabel
 from staffroom.shell.widgets.image_view import ImageViewWidget
 from staffroom.shell.widgets.input_group import eyebrow
@@ -209,7 +210,7 @@ class OutputPane(QWidget):
         self.details_key = details_key
         self.tables: dict[str, tuple[TableModel, TableWidget, QLabel]] = {}
         self.action_tables: dict[str, ActionTableWidget] = {}
-        self.text_views: dict[str, TextViewWidget] = {}
+        self.text_views: dict[str, TextViewWidget | CodeViewWidget] = {}
         self.images: dict[str, ImageViewWidget] = {}
         self.tiles: dict[str, StatTilesWidget] = {}
         self.charts: dict[str, BarChartWidget] = {}
@@ -565,12 +566,17 @@ class OutputPane(QWidget):
         self.action_tables[spec.key] = widget
         return widget
 
-    def _text_view(self, spec: TextView) -> TextViewWidget:
-        text_view = TextViewWidget(spec)
+    def _text_view(self, spec: TextView) -> TextViewWidget | CodeViewWidget:
+        text_view: TextViewWidget | CodeViewWidget
+        if spec.code:  # numbered and highlighted, like the program it came from
+            text_view = CodeViewWidget()
+            text_view.setPlaceholderText("Nothing to show yet.")
+        else:
+            text_view = TextViewWidget(spec)
         self.text_views[spec.key] = text_view
         return text_view
 
-    def _copy_button(self, key: str, view: TextViewWidget) -> QPushButton:
+    def _copy_button(self, key: str, view: QPlainTextEdit) -> QPushButton:
         copy = QPushButton("Copy")
         copy.setProperty("role", "ghost")
         copy.setToolTip("Copy the text to the clipboard")
@@ -588,7 +594,7 @@ class OutputPane(QWidget):
 
     # -- filling ---------------------------------------------------------
     @staticmethod
-    def _fit_text_height(view: TextViewWidget) -> None:
+    def _fit_text_height(view: QPlainTextEdit) -> None:
         """A secondary text (notes, a diff) takes the height of its lines, up
         to a limit past which it scrolls; the main view keeps the rest."""
         lines = max(view.blockCount(), 1)

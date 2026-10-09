@@ -26,7 +26,7 @@ def test_translate_and_copy(window: MainWindow, qtbot: QtBot) -> None:
     window.sidebar.select("pseudocode")
     panel = window.stack.currentWidget()
     assert isinstance(panel, ToolPanel)
-    panel.set_text("pasted", "total = 0\nfor i in range(3):\n    total += i\nprint(total)\n")
+    panel.set_text("source", "total = 0\nfor i in range(3):\n    total += i\nprint(total)\n")
     with qtbot.waitSignal(panel.run_finished, timeout=20000) as blocker:
         panel.start_run()
     assert blocker.args == [True], panel.strip.text()

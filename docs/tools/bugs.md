@@ -5,6 +5,9 @@ line and predict what happens; the key knows, because each variant was run.
 
 ![Bugs panel](../bugs-light.png)
 
+The program is shown on the left, numbered; click a row of the key and the
+line that variant broke lights up in it.
+
 Error classes: comparison flipped, off by one, missing colon, missing
 bracket, wrong variable name, indentation slip, string / integer confusion.
 Each variant differs from the original by exactly one line, and the key says

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from staffroom.core.panel import (
+    CodeSource,
     LogArea,
     OptionsForm,
     PanelSpec,
-    ResourcePicker,
     ResultsTable,
     TextArea,
     TextView,
@@ -23,16 +23,7 @@ def panel_spec() -> PanelSpec:
             + limits_note(TIMEOUT)
         ),
         inputs=(
-            ResourcePicker(
-                key="source",
-                label="Python file",
-                filter_ext=".py",
-                required=False,
-                help="From the library or anywhere. Or paste code below instead.",
-            ),
-            TextArea(
-                key="pasted", label="Or paste code", rows=8, help="Used when no file is chosen."
-            ),
+            CodeSource(key="source", label="Program", required=False),
             TextArea(
                 key="stdin",
                 label="Inputs",
@@ -44,7 +35,8 @@ def panel_spec() -> PanelSpec:
             OptionsForm(key="options", schema=Options, presets=PRESETS),
         ),
         outputs=(
-            ResultsTable(key="table", label="Completed trace table"),
+            # Each step names its line: a row lights it in the program, and back.
+            ResultsTable(key="table", label="Completed trace table", line_column="Line"),
             TextView(key="preview", label="Preview (sheet, then key)"),
             LogArea(),
         ),

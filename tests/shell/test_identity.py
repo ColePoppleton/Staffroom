@@ -81,6 +81,8 @@ _ACCENT_ALLOWED = re.compile(
     # action: the one result a teacher is asked to act on (marks' reteach, #87)
     r"current|:checked|:focus|:selected|primary|link|::chunk|:pressed|Progress"
     r'|\[action="true"\]'
+    # a code view's lit line is the selection: the line of the selected row (#86)
+    r'|CodeViewWidget\[lit="true"\]'
 )
 
 

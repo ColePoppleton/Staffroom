@@ -29,7 +29,7 @@ def run_tool(window: MainWindow, qtbot: QtBot, name: str) -> ToolPanel:
     window.sidebar.select(name)
     panel = window.stack.currentWidget()
     assert isinstance(panel, ToolPanel) and panel.plugin.name == name
-    panel.set_text("pasted", PROGRAM)
+    panel.set_text("source", PROGRAM)
     with qtbot.waitSignal(panel.run_finished, timeout=60000) as blocker:
         panel.start_run()
     assert blocker.args == [True], panel.strip.text()

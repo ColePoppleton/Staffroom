@@ -7,6 +7,20 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Changed
+- The five code tools (Parsons, Trace, Bugs, Fade, Pseudocode) take their program
+  in one input (#86): a chip naming the file (its Library path, *Change ▾* for From
+  library or Browse) over the program itself, read-only, highlighted and numbered
+  the way the sheets number it, instead of a *Python file* picker and an empty
+  *Or paste code* box. *Paste instead* empties the view for a paste; *Use a file*
+  goes back. It is not an editor: a file saved again in Thonny is shown again and
+  the run reads it afresh. Trace's table and the Bugs key point at the program:
+  click a row and its line lights up, click a line and its rows are selected.
+  Pseudocode shows the source beside the translation (numbered too), the
+  could-not-translate notes under it; *Language* under the file follows the
+  guess the moment a file is chosen or code pasted (#62), and *To* moves off it.
+  The vocabulary gains `CodeSource` (value `CodeValue(path, text)`, read by
+  `core.codeinput`), `ResultsTable.line_column`, `TextView.code` and
+  `PanelSpec.suggest`.
 - A run's result is one strip along the top of the output pane (#84): a tick or a
   cross, a short outcome ("10 questions · seed 42", or the failure in plain words),
   one button per file written (*PDF Sheet*, *PDF Key*, *DOCX Sheet* …; click opens

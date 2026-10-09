@@ -15,6 +15,10 @@ Input values by widget type
 FilePicker         ``pathlib.Path | None``
 FolderPicker       ``pathlib.Path | None``
 ResourcePicker     ``pathlib.Path | None`` (from the Resource Library or a dialog)
+CodeSource         :class:`CodeValue` ``(path, text)``: the file shown, or pasted
+                   text with ``path`` None (and its ``choice``, if any, under
+                   the choice's own key). Turn it into source text with
+                   :func:`staffroom.core.codeinput.code_from_inputs`.
 TextField          ``str``
 TextArea           ``str`` (multi-line)
 Choice             ``str`` (the chosen value)
@@ -27,7 +31,10 @@ TablePreview       (display only; never appears in ``inputs``)
 Output widgets fill from a ``RunResult``: ``ResultsTable``, ``ActionTable``,
 ``StatTiles`` (build its table with :func:`stat_table`) and ``BarChart`` from
 ``tables[key]``, ``ImageView`` from ``images[key]``, ``TextView`` from
-``texts[key]`` (and a ``BarChart`` takes a one-line caption from there). An
+``texts[key]`` (and a ``BarChart`` takes a one-line caption from there). A
+``ResultsTable`` with ``line_column`` points its rows at lines of the panel's
+``CodeSource``: selecting a row lights its line, clicking a line selects its
+rows. An
 ``ActionTable`` additionally lets the user pick a row and press an action
 button; the shell then calls
 ``plugin.act(action_name, row, ctx)`` and applies the returned RunResult.
@@ -57,6 +64,11 @@ Under the run button, the shell says where the next run will write: the
 shared output folder (``Config.output_dir_for``) unless the panel sets
 ``writes_to`` to a :class:`WritesTo` naming its own destination.
 
+A panel's ``suggest`` lets a choice follow the code or file picked (e.g.
+pseudocode's *From* shows the language it guessed): a pure function from the
+current inputs to new values for ``Choice`` keys, called whenever a file is
+picked or code is pasted.
+
 If a new tool needs a widget that is not here, add it here and to the shell's
 widget kit. Do not put UI code in a tool.
 """
@@ -67,7 +79,7 @@ import dataclasses
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 from staffroom.core.table import Cell, Table
 
@@ -112,6 +124,34 @@ class ResourcePicker:
     filter_ext: str | None = None
     help: str = ""
     required: bool = True
+
+
+class CodeValue(NamedTuple):
+    """A :class:`CodeSource`'s value: the file chosen (``path``) and the text
+    shown, or ``path`` None and the text pasted."""
+
+    path: Path | None
+    text: str
+
+
+@dataclass(frozen=True)
+class CodeSource:
+    """The program a code tool works on, in one input: a chip naming the file
+    (from the Resource Library or a dialog; *Change ▾*) over a read-only,
+    highlighted view of it with line numbers, or *Paste instead* for text
+    that is in no file. Value: :class:`CodeValue`.
+
+    It shows code and accepts a paste; it is not an editor (Thonny is).
+    ``choice`` adds a :class:`Choice` between the chip and the code, for a
+    setting about the code itself (e.g. the language it is in); its value
+    reaches the tool under the choice's own key."""
+
+    key: str
+    label: str = "Program"
+    filter_ext: str | None = ".py"
+    help: str = ""
+    required: bool = True
+    choice: Choice | None = None
 
 
 @dataclass(frozen=True)
@@ -287,6 +327,7 @@ InputWidget = (
     FilePicker
     | FolderPicker
     | ResourcePicker
+    | CodeSource
     | TextField
     | TextArea
     | Choice
@@ -324,7 +365,12 @@ class ResultsTable:
     either; their values appear in the row's tooltip instead.
 
     ``collapsed`` (for a ``"below"`` table) starts folded: only its label and
-    row count show until the user opens it."""
+    row count show until the user opens it.
+
+    ``line_column`` names a column of line numbers in the program of the
+    panel's :class:`CodeSource` ``line_source``: selecting a row lights its
+    line in the code, and clicking a line selects the rows that point at it
+    (a trace table's steps, a bug key's variants)."""
 
     key: str
     label: str = "Results"
@@ -333,6 +379,8 @@ class ResultsTable:
     tag_column: str | None = None
     hidden_columns: tuple[str, ...] = ()
     collapsed: bool = False
+    line_column: str | None = None
+    line_source: str = "source"
 
 
 @dataclass(frozen=True)
@@ -416,13 +464,15 @@ class ImageView:
 @dataclass(frozen=True)
 class TextView:
     """A read-only block of text (``RunResult.texts[key]``), e.g. a diff.
-    ``copy_button`` adds a Copy button that puts the text on the clipboard."""
+    ``copy_button`` adds a Copy button that puts the text on the clipboard.
+    ``code`` shows it as the code views do: numbered lines, highlighted."""
 
     key: str
     label: str = "Output"
     monospace: bool = True
     copy_button: bool = False
     place: Place | None = None
+    code: bool = False
 
 
 @dataclass(frozen=True)
@@ -527,15 +577,29 @@ class PanelSpec:
     run_label: str = "Run"
     writes_to: WritesTo | None = None  # None: the shared output folder
     main_layout: MainLayout = "tabs"  # "row": main views side by side, not tabs
+    # Pure: the current inputs -> new values for Choice keys (see the module doc).
+    suggest: Callable[[Mapping[str, Any]], Mapping[str, str]] | None = None
 
     def __post_init__(self) -> None:
         keys = [w.key for w in self.inputs] + [w.key for w in self.outputs]
-        keys += [w.choice.key for w in self.inputs if isinstance(w, EditableTable) and w.choice]
+        keys += self._inner_choice_keys()
         dupes = {k for k in keys if keys.count(k) > 1}
         if dupes:
             msg = f"duplicate widget keys in panel {self.title!r}: {sorted(dupes)}"
             raise ValueError(msg)
         sources = {w.key for w in self.inputs if isinstance(w, FilePicker)}
+        code_sources = {w.key for w in self.inputs if isinstance(w, CodeSource)}
+        for out in self.outputs:
+            if (
+                isinstance(out, ResultsTable)
+                and out.line_column
+                and (out.line_source not in code_sources)
+            ):
+                msg = (
+                    f"ResultsTable {out.key!r} points its lines at {out.line_source!r}, "
+                    "which is not a CodeSource of this panel"
+                )
+                raise ValueError(msg)
         seen: set[str] = set()
         for w in self.inputs:
             seen.add(w.key)
@@ -565,9 +629,17 @@ class PanelSpec:
                         )
                         raise ValueError(msg)
 
+    def _inner_choice_keys(self) -> list[str]:
+        """Keys of the choices that live inside another input's group."""
+        return [
+            w.choice.key
+            for w in self.inputs
+            if isinstance(w, EditableTable | CodeSource) and w.choice is not None
+        ]
+
     def input_keys(self) -> list[str]:
         keys = [w.key for w in self.inputs if not isinstance(w, TablePreview)]
-        keys += [w.choice.key for w in self.inputs if isinstance(w, EditableTable) and w.choice]
+        keys += self._inner_choice_keys()
         return keys
 
     def refresh_actions(self) -> list[str]:

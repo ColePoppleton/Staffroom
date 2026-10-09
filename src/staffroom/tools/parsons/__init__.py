@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
+from staffroom.core.codeinput import code_from_inputs
 from staffroom.core.export import export, house_style_from, to_text
 from staffroom.core.panel import PanelSpec
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
@@ -33,18 +33,7 @@ class ParsonsPlugin:
 
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
-        source_path: Path | None = inputs.get("source")
-        pasted = str(inputs.get("pasted") or "")
-        if source_path is not None:
-            try:
-                source = source_path.read_text(encoding="utf-8", errors="replace")
-            except OSError as exc:
-                raise ToolError(f"Could not read {source_path}: {exc}") from exc
-            name = source_path.stem
-        elif pasted.strip():
-            source, name = pasted, "pasted_code"
-        else:
-            raise ToolError("Choose a Python file or paste some code.")
+        source, name = code_from_inputs(inputs)
 
         ctx.progress(0.2, "Splitting into blocks")
         try:

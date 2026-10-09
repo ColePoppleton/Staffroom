@@ -257,6 +257,19 @@ QPlainTextEdit#CodeView {{
     font-family: {MONO_FAMILY}; font-size: 12.5px; color: {p.text};
     background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
 }}
+/* Numbered code views (code sources, translations): gutter, lit line, syntax. */
+CodeViewWidget {{
+    qproperty-gutterColor: {p.text_faint};
+    qproperty-keywordColor: {p.code_builtin}; qproperty-builtinColor: {p.code_name};
+    qproperty-nameColor: {p.code_name}; qproperty-numberColor: {p.code_number};
+    qproperty-stringColor: {p.code_string}; qproperty-commentColor: {p.text_faint};
+}}
+/* The lit line is a selection: the line the selected table row points at. */
+CodeViewWidget[lit="true"] {{
+    qproperty-markColor: {p.accent}; qproperty-lineColor: {p.accent_soft};
+}}
+CodeViewWidget#CodeView {{ padding: 4px 8px 4px 0px; }}
+QPushButton#CodeChange::menu-indicator {{ image: none; width: 0px; }}
 QPlainTextEdit#TextView {{
     font-size: 13px; color: {p.text};
     background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;

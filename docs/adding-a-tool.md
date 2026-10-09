@@ -157,6 +157,18 @@ table as a grid of label and number cells with a segmented switch above it
 (its value reaches `run()` under the choice's key); `Choice` also works on
 its own; and `OptionsForm(..., fields=(...))` shows only the named fields.
 
+A tool that works on a program takes it with `CodeSource(key="source")`: a
+chip naming the file over a numbered, highlighted, read-only view of it, with
+*Paste instead* for code in no file. Its value is `CodeValue(path, text)`;
+turn it into source text with `core.codeinput.code_from_inputs(inputs)`, which
+also accepts the command line's `{"source": Path}` or `{"pasted": str}`.
+`CodeSource(..., choice=Choice(...))` puts a switch about the code between
+the chip and the code. `ResultsTable(..., line_column="Line")` links a table
+whose rows name program lines to the view (trace, bugs), `TextView(...,
+code=True)` shows an output as numbered code (pseudocode), and
+`PanelSpec(suggest=fn)` lets choices follow what was picked or pasted:
+`fn(inputs)` is pure and returns `{choice_key: value}`.
+
 ## 4. Wire `run()`
 
 ```python

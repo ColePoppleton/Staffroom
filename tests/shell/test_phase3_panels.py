@@ -27,11 +27,11 @@ def window(qtbot: QtBot, tmp_path: Path) -> MainWindow:
 def test_parsons_from_pasted_code(window: MainWindow, qtbot: QtBot, tmp_path: Path) -> None:
     window.sidebar.select("parsons")
     panel = window.stack.currentWidget()
-    assert isinstance(panel, ToolPanel) and "pasted" in panel.text_areas
+    assert isinstance(panel, ToolPanel) and "source" in panel.code_sources
     with qtbot.waitSignal(panel.run_finished, timeout=20000) as first:
         panel.start_run()  # nothing chosen or pasted: a user-facing error, not a crash
     assert first.args == [False] and "paste some code" in panel.strip.text()
-    panel.set_text("pasted", "x = 1\nif x > 0:\n    print(x)\n")
+    panel.set_text("source", "x = 1\nif x > 0:\n    print(x)\n")
     with qtbot.waitSignal(panel.run_finished, timeout=20000) as blocker:
         panel.start_run()
     assert blocker.args == [True]

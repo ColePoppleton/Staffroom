@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from staffroom.core.codeinput import code_from_inputs
+from staffroom.core.codeinput import code_from_inputs, code_path
 from staffroom.core.panel import PanelSpec
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.tools.pseudocode import logic
@@ -29,10 +28,11 @@ class PseudocodePlugin:
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
         options: logic.Options = inputs.get("options", logic.Options())
         text, name = code_from_inputs(inputs)
-        picked = inputs.get("source")
-        filename = picked.name if isinstance(picked, Path) else ""
-        dst = options.target
-        src, guessed = _resolve_source(options.source, text, filename, dst)
+        picked = code_path(inputs)
+        filename = picked.name if picked else ""
+        # The panel's From and To choices; the command line sets them in options.
+        dst = inputs.get("to") or options.target
+        src, guessed = _resolve_source(inputs.get("from") or options.source, text, filename, dst)
         if guessed:
             ctx.log(
                 f"Treated input as {logic.LANGUAGE_LABELS[src]} (guessed from the code); "

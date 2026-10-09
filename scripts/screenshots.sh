@@ -74,10 +74,10 @@ shot marks-warnings-light      --tool marks --open examples/marks_messy.csv --ru
 shot worksheet-light           --tool worksheet --run --theme light
 shot parsons-dark              --tool parsons --open examples/year9.py --run --theme dark
 shot quiz-light                --tool quiz --open examples/question_bank.md --run --theme light
-shot trace-dark                --tool trace --open examples/year9.py --run --theme dark
+shot trace-dark                --tool trace --open examples/year9.py --run --select-row 8 --theme dark
 shot trace-preset-dark         --tool trace --open examples/year9.py --preset "Year 9" --theme dark --size 1240x1500
 shot trace-missing-input-dark  --tool trace --open "$fixtures/Python/Year 10/temperature.py" --run --theme dark
-shot bugs-light                --tool bugs --open examples/year9.py --run --theme light
+shot bugs-light                --tool bugs --open examples/year9.py --run --select-row 1 --theme light
 shot pseudocode-dark           --tool pseudocode --open examples/year9.py --run --theme dark
 
 # Resource Library

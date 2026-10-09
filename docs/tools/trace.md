@@ -5,6 +5,13 @@ for pupils and a completed one for you.
 
 ![Trace panel](../trace-dark.png)
 
+The program sits on the left, numbered as the sheets number it: choose it
+from the Library or with *Browse…*, or *Paste instead* for code that is in
+no file. It is shown, not edited (Thonny is the editor); save it there and
+the panel shows, and the next run uses, what you saved. **Click a row of the
+table and its line lights up in the program; click a line and the table
+selects every step that ran it.**
+
 Each row is one executed line with every variable's value **after** that
 line and anything it printed. The *Preset* dropdown picks the shape of the
 table: **Full trace** (the default) records every line, including those run

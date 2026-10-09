@@ -64,7 +64,7 @@ def test_wrong_file_type_is_one_line(
 
 def test_fade_bad_ranges_is_one_line(window: MainWindow, qtbot: QtBot) -> None:
     panel = _panel(window, "fade")
-    panel.set_text("pasted", "x = 1\ny = 2\nprint(x + y)\n")
+    panel.set_text("source", "x = 1\ny = 2\nprint(x + y)\n")
     form = panel.forms["options"]
     widgets = {
         name: form.layout().itemAt(i * 2 + 1).widget()

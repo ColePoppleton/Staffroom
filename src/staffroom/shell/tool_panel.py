@@ -31,12 +31,15 @@ from staffroom.core.log import get_logger
 from staffroom.core.panel import (
     DEFAULT_OPEN_LABEL,
     Choice,
+    CodeSource,
+    CodeValue,
     EditableTable,
     FilePicker,
     FolderPicker,
     OptionsForm,
     PanelSpec,
     ResourcePicker,
+    ResultsTable,
     TablePreview,
     TextArea,
     TextField,
@@ -44,10 +47,12 @@ from staffroom.core.panel import (
 from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolError, ToolPlugin
 from staffroom.shell.widgets import (
     ChoiceWidget,
+    CodeSourceWidget,
     CompactTableWidget,
     Divider,
     EditableTableWidget,
     InputGroup,
+    LineLink,
     LoadSummaryWidget,
     OptionsFormWidget,
     OutputPane,
@@ -92,6 +97,8 @@ class ToolPanel(QWidget):
         self.resource_pickers: dict[str, ResourcePickerWidget] = {}
         self.text_fields: dict[str, TextFieldWidget] = {}
         self.text_areas: dict[str, TextAreaWidget] = {}
+        self.code_sources: dict[str, CodeSourceWidget] = {}
+        self.line_links: dict[str, LineLink] = {}
         self._refreshed = False
         self._quiet = False
         self.forms: dict[str, OptionsFormWidget] = {}
@@ -161,6 +168,7 @@ class ToolPanel(QWidget):
         self.strip.reveal_requested.connect(self.reveal_file)
         self.strip.folder_requested.connect(self.open_folder)
         panes.addWidget(self.results, 1)
+        self._link_lines()
 
         # ⌘↵ runs the tool on show; a hidden panel's shortcut stays inactive.
         self.run_shortcuts = [
@@ -171,6 +179,13 @@ class ToolPanel(QWidget):
             picker.changed.connect(self._show_output_folder)
         for rpicker in self.resource_pickers.values():
             rpicker.changed.connect(self._show_output_folder)
+        for code in self.code_sources.values():
+            code.changed.connect(self._show_output_folder)
+            code.changed.connect(self._suggest)
+        for path_picker in self.pickers.values():
+            path_picker.changed.connect(self._suggest)
+        for rpicker in self.resource_pickers.values():
+            rpicker.changed.connect(self._suggest)
         if writes_to:  # a tool's own destination may follow a typed input, e.g. a label
             for text_field in self.text_fields.values():
                 text_field.edit.textChanged.connect(self._show_output_folder)
@@ -205,6 +220,14 @@ class ToolPanel(QWidget):
                 rpicker = ResourcePickerWidget(spec, self.resources)
                 group.add(rpicker)
                 self.resource_pickers[spec.key] = rpicker
+            elif isinstance(spec, CodeSource):
+                group = InputGroup(spec.label, spec.help)
+                code = CodeSourceWidget(spec, self.resources)
+                group.add(code)
+                group.add_trailing(code.mode_link)
+                self.code_sources[spec.key] = code
+                if spec.choice is not None and code.choice is not None:
+                    self.choices[spec.choice.key] = code.choice
             elif isinstance(spec, TextField):
                 group = InputGroup(spec.label, spec.help)
                 field = TextFieldWidget(spec)
@@ -271,6 +294,32 @@ class ToolPanel(QWidget):
             self.groups[spec.key] = group
             self.inputs_layout.addWidget(group)
 
+    def _link_lines(self) -> None:
+        """Results tables whose rows name lines of the program (trace steps,
+        bug variants) light those lines in its code view, and back."""
+        for spec in self.spec.outputs:
+            if not (isinstance(spec, ResultsTable) and spec.line_column):
+                continue
+            code = self.code_sources.get(spec.line_source)
+            if code is None or spec.key not in self.results.tables:
+                continue
+            _model, view, _caption = self.results.tables[spec.key]
+            self.line_links[spec.key] = LineLink(view, spec.line_column, code.view)
+
+    def _suggest(self, *_: object) -> None:
+        """Let the tool set choices from what was picked or pasted (#62)."""
+        if self.spec.suggest is None:
+            return
+        try:
+            values = dict(self.spec.suggest(self.collect_inputs()))
+        except Exception as exc:  # a pure hint: never break the panel over it
+            log.warning("%s suggest failed: %s", self.plugin.name, exc)
+            return
+        for key, value in values.items():
+            choice = self.choices.get(key)
+            if choice is not None:
+                choice.set_value(value)
+
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
         """The inputs pane keeps 390 px while the output pane has room, and
         gives up to 50 px of it at the window's minimum width."""
@@ -314,6 +363,8 @@ class ToolPanel(QWidget):
             values[key] = field.value()
         for key, area in self.text_areas.items():
             values[key] = area.value()
+        for key, code in self.code_sources.items():
+            values[key] = code.value()
         for key, form in self.forms.items():
             values[key] = form.value()
         for key, grid in self.grids.items():
@@ -323,13 +374,19 @@ class ToolPanel(QWidget):
         return values
 
     def set_input_path(self, key: str, path: Path | None) -> None:
-        if key in self.resource_pickers:
+        if key in self.code_sources:
+            self.code_sources[key].set_path(path)
+        elif key in self.resource_pickers:
             self.resource_pickers[key].set_path(path)
         else:
             self.pickers[key].set_path(path)
 
     def set_text(self, key: str, text: str) -> None:
-        if key in self.text_areas:
+        """Type into a text input; for a code source, paste ``text`` instead
+        of a file."""
+        if key in self.code_sources:
+            self.code_sources[key].set_pasted(text)
+        elif key in self.text_areas:
             self.text_areas[key].set_value(text)
         else:
             self.text_fields[key].set_value(text)
@@ -342,7 +399,7 @@ class ToolPanel(QWidget):
 
     def first_file_key(self) -> str | None:
         for spec in self.spec.inputs:
-            if isinstance(spec, FilePicker | ResourcePicker):
+            if isinstance(spec, FilePicker | ResourcePicker | CodeSource):
                 return spec.key
         return None
 
@@ -354,11 +411,17 @@ class ToolPanel(QWidget):
                     missing.append(s.label)
             elif isinstance(s, TextField | TextArea) and s.required and not inputs.get(s.key):
                 missing.append(s.label)
+            elif isinstance(s, CodeSource) and s.required:
+                code = inputs.get(s.key)
+                if not isinstance(code, CodeValue) or (code.path is None and not code.text.strip()):
+                    missing.append(s.label)
         return missing
 
     def output_dir(self, inputs: dict[str, Any]) -> Path:
         first = self.first_file_key()
         anchor = inputs.get(first) if first else None
+        if isinstance(anchor, CodeValue):
+            anchor = anchor.path
         return self.config.output_dir_for(anchor, self.plugin.name)
 
     def destination(self, inputs: dict[str, Any]) -> Path:
@@ -400,6 +463,8 @@ class ToolPanel(QWidget):
     def start_run(self) -> None:
         if self.worker is not None and self.worker.isRunning():
             return
+        for code in self.code_sources.values():
+            code.reload()  # show what the run will read, if the file was saved since
         inputs = self.collect_inputs()
         missing = self.missing_inputs(inputs)
         if missing:
