@@ -1,7 +1,8 @@
 # Worksheet
 
 Seeded sets of theory questions with answer keys. The seed, difficulty and
-count are printed in the header so a set can be regenerated.
+count are printed in the header so a set can be regenerated. A count outside
+1–60 is refused with a sentence rather than writing an empty sheet.
 
 ![Worksheet panel](../worksheet-light.png)
 
@@ -28,12 +29,21 @@ NOT; AQA 8525 adds XOR. Neither GCSE board has NAND or NOR, so those appear
 only when **Level** is `a_level` *and* the difficulty is `hard` (A-level also
 adds XOR at every difficulty). The board comes from Settings (`general.board`)
 or `--board`. Every question uses all of the inputs its table lists, no gate is
-fed the same input twice, and Q is never constant or simply one input.
+fed the same input twice, and Q is never constant or simply one input. Each
+difficulty has its own shape: easy is one gate on two inputs, medium two gates
+(`(A AND B) OR NOT C`), hard three gates or a NOT over a bracket
+(`NOT (A OR B) AND (C AND NOT B)`).
 
-Boolean simplification builds each question by wrapping one letter at a time
-in a law's longer form, so the key can undo the wraps in order, each step in
-the question's own letters: `absorption: B AND (B OR NOT C) = B, leaving
-A AND B`. **Boolean laws** chooses what is practised: `absorption` (absorption,
+Boolean simplification builds each question from textbook forms: a law wraps
+one letter (or `NOT` letter), or one small gate, in its longer form —
+absorption `A OR (A AND C)`, the distributive pair `(A AND B) OR (A AND NOT B)`,
+the redundancy form `A AND (NOT A OR B)`, De Morgan `NOT (NOT A OR NOT B)` —
+and the key undoes the wraps in order, each step in the question's own letters:
+`absorption: B AND (B OR NOT C) = B, leaving A AND B`. Easy is one step, medium
+two, hard three, and a question stays the size of an exam one at every
+difficulty (a hard sheet reads `(A OR (A AND C)) AND NOT (A AND NOT B)`, not a
+form nested inside a form inside a form); a sheet never repeats a question.
+**Boolean laws** chooses what is practised: `absorption` (absorption,
 distributive and complement; the default), `de_morgan` (adds De Morgan),
 `identities` (identity, idempotent, double negation, complement; the only
 family that puts `X AND X`, `NOT NOT X` or `0`/`1` on the sheet) or `all`.

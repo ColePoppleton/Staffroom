@@ -22,6 +22,17 @@ with every change; `just release <part>` turns it into a version.
   fallback, before any command ran; it now carries on with stderr alone and
   prints one warning line naming the file it could not open. The launcher
   takes the same path, so its startup gets the same fallback.
+- `worksheet` refuses a count outside 1–60 with one sentence ("Questions must
+  be between 1 and 60 (you asked for 0).") instead of writing an empty sheet
+  and key; the CLI and the panel share the limits (#31). Boolean
+  simplification questions are now built from textbook forms only (absorption,
+  the distributive pair, the redundancy form `A AND (NOT A OR B)`, De Morgan
+  over two literals) within a size budget per difficulty, so a hard three-step
+  question reads `(A OR (A AND C)) AND NOT (A AND NOT B)` rather than a form
+  nested three deep; each key practises more than one law and a sheet never
+  repeats a question. GCSE truth tables get one shape per difficulty (one
+  gate, two gates, three gates or a `NOT` over a bracket), so medium and hard
+  sheets no longer look the same. Keys stay reproducible from the printed seed.
 - `staff usage` now counts CLI runs as well as launcher runs (#28): every
   `staff <tool> <command>` that finishes without a `ToolError` is recorded by
   the one wrapper in `cli.py`, so no tool needs its own call. The total stays
