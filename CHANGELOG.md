@@ -85,9 +85,6 @@ with every change; `just release <part>` turns it into a version.
   from the code)"); code with nothing to go on, or that already looks like
   the target, stops with a message naming the `--from` to pass. The panel's
   single *Direction* is now *From* (default `guess`) and *To*.
-
-
-### Fixed
 - `marks` grades a whole cohort in well under a second: `discrimination()`
   computed every script's total once per comparison, which took a minute for
   3,000 rows. Fixed quietly in 0.4.0 by #12; now measured and guarded by tests
