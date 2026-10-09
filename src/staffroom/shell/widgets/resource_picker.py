@@ -87,7 +87,7 @@ class ResourcePickerWidget(QWidget):
     def browse(self) -> None:
         current = self.value()
         start = str(current.parent) if current else str(Path.home())
-        pattern = f"*{self.spec.filter_ext}" if self.spec.filter_ext else "*"
+        pattern = " ".join(f"*{ext}" for ext in self.spec.extensions) or "*"
         chosen, _ = QFileDialog.getOpenFileName(self, self.spec.label, start, f"Files ({pattern})")
         if chosen:
             self.set_path(Path(chosen))

@@ -253,6 +253,56 @@ QListWidget#ResultList::item:selected, QListWidget#StringList::item:selected {{
     background: {p.accent_soft};
 }}
 QListWidget#StringList::item {{ padding: 3px 6px; }}
+
+/* the Library page: results in the column, the file's title, tags, the use bar */
+QWidget#LibraryColumn QListWidget#ResultList {{
+    background: transparent; border: none; padding: 2px 6px;
+}}
+QLabel[role="file-title"] {{
+    font-family: {SERIF_FAMILY}; font-size: 24px; font-weight: 600; letter-spacing: -0.2px;
+}}
+QFrame#TagChip {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: 11px;
+}}
+QLabel#TagText {{ font-size: 12px; background: transparent; }}
+QPushButton#TagRemove {{
+    background: transparent; border: none; color: {p.text_faint}; font-size: 13px;
+    padding: 0px 4px; min-height: 0px;
+}}
+QPushButton#TagRemove:hover {{ color: {p.text}; }}
+QPushButton#TagAdd {{
+    background: transparent; border: 1px dashed {p.border_strong}; border-radius: 11px;
+    color: {p.text_muted}; font-size: 12px; padding: 2px 10px; min-height: 0px;
+}}
+QPushButton#TagAdd:hover {{ color: {p.text}; border-color: {p.text_faint}; }}
+QLineEdit#TagInput {{ font-size: 12px; padding: 2px 8px; border-radius: 11px; }}
+QPushButton#NoteLink {{
+    background: transparent; border: none; color: {p.text_muted}; font-size: 12px;
+    padding: 2px 4px; min-height: 0px;
+}}
+QPushButton#NoteLink:hover, QPushButton#NoteLink:checked {{ color: {p.text}; }}
+QFrame#UseBar {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: {RADIUS}px;
+}}
+QFrame#OpenForClass[role="primary"] {{
+    background: {p.surface_alt}; border: 1px solid {p.accent}; border-radius: {RADIUS_SM}px;
+}}
+QPushButton#OpenForClassButton[role="primary"] {{
+    background: {p.accent}; color: {p.on_accent}; border: none; font-weight: 600;
+    border-radius: 0px; border-top-left-radius: 6px; border-bottom-left-radius: 6px;
+    padding: 7px 16px;
+}}
+QPushButton#OpenForClassButton[role="primary"]:hover {{ background: {p.accent_hover}; }}
+QPushButton#OpenForClassButton:pressed {{ background: {p.accent_pressed}; }}
+QLineEdit#LessonLabel {{
+    background: transparent; border: none; border-radius: 0px; padding: 6px 10px;
+}}
+QLineEdit#LessonLabel:focus {{ border: none; }}
+QPushButton#UseTool {{ font-size: 13px; font-weight: 600; padding: 6px 9px; }}
+QLabel#UseStatus {{ font-size: 13px; }}
+QFrame#ExternalCard {{
+    background: {p.surface_alt}; border: 1px dashed {p.border_strong}; border-radius: {RADIUS_SM}px;
+}}
 QPlainTextEdit#CodeView {{
     font-family: {MONO_FAMILY}; font-size: 12.5px; color: {p.text};
     background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;

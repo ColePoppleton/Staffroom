@@ -28,7 +28,7 @@ def window(qtbot: QtBot, service: LibraryService, resources_root: Path) -> MainW
 
 def test_library_shows_tree_and_page(window: MainWindow) -> None:
     window.show_library()
-    assert window.stack.currentWidget() is window.library_view
+    assert window.stack.currentWidget() is window.library_page
     assert window.sidebar.current() == LIBRARY
     assert window.config.general.sidebar_mode == "resources"
     model = window.resources.model
@@ -58,20 +58,29 @@ def test_select_python_file_previews_code(window: MainWindow) -> None:
     assert preview.resource.rel_path == "Python/Python_Course/while_loops.py"
     assert preview.content.currentWidget() is preview.code
     assert "while count < 10" in preview.code.toPlainText()
-    assert preview.highlighter is not None
-    assert preview.chip.text() == "Python"
+    assert preview.code.highlighter is not None
+    assert preview.code.line_count() == len(preview.code.toPlainText().splitlines())
+    assert preview.title.text() == "while_loops.py"
+    assert preview.meta.text().startswith("Python/Python_Course  ·  ")
 
 
 def test_pptx_shows_card_and_opens_externally(
     window: MainWindow, opened: list[list[str]], resources_root: Path
 ) -> None:
+    """Office files are never parsed: a card says so, and the use bar's main
+    action is Open externally (no lesson copy, no tool takes a .pptx)."""
     window.show_library()
     window.library_page.show_resource("Python/Python_Course/while_loops.pptx")
     preview = window.library_page.preview
+    bar = preview.use_bar
     assert preview.content.currentWidget() is preview.card
     assert "PowerPoint" in preview.card_title.text()
     assert "never parsed" in preview.card_text.text()
-    preview.card_button.click()
+    assert bar.open_button.isVisibleTo(bar) and bar.open_button.property("role") == "primary"
+    assert not bar.class_group.isVisibleTo(bar)
+    assert bar.visible_tools() == []
+    assert not preview.open_button.isVisibleTo(preview)  # one Open externally, not two
+    bar.open_button.click()
     assert opened == [[str(resources_root / "Python/Python_Course/while_loops.pptx")]]
 
 
@@ -111,15 +120,30 @@ def test_search_lists_results_and_selecting_previews(window: MainWindow) -> None
     assert results.count() == 1 and results.item(0).text() == "No matches"
 
 
-def test_tag_editor_saves_to_sidecar(window: MainWindow, resources_root: Path) -> None:
+def test_tag_chips_save_to_sidecar(window: MainWindow, resources_root: Path) -> None:
+    """Tags are chips under the title, added inline and removed with their x; the
+    note sits behind one link. All of it goes to the sidecar file."""
     page = window.library_page
     page.show_resource("Python/notes.md")
-    page.preview.tags_edit.setText("Loops, KS3")
+    chips = page.preview.tags
+    chips.add_button.click()
+    assert chips.input.isVisibleTo(chips)
+    chips.input.setText("Loops, KS3")
+    chips.input.returnPressed.emit()
+    assert chips.tags() == ["loops", "ks3"]
+    assert [c.tag for c in chips.chips] == ["loops", "ks3"]
+    assert (resources_root / ".staffroom" / "tags.json").exists()
+    chips.chips[0].remove.click()
+    assert window.library.tag_entry("Python/notes.md").tags == ["ks3"]
+
+    assert chips.note_link.text() == "+ note"
+    chips.note_link.click()
+    assert page.preview.note_box.isVisibleTo(page.preview)
     page.preview.notes_edit.setPlainText("Starter for Y8")
     page.preview.save_button.click()
-    assert page.preview.tags_edit.text() == "loops, ks3"
-    assert (resources_root / ".staffroom" / "tags.json").exists()
     assert window.library.tag_entry("Python/notes.md").notes == "Starter for Y8"
+    assert chips.note_link.text().startswith("Note: Starter for Y8")
+    assert not page.preview.note_box.isVisibleTo(page.preview)
     # The resource itself was not written.
     assert (resources_root / "Python" / "notes.md").read_text().startswith("# Notes")
 
@@ -137,7 +161,7 @@ def test_library_and_a_tool_are_two_destinations(window: MainWindow) -> None:
     back to a tool is two clicks, and the highlight follows each time."""
     assert window.sidebar.select("marks")  # a listed tool; hello is hidden
     window.show_library()
-    assert window.stack.currentWidget() is window.library_view
+    assert window.stack.currentWidget() is window.library_page
     assert window.sidebar.current() == LIBRARY
     assert window.sidebar.select("marks")
     assert window.stack.currentWidget() is window.panel_for("marks")
@@ -149,7 +173,7 @@ def test_typing_in_the_sidebar_search_continues_in_the_library(window: MainWindo
     window.sidebar.select("marks")
     window.sidebar.search.setText("while")
     window.sidebar.search.textEdited.emit("while")
-    assert window.stack.currentWidget() is window.library_view
+    assert window.stack.currentWidget() is window.library_page
     assert window.resources.search.text() == "while"
     assert window.library_page.query == "while"
     assert window.sidebar.search.text() == ""  # handed over, not duplicated

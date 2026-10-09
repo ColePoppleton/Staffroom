@@ -29,7 +29,7 @@ def window(qtbot: QtBot, tmp_path: Path) -> MainWindow:
 def test_cmd_k_focuses_library_search(window: MainWindow) -> None:
     window.focus_library_search()
     assert window.sidebar.current() == LIBRARY
-    assert window.stack.currentWidget() is window.library_view
+    assert window.stack.currentWidget() is window.library_page
 
 
 def _shortcuts(window: MainWindow) -> dict[str, QShortcut]:

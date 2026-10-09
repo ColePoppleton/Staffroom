@@ -21,6 +21,19 @@ with every change; `just release <part>` turns it into a version.
   The vocabulary gains `CodeSource` (value `CodeValue(path, text)`, read by
   `core.codeinput`), `ResultsTable.line_column`, `TextView.code` and
   `PanelSpec.suggest`.
+- The Library hands a file to a tool (#88). It is one page: the tree and search
+  in one column (search results replace the tree while there is a query), the
+  file beside it with its tags as chips (*+ tag* inline, × to remove, the note
+  behind one link) and a use bar: *Open for class* with the lesson label typed
+  inline (Enter or ⌘O opens it), then one button per tool that takes this kind
+  of file (`.py` → Parsons, Trace, Bugs, Fade, Pseudocode; `.md` → Quiz;
+  `.csv`/`.xlsx` → Marks), each opening the tool with the file already picked.
+  Opening a file for class from the Library is 3 actions instead of 8 and runs
+  Classroom's own `run`, so the original is never touched. The buttons come
+  from each tool's main file input (`core.panel.main_file_input`), so a new tool
+  appears with no library change; `filter_ext` (ResourcePicker, CodeSource) may name several
+  extensions. Office files keep *Open externally* as the main action. A long
+  resources-folder path no longer widens the window past its minimum (#103).
 - A run's result is one strip along the top of the output pane (#84): a tick or a
   cross, a short outcome ("10 questions · seed 42", or the failure in plain words),
   one button per file written (*PDF Sheet*, *PDF Key*, *DOCX Sheet* …; click opens

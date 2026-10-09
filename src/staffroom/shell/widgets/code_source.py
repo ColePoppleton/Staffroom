@@ -210,7 +210,7 @@ class CodeSourceWidget(QWidget):
 
     def browse(self) -> None:
         start = str(self._path.parent) if self._path else self._last_dir
-        pattern = f"*{self.spec.filter_ext}" if self.spec.filter_ext else "*"
+        pattern = " ".join(f"*{ext}" for ext in self.spec.extensions) or "*"
         chosen, _ = QFileDialog.getOpenFileName(self, self.spec.label, start, f"Files ({pattern})")
         if chosen:
             self._last_dir = str(Path(chosen).parent)

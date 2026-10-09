@@ -58,7 +58,13 @@ def panel_spec() -> PanelSpec:
             "Anything that cannot be translated is listed, never dropped silently."
         ),
         inputs=(
-            CodeSource(key="source", label="From", filter_ext=None, required=False, choice=FROM),
+            CodeSource(
+                key="source",
+                label="From",
+                filter_ext=(".py", ".txt"),  # Python, or pseudocode in a text file
+                required=False,
+                choice=FROM,
+            ),
             TO,
             OptionsForm(key="options", schema=Options, label="Save", fields=("formats",)),
         ),

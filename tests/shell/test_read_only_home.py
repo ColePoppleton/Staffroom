@@ -68,7 +68,7 @@ def test_reindex_request_is_refused_quietly(window: MainWindow) -> None:
 
 def test_resources_mode_and_search_do_not_crash(window: MainWindow) -> None:
     window.show_library()
-    assert window.stack.currentWidget() is window.library_view
+    assert window.stack.currentWidget() is window.library_page
     window.focus_library_search()
     window.library_page.set_query("while")
     assert window.library_page.results.count() == 1  # the "no matches" row

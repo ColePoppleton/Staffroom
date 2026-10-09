@@ -1,4 +1,5 @@
-"""The Resources root in the sidebar: search box, filters and the tree."""
+"""The Library's left column: the search box and filters, then the folder
+tree, or the search results in its place while there is a query."""
 
 from __future__ import annotations
 
@@ -8,7 +9,9 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
     QPushButton,
+    QStackedWidget,
     QTreeView,
     QVBoxLayout,
     QWidget,
@@ -67,7 +70,16 @@ class ResourcesPanel(QWidget):
         self.tree.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.tree.selectionModel().currentChanged.connect(self._on_current)
-        layout.addWidget(self.tree, 1)
+        # Search results replace the tree in the same column while there is
+        # a query, so the preview beside them keeps its full width.
+        self.results = QListWidget()
+        self.results.setObjectName("ResultList")
+        self.results.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.results.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.views = QStackedWidget()
+        self.views.addWidget(self.tree)
+        self.views.addWidget(self.results)
+        layout.addWidget(self.views, 1)
 
         footer = QHBoxLayout()
         self.status = QLabel("")
@@ -82,6 +94,10 @@ class ResourcesPanel(QWidget):
         footer.addWidget(self.status, 1)
         footer.addWidget(self.reindex)
         layout.addLayout(footer)
+
+    def show_results(self, show: bool) -> None:
+        """The results list in place of the tree (True), or the tree back."""
+        self.views.setCurrentWidget(self.results if show else self.tree)
 
     def set_resources(self, resources: list[Resource], status: str, detail: str = "") -> None:
         """``detail`` is the longer explanation behind a terse status (shown as

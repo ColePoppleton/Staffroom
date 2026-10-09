@@ -1,8 +1,10 @@
 # Resource Library
 
-The **Library**, first in the sidebar, indexes your resources folder: a
-searchable tree with previews, and tags and notes kept in a sidecar file so
-the resources themselves are never written.
+The **Library**, first in the sidebar, indexes your resources folder. Its
+page has the folder tree and search in one column and the chosen file beside
+it: the file's tags as chips, a **use bar**, then the file itself. Tags and
+notes are kept in a sidecar file, so the resources themselves are never
+written.
 
 ![The Library with a Python file previewed](../library-python-dark.png)
 
@@ -14,8 +16,26 @@ the resources themselves are never written.
 - Cloud placeholders (files not downloaded on this Mac) are marked, not fatal.
 - Re-index is incremental; the first index of a few hundred files takes seconds.
 
-Tools reach the library through a picker: ⌘O, or *From library…* on any
-file input.
+## Using a file
+
+The use bar under the file's title hands it on:
+
+- **Open for class** with the lesson label typed beside it: select the file,
+  type `P3 Y9 loops`, press Enter (or ⌘O). The Classroom tool copies it into
+  today's session folder and opens the copy in your editor, exactly as from
+  Classroom itself; the original is never touched. *Classroom ›* then shows
+  today's sessions. Offered for code and text files (`.py`, `.txt`, `.md`,
+  `.csv`), which is what the editor opens.
+- **One button per tool that takes this kind of file**: `.py` → Parsons,
+  Trace, Bugs, Fade, Pseudocode; `.md` → Quiz; `.csv` / `.xlsx` → Marks;
+  `.txt` → Pseudocode. Each opens the tool with the file already picked. The
+  list comes from the tools' own inputs, so a new tool appears by itself.
+- Office files, images and PDFs get **Open externally** as their main action
+  (Office files are still never parsed). A file not downloaded on this Mac, or
+  indexed by name only, is not offered for class or to a tool.
+
+*Open externally* and *Reveal* sit quietly beside the title. Tools still reach
+the library from their own inputs too: *From library…* on any file input.
 
 ## Keeping things out
 
@@ -32,8 +52,9 @@ so pupil work should not be under the resources folder at all. Two guards help:
 - **Name only.** A file whose text looks like it holds pupil details (a
   candidate number, surname, UPN or date of birth next to a value) is indexed
   by name only. The index summary, the sidebar status and
-  `staff library status` show the count; the preview carries a banner. This is
-  a warning to act on, not a filter to rely on.
+  `staff library status` show the count; the preview carries a banner, and the
+  file is not offered for class or to a tool. This is a warning to act on, not
+  a filter to rely on.
 
 ![A file indexed by name only, with the banner that says why](../library-name-only.png)
 

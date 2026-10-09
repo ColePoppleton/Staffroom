@@ -169,6 +169,14 @@ code=True)` shows an output as numbered code (pseudocode), and
 `PanelSpec(suggest=fn)` lets choices follow what was picked or pasted:
 `fn(inputs)` is pure and returns `{choice_key: value}`.
 
+The panel's first `CodeSource`, `ResourcePicker` or (opening) `FilePicker` is its **main
+file input**, and the extensions it declares (`filter_ext=".py"`, several as
+`filter_ext=(".py", ".txt")`, or the `*.ext` patterns in `filters`) put the
+tool on the Library's use bar for files of that type: a teacher previewing a
+`.py` sees a button that opens your tool with the file already picked. Nothing
+in the library needs changing (`core.panel.main_file_input`). A picker that
+takes any file (no `filter_ext`) is not offered there; hidden tools never are.
+
 ## 4. Wire `run()`
 
 ```python

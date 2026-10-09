@@ -76,6 +76,7 @@ widget kit. Do not put UI code in a tool.
 from __future__ import annotations
 
 import dataclasses
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -104,6 +105,35 @@ class FilePicker:
     required: bool = True
     chip: bool = False
 
+    @property
+    def extensions(self) -> tuple[str, ...]:
+        """The extensions ``filters`` names (see :func:`filter_extensions`)."""
+        return filter_extensions(self.filters)
+
+
+def normalise_extensions(exts: str | Iterable[str] | None) -> tuple[str, ...]:
+    """``".PY"``, ``("py", ".txt")`` or None as lower-case extensions with the
+    dot, without repeats; () (any file) for None."""
+    if exts is None:
+        return ()
+    out: list[str] = []
+    for ext in (exts,) if isinstance(exts, str) else exts:
+        e = ext.strip().lower()
+        e = e if e.startswith(".") else f".{e}"
+        if e != "." and e not in out:
+            out.append(e)
+    return tuple(out)
+
+
+_FILTER_PATTERN = re.compile(r"\*(\.[A-Za-z0-9]+)")
+
+
+def filter_extensions(filters: Iterable[str]) -> tuple[str, ...]:
+    """The extensions named in Qt file-dialog filters: ``("Data files (*.csv
+    *.xlsx)", "All files (*)")`` gives ``(".csv", ".xlsx")``. A catch-all
+    ``*`` adds nothing; no ``*.ext`` anywhere gives () (any file)."""
+    return normalise_extensions(m.group(1) for f in filters for m in _FILTER_PATTERN.finditer(f))
+
 
 @dataclass(frozen=True)
 class FolderPicker:
@@ -116,14 +146,22 @@ class FolderPicker:
 @dataclass(frozen=True)
 class ResourcePicker:
     """Pick a file from the Resource Library (or any file via a dialog when
-    the library is unavailable). ``filter_ext`` like ``".py"`` narrows the
-    library list; None allows any kind."""
+    the library is unavailable). ``filter_ext`` like ``".py"`` (or several,
+    ``(".py", ".txt")``) narrows the library list; None allows any kind.
+
+    The same extensions put the tool on the Library's use bar for files of
+    that type (see :func:`main_file_input`)."""
 
     key: str
     label: str
-    filter_ext: str | None = None
+    filter_ext: str | tuple[str, ...] | None = None
     help: str = ""
     required: bool = True
+
+    @property
+    def extensions(self) -> tuple[str, ...]:
+        """``filter_ext`` as lower-case extensions with the dot; () for any file."""
+        return normalise_extensions(self.filter_ext)
 
 
 class CodeValue(NamedTuple):
@@ -148,10 +186,16 @@ class CodeSource:
 
     key: str
     label: str = "Program"
-    filter_ext: str | None = ".py"
+    filter_ext: str | tuple[str, ...] | None = ".py"
     help: str = ""
     required: bool = True
     choice: Choice | None = None
+
+    @property
+    def extensions(self) -> tuple[str, ...]:
+        """``filter_ext`` as lower-case extensions with the dot; () for any file.
+        They also put the tool on the Library's use bar (:func:`main_file_input`)."""
+        return normalise_extensions(self.filter_ext)
 
 
 @dataclass(frozen=True)
@@ -648,3 +692,49 @@ class PanelSpec:
             for w in self.outputs
             if isinstance(w, ActionTable) and w.refresh_action is not None
         ]
+
+
+# ---------------------------------------------------------------- handing a file to a tool
+@dataclass(frozen=True)
+class FileInput:
+    """A panel's main file input: the widget ``key`` a file is handed to and
+    the ``extensions`` it accepts (lower case, with the dot; () for any file)."""
+
+    key: str
+    extensions: tuple[str, ...]
+
+    @property
+    def any_file(self) -> bool:
+        return not self.extensions
+
+    def accepts(self, path: str | Path) -> bool:
+        """True when a file named ``path`` can be handed to this input. The
+        last suffix counts, so ``loops.ocr.txt`` is a ``.txt``."""
+        return self.any_file or Path(path).suffix.lower() in self.extensions
+
+
+def main_file_input(spec: PanelSpec) -> FileInput | None:
+    """The panel's main file input: its first :class:`CodeSource`,
+    :class:`ResourcePicker` or :class:`FilePicker` that opens a file (a save
+    picker is a destination, not an input). None when the tool takes no file.
+
+    The shell builds the Library's use bar from this, so a tool appears there
+    for the extensions its own picker declares, with no library change."""
+    for widget in spec.inputs:
+        if isinstance(widget, CodeSource | ResourcePicker) or (
+            isinstance(widget, FilePicker) and widget.mode == "open"
+        ):
+            return FileInput(widget.key, widget.extensions)
+    return None
+
+
+def tools_accepting(inputs: Mapping[str, FileInput | None], path: str | Path) -> list[str]:
+    """The tools (keys of ``inputs``, in its order) whose main file input
+    takes a file named ``path``. A tool that takes *any* file is left out: it
+    says nothing about what this file is for (Classroom, the one such tool,
+    has its own *Open for class* on the use bar)."""
+    return [
+        name
+        for name, file_input in inputs.items()
+        if file_input is not None and not file_input.any_file and file_input.accepts(path)
+    ]
