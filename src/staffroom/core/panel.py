@@ -28,9 +28,21 @@ Output widgets fill from a ``RunResult``: ``ResultsTable`` and
 user pick a row and press an action button; the shell then calls
 ``plugin.act(action_name, row, ctx)`` and applies the returned RunResult.
 
-Under the inputs, the run bar says where the next run will write: the shared
-output folder (``Config.output_dir_for``) unless the panel sets ``writes_to``
-to a :class:`WritesTo` naming its own destination.
+Layout (the workbench)
+----------------------
+The shell lays every panel out the same way: the inputs in a column on the
+left with the run button at its foot, the outputs filling the right. Outputs
+are either *main* views (the reason for the visit: a table, a chart, a
+preview; more than one becomes tabs) or *below* (secondary: lists to act on,
+notes), stacked under the main view. :func:`main_outputs` and
+:func:`below_outputs` decide, from each widget's optional ``place`` hint:
+``ActionTable`` defaults to below, everything else to main, and a panel with
+no main view promotes its first output. ``LogArea`` is neither; the shell
+keeps it at the foot of the output pane.
+
+At the foot of the inputs, the run bar says where the next run will write:
+the shared output folder (``Config.output_dir_for``) unless the panel sets
+``writes_to`` to a :class:`WritesTo` naming its own destination.
 
 If a new tool needs a widget that is not here, add it here and to the shell's
 widget kit. Do not put UI code in a tool.
@@ -207,10 +219,16 @@ InputWidget = (
 
 
 # ---------------------------------------------------------------- outputs
+Place = Literal["main", "below"]
+"""Where an output sits in the output pane: a ``"main"`` view (tabs when there
+are several) or ``"below"`` the main view. ``None`` lets the shell choose."""
+
+
 @dataclass(frozen=True)
 class ResultsTable:
     key: str
     label: str = "Results"
+    place: Place | None = None
 
 
 @dataclass(frozen=True)
@@ -219,6 +237,7 @@ class ImageView:
 
     key: str
     label: str = "Chart"
+    place: Place | None = None
 
 
 @dataclass(frozen=True)
@@ -230,6 +249,7 @@ class TextView:
     label: str = "Output"
     monospace: bool = True
     copy_button: bool = False
+    place: Place | None = None
 
 
 @dataclass(frozen=True)
@@ -251,6 +271,7 @@ class ActionTable:
     actions: tuple[Action, ...]
     refresh_action: str | None = None
     hidden_columns: tuple[str, ...] = ()
+    place: Place | None = None  # None: below the main view
 
 
 @dataclass(frozen=True)
@@ -260,6 +281,33 @@ class LogArea:
 
 
 OutputWidget = ResultsTable | ActionTable | ImageView | TextView | LogArea
+ViewWidget = ResultsTable | ActionTable | ImageView | TextView
+
+
+def _placed(widget: ViewWidget) -> Place:
+    if widget.place is not None:
+        return widget.place
+    return "below" if isinstance(widget, ActionTable) else "main"
+
+
+def _views(outputs: tuple[OutputWidget, ...]) -> list[ViewWidget]:
+    return [w for w in outputs if not isinstance(w, LogArea)]
+
+
+def main_outputs(outputs: tuple[OutputWidget, ...]) -> list[ViewWidget]:
+    """The output pane's main views, in spec order (tabs when more than one).
+
+    A panel whose outputs are all ``"below"`` gets its first one promoted, so
+    the pane never opens on nothing but secondary lists."""
+    views = _views(outputs)
+    main = [w for w in views if _placed(w) == "main"]
+    return main or views[:1]
+
+
+def below_outputs(outputs: tuple[OutputWidget, ...]) -> list[ViewWidget]:
+    """The secondary views stacked under the main view, in spec order."""
+    main = main_outputs(outputs)
+    return [w for w in _views(outputs) if w not in main]
 
 
 # ---------------------------------------------------------------- destination

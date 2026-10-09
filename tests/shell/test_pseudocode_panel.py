@@ -33,8 +33,11 @@ def test_translate_and_copy(window: MainWindow, qtbot: QtBot) -> None:
     out = panel.results.text_views["output"].toPlainText()
     assert "for i = 0 to 2" in out and "next i" in out
     assert "Everything translated" in panel.results.text_views["report"].toPlainText()
-    card = panel.results.cards["output"]
-    buttons = [b for b in card.findChildren(type(panel.run_bar.button)) if b.text() == "Copy"]
-    assert buttons
-    buttons[0].click()
+    # The translation is the main view; its Copy button sits in the tab bar's
+    # corner while its tab is showing. The notes sit below it.
+    assert panel.results.main_keys == ["output"]
+    assert "report" in panel.results.sections
+    copy = panel.results.copy_buttons["output"]
+    assert copy.text() == "Copy" and copy.isVisible()
+    copy.click()
     assert QApplication.clipboard().text() == out

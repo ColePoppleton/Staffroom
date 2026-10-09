@@ -1,13 +1,27 @@
-"""Renders one tool's PanelSpec with the widget kit and drives its runs."""
+"""Renders one tool's PanelSpec as a workbench and drives its runs.
+
+Below a one-line header (title and description), two panes side by side:
+
+* the **inputs pane** on the left, a fixed width (390 px, narrowing to 340 px
+  at the window's minimum width) with its own scroll. Each input widget is a
+  hairline-separated :class:`InputGroup`, and the run button sits at the
+  pane's foot (:class:`RunBar`, ⌘↵ from anywhere in the window) with where the
+  run will write.
+* the **output pane** filling the rest (:class:`OutputPane`): the main
+  output(s) as tabs, secondary outputs under them, the log at the foot.
+
+Results never push the inputs away and nothing scrolls on its own: changing
+one option and running again is one click (or ⌘↵) with both sides in view.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QPoint, Qt, QTimer, Signal
-from PySide6.QtGui import QShowEvent
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QKeySequence, QResizeEvent, QShortcut, QShowEvent
+from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
 from staffroom.core.config import Config
 from staffroom.core.csvio import read_table
@@ -26,21 +40,28 @@ from staffroom.core.panel import (
 )
 from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolError, ToolPlugin
 from staffroom.shell.widgets import (
-    Card,
+    Divider,
     EditableTableWidget,
+    InputGroup,
     OptionsFormWidget,
+    OutputPane,
     PathPickerWidget,
     ResourcePickerWidget,
-    ResultsArea,
     RunBar,
     TablePreviewWidget,
     TextAreaWidget,
     TextFieldWidget,
     make_label,
 )
+from staffroom.shell.widgets.elided_label import ElidedLabel
+from staffroom.shell.widgets.run_bar import RUN_SHORTCUT_TEXT, RUN_SHORTCUTS
 from staffroom.shell.worker import RunWorker
 
 log = get_logger(__name__)
+
+INPUTS_WIDTH = 390
+INPUTS_MIN_WIDTH = 340  # at the window's minimum width (1040 px)
+OUTPUT_MIN_WIDTH = 440
 
 
 class ToolPanel(QWidget):
@@ -56,6 +77,7 @@ class ToolPanel(QWidget):
         resources: ResourceService | None = None,
     ) -> None:
         super().__init__(parent)
+        self.setObjectName("ToolPanel")
         self.plugin = plugin
         self.config = config
         self.resources = resources
@@ -70,6 +92,7 @@ class ToolPanel(QWidget):
         self.forms: dict[str, OptionsFormWidget] = {}
         self.grids: dict[str, EditableTableWidget] = {}
         self.previews: dict[str, TablePreviewWidget] = {}
+        self.groups: dict[str, InputGroup] = {}
         self.worker: RunWorker | None = None
         self.last_result: RunResult | None = None
         self._last_ok = False
@@ -77,30 +100,35 @@ class ToolPanel(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
+        root.addWidget(self._build_header())
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        content = QWidget()
-        content.setObjectName("PanelContent")
-        self.content_layout = QVBoxLayout(content)
-        self.content_layout.setContentsMargins(32, 28, 32, 24)
-        self.content_layout.setSpacing(16)
-        scroll.setWidget(content)
-        root.addWidget(scroll, 1)
-        self.scroll_area = scroll
+        panes = QHBoxLayout()
+        panes.setContentsMargins(0, 0, 0, 0)
+        panes.setSpacing(0)
+        root.addLayout(panes, 1)
 
-        self._build_header()
+        # -- inputs pane: groups in a scroll, the run bar pinned at the foot
+        self.inputs_pane = QWidget()
+        self.inputs_pane.setObjectName("InputsPane")
+        self.inputs_pane.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        self.inputs_pane.setFixedWidth(INPUTS_WIDTH)
+        inputs_layout = QVBoxLayout(self.inputs_pane)
+        inputs_layout.setContentsMargins(0, 0, 0, 0)
+        inputs_layout.setSpacing(0)
+        self.inputs_scroll = QScrollArea()
+        self.inputs_scroll.setObjectName("InputsScroll")
+        self.inputs_scroll.setWidgetResizable(True)
+        self.inputs_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        inputs_body = QWidget()
+        inputs_body.setObjectName("InputsBody")
+        self.inputs_layout = QVBoxLayout(inputs_body)
+        self.inputs_layout.setContentsMargins(22, 4, 22, 12)
+        self.inputs_layout.setSpacing(0)
+        self.inputs_scroll.setWidget(inputs_body)
+        inputs_layout.addWidget(self.inputs_scroll, 1)
         self._build_inputs()
-        self.results = ResultsArea(self.spec.outputs)
-        self.results.action_requested.connect(self.start_action)
-        self.content_layout.addWidget(self.results)
-        self.content_layout.addStretch(1)
+        self.inputs_layout.addStretch(1)
 
-        footer = QWidget()
-        footer.setObjectName("Footer")
-        footer_layout = QVBoxLayout(footer)
-        footer_layout.setContentsMargins(32, 12, 32, 16)
         writes_to = self.spec.writes_to
         self.run_bar = (
             RunBar(self.spec.run_label, verb=writes_to.verb, open_label=writes_to.open_label)
@@ -108,8 +136,23 @@ class ToolPanel(QWidget):
             else RunBar(self.spec.run_label)
         )
         self.run_bar.run_requested.connect(self.start_run)
-        footer_layout.addWidget(self.run_bar)
-        root.addWidget(footer)
+        inputs_layout.addWidget(self.run_bar)
+        panes.addWidget(self.inputs_pane)
+
+        # -- output pane
+        self.results = OutputPane(
+            self.spec.outputs,
+            empty_text=f"Press {self.spec.run_label} ({RUN_SHORTCUT_TEXT}) "
+            "and the result appears here.",
+        )
+        self.results.action_requested.connect(self.start_action)
+        panes.addWidget(self.results, 1)
+
+        # ⌘↵ runs the tool on show; a hidden panel's shortcut stays inactive.
+        self.run_shortcuts = [
+            QShortcut(QKeySequence(keys), self, self.run_bar.button.click) for keys in RUN_SHORTCUTS
+        ]
+
         for picker in self.pickers.values():
             picker.changed.connect(self._show_output_folder)
         for rpicker in self.resource_pickers.values():
@@ -120,63 +163,61 @@ class ToolPanel(QWidget):
         self._show_output_folder()
 
     # -- building --------------------------------------------------------
-    def _build_header(self) -> None:
+    def _build_header(self) -> QWidget:
         header = QWidget()
-        header.setObjectName("Header")
-        layout = QVBoxLayout(header)
-        layout.setContentsMargins(0, 0, 0, 8)
-        layout.setSpacing(4)
-        title_row = QHBoxLayout()
-        title_row.setSpacing(10)
-        title_row.addWidget(make_label(self.spec.title, "title"))
-        chip = QLabel(f"v{self.plugin.version}")
-        chip.setProperty("role", "chip")
-        title_row.addWidget(chip, 0, Qt.AlignmentFlag.AlignVCenter)
-        title_row.addStretch(1)
-        layout.addLayout(title_row)
-        if self.spec.description:
-            layout.addWidget(make_label(self.spec.description, "subtitle", wrap=True))
-        self.content_layout.addWidget(header)
+        header.setObjectName("PanelHeader")
+        header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        layout = QHBoxLayout(header)
+        layout.setContentsMargins(28, 16, 28, 12)
+        layout.setSpacing(14)
+        title = make_label(self.spec.title, "title")
+        layout.addWidget(title, 0, Qt.AlignmentFlag.AlignBaseline)
+        # One line that never widens the window: elided, whole in the tooltip.
+        description = ElidedLabel(self.spec.description)
+        description.setProperty("role", "subtitle")
+        description.setVisible(bool(self.spec.description))
+        layout.addWidget(description, 1, Qt.AlignmentFlag.AlignBaseline)
+        return header
 
     def _build_inputs(self) -> None:
         for spec in self.spec.inputs:
             if isinstance(spec, FilePicker | FolderPicker):
-                card = Card(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help)
                 picker = PathPickerWidget(spec)
-                card.add(picker)
+                group.add(picker)
                 self.pickers[spec.key] = picker
             elif isinstance(spec, ResourcePicker):
-                card = Card(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help)
                 rpicker = ResourcePickerWidget(spec, self.resources)
-                card.add(rpicker)
+                group.add(rpicker)
                 self.resource_pickers[spec.key] = rpicker
             elif isinstance(spec, TextField):
-                card = Card(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help)
                 field = TextFieldWidget(spec)
-                card.add(field)
+                group.add(field)
                 self.text_fields[spec.key] = field
             elif isinstance(spec, TextArea):
-                card = Card(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help)
                 area = TextAreaWidget(spec)
-                card.add(area)
+                group.add(area)
                 self.text_areas[spec.key] = area
             elif isinstance(spec, TablePreview):
-                card = Card(spec.label)
+                group = InputGroup(spec.label)
                 preview = TablePreviewWidget(spec)
-                card.add(preview)
+                group.add(preview)
                 self.previews[spec.key] = preview
                 self.pickers[spec.source].changed.connect(
                     lambda path, p=preview: self._load_preview(p, path)
                 )
             elif isinstance(spec, OptionsForm):
-                card = Card(spec.label)
+                group = InputGroup(spec.label)
                 form = OptionsFormWidget(spec.schema, spec.presets)
-                card.add(form)
+                group.add(form)
                 self.forms[spec.key] = form
             elif isinstance(spec, EditableTable):
-                card = Card(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help)
                 grid = EditableTableWidget(spec)
-                card.add(grid)
+                group.add(grid)
                 self.grids[spec.key] = grid
                 if spec.preset_action:
                     grid.preset_saved.connect(
@@ -187,7 +228,18 @@ class ToolPanel(QWidget):
             else:  # pragma: no cover - exhaustive over InputWidget
                 msg = f"unknown input widget {spec!r}"
                 raise TypeError(msg)
-            self.content_layout.addWidget(card)
+            if self.groups:
+                self.inputs_layout.addWidget(Divider())
+            self.groups[spec.key] = group
+            self.inputs_layout.addWidget(group)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
+        """The inputs pane keeps 390 px while the output pane has room, and
+        gives up to 50 px of it at the window's minimum width."""
+        super().resizeEvent(event)
+        width = max(INPUTS_MIN_WIDTH, min(INPUTS_WIDTH, event.size().width() - OUTPUT_MIN_WIDTH))
+        if width != self.inputs_pane.width():
+            self.inputs_pane.setFixedWidth(width)
 
     def _load_preview(self, preview: TablePreviewWidget, path: Path | None) -> None:
         if path is None:
@@ -386,31 +438,6 @@ class ToolPanel(QWidget):
         # a row action (classroom's Promote) writes somewhere else entirely.
         if result.files and not self._action:
             self.run_bar.set_output_folder(result.files[0].parent)
-        shown = [
-            c
-            for k, c in self.results.cards.items()
-            if (k in result.tables and k not in self.results.action_tables)
-            or k in result.images
-            or k in result.texts
-        ]
-        if shown:
-            first = shown[0]
-            self.content_layout.activate()
-
-            def scroll_to_results() -> None:
-                content = self.scroll_area.widget()
-                if content is None:
-                    return
-                top = first.mapTo(content, QPoint(0, 0)).y()
-                self.scroll_area.verticalScrollBar().setValue(max(top - 12, 0))
-
-            # The cards were just shown; give the layout a tick to place them.
-            # A parented timer dies with the panel, so it can never fire on a
-            # destroyed widget (which pytest-qt reports as an error).
-            timer = QTimer(self)
-            timer.setSingleShot(True)
-            timer.timeout.connect(scroll_to_results)
-            timer.start(50)
         log.info("%s finished: %s", self.plugin.name, result.summary)
         self._last_ok = True
 

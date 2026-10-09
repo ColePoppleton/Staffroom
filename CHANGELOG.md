@@ -7,6 +7,15 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Changed
+- Every tool is now a workbench (#83): the inputs in a 390 px column on the left
+  with the run button pinned at its foot (⌘↵ runs it from anywhere in the
+  window), the results filling the right, tabbed when a tool has more than one
+  (Trace: *Completed trace table* · *Preview*). Lists to act on and notes sit
+  under the main result; inputs are hairline-separated groups instead of a card
+  each. Nothing scrolls on its own any more and the inputs stay beside the
+  result, so the first result is in view after a run in 9 of 9 tools at
+  1240×780 (2 of 9 before). A panel can mark an output `place="main"` or
+  `"below"` (`core.panel`); the header loses the version chip.
 - CI and the release workflow run on Linux instead of macOS, which uses a tenth of the
   Actions allowance on a private repo. macOS-only packaging tests skip there.
 

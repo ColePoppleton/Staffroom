@@ -34,7 +34,9 @@ def panel_spec() -> PanelSpec:
         ),
         outputs=(
             TextView(key="output", label="Translation", copy_button=True),
-            TextView(key="report", label="Could not translate / notes", monospace=False),
+            TextView(
+                key="report", label="Could not translate / notes", monospace=False, place="below"
+            ),
             LogArea(),
         ),
         run_label="Translate",

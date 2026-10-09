@@ -49,11 +49,13 @@ def panel_spec() -> PanelSpec:
             OptionsForm(key="options", schema=Options),
         ),
         outputs=(
-            ResultsTable(key="distribution", label="Grade distribution"),
+            ResultsTable(key="distribution", label="Grade distribution", place="below"),
             ImageView(key="chart", label="Distribution chart"),
             ResultsTable(key="questions", label="Per-question analysis"),
             ResultsTable(key="worst", label="Worst questions (reteach these)"),
-            ResultsTable(key="grades", label="Per-script grades (view only, never saved)"),
+            ResultsTable(
+                key="grades", label="Per-script grades (view only, never saved)", place="below"
+            ),
             LogArea(),
         ),
         run_label="Analyse",

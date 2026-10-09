@@ -94,6 +94,14 @@ PanelSpec(
 Input keys become the keys of the `inputs` dict passed to `run()`; output keys
 are what `run()` must put in `RunResult.tables` / `RunResult.images`.
 
+The shell lays every panel out as a workbench: the inputs in a column on the
+left with the run button at its foot (⌘↵ runs it), the outputs on the right.
+Outputs are *main* views, shown as tabs in spec order, or sit *below* them.
+An `ActionTable` goes below by default and everything else is a main view; set
+`place="below"` on a secondary output (notes, a view-only table) or
+`place="main"` on a list that is the point of the tool, as classroom's
+sessions are. The `LogArea` stays at the foot of the output pane.
+
 ## 4. Wire `run()`
 
 ```python
@@ -201,4 +209,4 @@ refreshed table under the same key. `tools/classroom` is the reference.
 
 Do not build it in the tool. Add a dataclass to `core/panel.py`, a widget to
 `shell/widgets/`, a rendering branch in `shell/tool_panel.py` (inputs) or
-`shell/widgets/results.py` (outputs), and a test. Then use it from the spec.
+`shell/widgets/output_pane.py` (outputs), and a test. Then use it from the spec.

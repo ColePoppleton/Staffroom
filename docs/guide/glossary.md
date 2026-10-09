@@ -209,5 +209,5 @@ term has a precise meaning in the code, this is that meaning.
   can be set instead.
 
 **Run bar**
-: The strip at the bottom of a tool's panel: the Run button, the folder the
-  tool will write to, the one-line result, *Open output folder*.
+: The foot of a tool's inputs column: the Run button (⌘↵), the folder the
+  tool will write to, *Open output folder* and the one-line result.

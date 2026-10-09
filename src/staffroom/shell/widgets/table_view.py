@@ -246,6 +246,11 @@ class EditableTableWidget(QWidget):
             label = QLabel("Preset")
             label.setProperty("role", "muted")
             self.preset_combo = QComboBox()
+            # Sized to a short name, not the longest one: the inputs pane is narrow.
+            self.preset_combo.setSizeAdjustPolicy(
+                QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+            )
+            self.preset_combo.setMinimumContentsLength(10)
             for name, preset_rows in spec.presets:
                 self.presets[name] = preset_rows
                 self.preset_combo.addItem(name)
@@ -258,20 +263,25 @@ class EditableTableWidget(QWidget):
             preset_row.addWidget(label)
             preset_row.addWidget(self.preset_combo, 1)
             preset_row.addWidget(self.apply_button)
-            preset_row.addWidget(self.save_button)
             layout.addLayout(preset_row)
         layout.addWidget(self.view)
+        # Row buttons on the left, saving the grid as a preset on the right.
+        buttons = QHBoxLayout()
+        buttons.setSpacing(4)
         if spec.can_add_rows:
-            buttons = QHBoxLayout()
             self.add_button = QPushButton("Add row")
             self.add_button.setProperty("role", "ghost")
             self.add_button.clicked.connect(self.add_row)
-            self.remove_button = QPushButton("Remove selected")
+            self.remove_button = QPushButton("Remove row")
+            self.remove_button.setToolTip("Remove the selected rows")
             self.remove_button.setProperty("role", "ghost")
             self.remove_button.clicked.connect(self.remove_selected)
             buttons.addWidget(self.add_button)
             buttons.addWidget(self.remove_button)
-            buttons.addStretch(1)
+        buttons.addStretch(1)
+        if spec.presets:
+            buttons.addWidget(self.save_button)
+        if buttons.count() > 1:
             layout.addLayout(buttons)
 
     def add_row(self) -> None:

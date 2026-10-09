@@ -26,13 +26,16 @@ indexed, the tree lists 563, and turning *Hidden* on makes it `587 files
 (incl. 24 hidden)`. `staff library status` prints the long form:
 `587 indexed: 563 shown, 24 hidden, 2 cloud-only, 3 name only`.
 
-Pick a tool, fill in its panel top to bottom, press the big button. Results
-appear below the inputs and files are written to the output folder, which the
-run bar names before you press Run: next to the input by default,
+Pick a tool, fill in the inputs down the left, press the button at their foot
+(or ⌘↵). Results appear on the right, beside the inputs, so you can change one
+setting and run again without scrolling; a tool with more than one result shows
+them as tabs (Trace: the completed table and the sheet preview). Files are
+written to the output folder, which the run bar names before you press Run:
+next to the input by default,
 `~/TeachingSessions/outputs/<tool>/` for tools with no input file, or
 wherever Settings says ([Outputs](outputs.md) has the rule and every tool's
 file names). **Open output folder** works before and after the run. The log
-at the bottom of each panel says exactly what happened in that run; the
+at the foot of the results says exactly what happened in that run; the
 log drawer (⌘L) and the log file hold the app-wide log, described in
 [Privacy](privacy.md#what-the-log-contains).
 
@@ -40,6 +43,7 @@ log drawer (⌘L) and the log file hold the app-wide log, described in
 
 | Keys | Does |
 | --- | --- |
+| ⌘↵ | Run the tool on screen (its button at the foot of the inputs) |
 | ⌘K | Jump to the Resources search box |
 | ⌘O | Classroom with the library picker open |
 | ⌘1 – ⌘9 | Switch tool, top to bottom: ⌘1 Classroom, ⌘2 Marks, ⌘3 Worksheet, ⌘4 Parsons, ⌘5 Quiz, ⌘6 Trace, ⌘7 Bugs, ⌘8 Fade, ⌘9 Pseudocode |

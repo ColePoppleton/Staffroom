@@ -54,6 +54,10 @@ QLabel[role="subtitle"] {{ font-size: 13px; color: {p.text_muted}; }}
 QLabel[role="section"] {{ font-size: 13px; font-weight: 600; color: {p.text}; }}
 QLabel[role="muted"] {{ color: {p.text_muted}; }}
 QLabel[role="faint"] {{ color: {p.text_faint}; font-size: 12px; }}
+QLabel[role="eyebrow"] {{
+    color: {p.text_muted}; font-size: 11px; font-weight: 700; letter-spacing: 1px;
+}}
+QLabel[role="placeholder"] {{ color: {p.text_faint}; font-size: 13px; padding: 24px; }}
 QLabel[role="chip"] {{
     background: {p.accent_soft}; color: {p.accent};
     border-radius: 9px; padding: 1px 8px; font-size: 11px; font-weight: 600;
@@ -158,8 +162,28 @@ QFrame#Card {{
     border-radius: {RADIUS}px;
 }}
 QFrame#Divider {{ background: {p.border}; max-height: 1px; min-height: 1px; border: none; }}
-QWidget#Header {{ background: transparent; }}
-QWidget#Footer {{ background: {p.sidebar}; border-top: 1px solid {p.border}; }}
+
+/* ---------------------------------------------------------- the workbench (tool panels) */
+QWidget#PanelHeader {{ background: {p.window}; border-bottom: 1px solid {p.border}; }}
+QWidget#InputsPane {{ background: {p.window}; border-right: 1px solid {p.border}; }}
+QWidget#RunBar {{ background: {p.sidebar}; }}
+QProgressBar#RunProgress {{
+    background: {p.border}; border-radius: 0px; min-height: 2px; max-height: 2px;
+}}
+QProgressBar#RunProgress::chunk {{ background: {p.accent}; border-radius: 0px; }}
+QWidget#OutputPane {{ background: {p.surface_alt}; }}
+QTabWidget#OutputTabs::pane {{
+    background: transparent; border: none; border-top: 1px solid {p.border}; top: -1px;
+}}
+QTabWidget#OutputTabs > QTabBar {{ background: transparent; }}
+QTabWidget#OutputTabs > QTabBar::tab {{
+    background: transparent; color: {p.text_muted}; font-weight: 600; font-size: 13px;
+    border: none; border-bottom: 2px solid transparent; padding: 7px 14px; margin-right: 2px;
+}}
+QTabWidget#OutputTabs > QTabBar::tab:selected {{
+    color: {p.text}; border-bottom-color: {p.accent};
+}}
+QTabWidget#OutputTabs > QTabBar::tab:hover:!selected {{ color: {p.text}; }}
 
 /* ---------------------------------------------------------- buttons */
 QPushButton {{

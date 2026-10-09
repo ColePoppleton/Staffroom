@@ -6,10 +6,11 @@ from staffroom.shell.widgets.action_table import ActionTableWidget
 from staffroom.shell.widgets.card import Card, Divider, make_label
 from staffroom.shell.widgets.first_run import FirstRunCard
 from staffroom.shell.widgets.image_view import ImageViewWidget
+from staffroom.shell.widgets.input_group import InputGroup, eyebrow
 from staffroom.shell.widgets.options_form import OptionsFormWidget
+from staffroom.shell.widgets.output_pane import OutputPane
 from staffroom.shell.widgets.path_picker import PathPickerWidget
 from staffroom.shell.widgets.resource_picker import ResourcePickerWidget
-from staffroom.shell.widgets.results import ResultsArea
 from staffroom.shell.widgets.run_bar import RunBar
 from staffroom.shell.widgets.string_list import StringListEditor
 from staffroom.shell.widgets.table_view import (
@@ -29,10 +30,11 @@ __all__ = [
     "EditableTableWidget",
     "FirstRunCard",
     "ImageViewWidget",
+    "InputGroup",
     "OptionsFormWidget",
+    "OutputPane",
     "PathPickerWidget",
     "ResourcePickerWidget",
-    "ResultsArea",
     "RunBar",
     "StringListEditor",
     "TableModel",
@@ -41,5 +43,6 @@ __all__ = [
     "TextAreaWidget",
     "TextFieldWidget",
     "TextViewWidget",
+    "eyebrow",
     "make_label",
 ]
