@@ -188,3 +188,27 @@ def test_settings_carries_the_stored_statement(window: MainWindow) -> None:
     assert "library.db" in text
     assert ".py, .txt, .md, .csv and .pdf" in text
     assert "full re-index drops the old entries" in text
+
+
+def test_sidebar_footer_and_header_show_one_count(window: MainWindow) -> None:
+    """#30: "563 files" in the sidebar against "587 files indexed" in the
+    header was hidden cruft counted differently. Both now start with the one
+    line ``LibraryService.counts`` produces, and the sidebar's number is the
+    size of the tree it shows, with Hidden off and on."""
+    window.sidebar.set_mode("resources")
+    panel, page, library = window.sidebar.resources, window.library_page, window.library
+    counts = library.counts()
+    assert counts.hidden > 0 and counts.cloud_only > 0  # the fixture has both flavours
+
+    line = counts.status_line(show_hidden=False)
+    assert panel.status.text() == counts.status_line(show_hidden=False, sep="\n")
+    assert page.index_status.text().startswith(line + "  ·  last index ")
+    assert line.startswith(f"{counts.shown} files ({counts.hidden} hidden)")
+    assert len(library.resources()) == counts.shown
+    assert panel.status.toolTip() == page.index_status.toolTip() != ""
+
+    panel.hidden.setChecked(True)
+    line = counts.status_line(show_hidden=True)
+    assert panel.status.text() == line == f"{counts.indexed} files (incl. {counts.hidden} hidden)"
+    assert page.index_status.text().startswith(line + "  ·  last index ")
+    assert len(library.resources(include_hidden=True)) == counts.indexed

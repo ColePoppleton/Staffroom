@@ -238,7 +238,9 @@ def test_closing_the_window_stops_a_running_index_and_the_next_launch_finishes_i
     with qtbot.waitSignal(again.library_page.indexed, timeout=10000):
         pass
     assert library.last_indexed() is not None and library.count() > 0
-    assert again.sidebar.resources.status.text().endswith("files")
+    assert again.sidebar.resources.status.text() == library.counts().status_line(
+        show_hidden=False, sep="\n"
+    )
 
 
 def test_screenshot_run_stops_a_first_index_before_exit(

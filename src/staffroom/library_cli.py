@@ -76,7 +76,7 @@ def search(
 ) -> None:
     """Search file names and extracted text."""
     svc = _service()
-    if svc.count() == 0:
+    if svc.counts().indexed == 0:
         _require_root(svc)  # a fresh install hears where the folder is set, not "empty"
         typer.secho("index is empty; run  staff library index", fg=typer.colors.YELLOW, err=True)
         raise typer.Exit(1)
@@ -127,7 +127,8 @@ def status() -> None:
     else:
         typer.echo(f"root:        (not set: {_where_to_set_it()})")
     typer.echo(f"database:    {svc.db.path}")
-    typer.echo(f"files:       {svc.count()}")
+    counts = svc.counts()  # the one definition the sidebar and header use too (#30)
+    typer.echo(f"files:       {counts.describe()}")
     typer.echo(f"last index:  {when}")
     typer.echo(f"tags file:   {svc.tags.path} ({len(svc.tags.all_tags())} tags)")
     excl = svc.exclusions()
@@ -135,7 +136,7 @@ def status() -> None:
     typer.echo(
         f"ignore file: {svc.ignore_file} ({'present' if svc.ignore_file.exists() else 'none'})"
     )
-    withheld = svc.withheld_count()
+    withheld = counts.name_only
     typer.echo(f"name only:   {withheld} file{'s' if withheld != 1 else ''}")
     if withheld:
         typer.secho(withheld_message(withheld), fg=typer.colors.YELLOW)

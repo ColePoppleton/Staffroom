@@ -72,6 +72,9 @@ class ResourcesPanel(QWidget):
         footer = QHBoxLayout()
         self.status = QLabel("")
         self.status.setProperty("role", "faint")
+        # "563 files (24 hidden)  ·  3 name only" (#30) is wider than the
+        # footer; wrap rather than clip the privacy-relevant tail.
+        self.status.setWordWrap(True)
         self.reindex = QPushButton("Re-index")
         self.reindex.setProperty("role", "ghost")
         self.reindex.clicked.connect(self.reindex_requested.emit)

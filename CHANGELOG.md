@@ -29,6 +29,14 @@ with every change; `just release <part>` turns it into a version.
   computed every script's total once per comparison, which took a minute for
   3,000 rows. Fixed quietly in 0.4.0 by #12; now measured and guarded by tests
   (3,000 × 30 marks analysed in 0.15 s) (#29).
+- The library's file counts agree everywhere (#30). The sidebar said "563
+  files" and the Resources header "587 files indexed" because one left out
+  hidden cruft and the other did not; a pending exclusion widened the gap.
+  Both now show the one line `LibraryService.counts()` produces, `563 files
+  (24 hidden)  ·  3 name only`, with the hidden shown as a subset instead of
+  silently dropped, and `staff library status` and the index summary print
+  the same tally in long form (`587 indexed: 563 shown, 24 hidden, 2
+  cloud-only, 3 name only`). The definition is in the launcher guide.
 
 ## [0.5.0] - 2026-10-09
 ### Fixed

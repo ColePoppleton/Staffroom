@@ -20,11 +20,11 @@ from PySide6.QtWidgets import (
 from staffroom.core import paths
 from staffroom.core.config import Config, Theme
 from staffroom.core.discovery import discover_plugins, visible_plugins
-from staffroom.core.library.model import IndexStats, withheld_message
+from staffroom.core.library.model import IndexStats
 from staffroom.core.library.service import LibraryService
 from staffroom.core.log import get_logger
 from staffroom.core.plugin import ToolPlugin
-from staffroom.shell.library.page import LibraryPage
+from staffroom.shell.library.page import LibraryPage, counts_detail
 from staffroom.shell.library.picker import pick_resource
 from staffroom.shell.log_drawer import LogDrawer
 from staffroom.shell.settings_page import SettingsPage
@@ -293,13 +293,13 @@ class MainWindow(QMainWindow):
             self.finish_first_run()
 
     def refresh_resources(self) -> None:
-        resources = self.library.resources(include_hidden=self.config.general.show_hidden)
-        status = f"{len(resources)} files" if resources else "Nothing indexed yet"
-        detail = ""
-        withheld = self.library.withheld_count() if resources else 0
-        if withheld:
-            status += f"  ·  {withheld} name only"
-            detail = withheld_message(withheld)
+        show_hidden = self.config.general.show_hidden
+        resources = self.library.resources(include_hidden=show_hidden)
+        # One tally for the footer and the Resources header (#30): the
+        # sidebar's number is the length of the list it shows.
+        counts = self.library.counts()
+        status = counts.status_line(show_hidden=show_hidden, sep="\n")
+        detail = counts_detail(counts) if counts.indexed else ""
         if not self.library.root_set:
             status, detail = "No folder chosen: set it in Settings", ""
         elif not self.library.root_exists:

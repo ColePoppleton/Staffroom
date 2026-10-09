@@ -11,7 +11,7 @@ from staffroom.core import paths
 from staffroom.core.library.db import LibraryDB
 from staffroom.core.library.exclude import ExclusionList, ignore_file_path, read_ignore_file
 from staffroom.core.library.index import Indexer, Progress
-from staffroom.core.library.model import IndexStats, Kind, Resource, SearchHit
+from staffroom.core.library.model import IndexStats, Kind, LibraryCounts, Resource, SearchHit
 from staffroom.core.library.tags import TagEntry, TagStore
 
 Opener = Callable[[Sequence[str]], None]
@@ -117,13 +117,22 @@ class LibraryService:
             raise FileNotFoundError(msg)
         return Indexer(self.root, self.db, self.exclusions()).run(full=full, progress=progress)
 
+    def counts(self) -> LibraryCounts:
+        """The one definition of "how many files" (#30): a tally over
+        :meth:`resources` with hidden included, so a freshly excluded folder
+        leaves the counts the moment it leaves the listing. The sidebar
+        footer, the Resources header, ``staff library status`` and the index
+        summary all show these numbers; nothing else counts rows."""
+        return LibraryCounts.tally(self.resources(include_hidden=True))
+
     def count(self) -> int:
-        return self.db.count()
+        """``counts().indexed``: every listable file, hidden ones included."""
+        return self.counts().indexed
 
     def withheld_count(self) -> int:
-        """Indexed files whose text was withheld because it looked like pupil
-        details. Shown in the sidebar status and ``staff library status``."""
-        return self.db.withheld_count()
+        """``counts().name_only``: files whose text was withheld because it
+        looked like pupil details."""
+        return self.counts().name_only
 
     def withheld_paths(self) -> list[str]:
         return self.db.withheld_paths()

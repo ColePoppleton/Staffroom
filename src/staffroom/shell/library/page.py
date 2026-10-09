@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from staffroom.core.config import Config
-from staffroom.core.library.model import IndexStats, Kind, withheld_message
+from staffroom.core.library.model import IndexStats, Kind, LibraryCounts, withheld_message
 from staffroom.core.library.service import LibraryService
 from staffroom.core.log import get_logger
 from staffroom.shell.library.preview import PreviewPane
@@ -26,6 +26,15 @@ from staffroom.shell.widgets import make_label
 
 log = get_logger(__name__)
 REL_ROLE = Qt.ItemDataRole.UserRole
+
+
+def counts_detail(counts: LibraryCounts) -> str:
+    """The tooltip behind a terse count: the long form, and why some files
+    are name only. Shared by the sidebar footer and the Resources header."""
+    detail = counts.describe()
+    if counts.name_only:
+        detail += "\n" + withheld_message(counts.name_only)
+    return detail
 
 
 class LibraryPage(QWidget):
@@ -89,12 +98,12 @@ class LibraryPage(QWidget):
             if last
             else "never"
         )
-        text = f"{self.service.count()} files indexed  ·  last index {when}"
-        withheld = self.service.withheld_count()
-        if withheld:
-            text += f"  ·  {withheld} name only"
-        self.index_status.setText(text)
-        self.index_status.setToolTip(withheld_message(withheld) if withheld else "")
+        # The same line the sidebar footer shows, from the same tally (#30).
+        counts = self.service.counts()
+        self.index_status.setText(
+            f"{counts.status_line(show_hidden=self.show_hidden)}  ·  last index {when}"
+        )
+        self.index_status.setToolTip(counts_detail(counts))
         if not self.service.root_set:
             self.subtitle.setText("No folder chosen yet: set it in Settings")
         else:
@@ -117,6 +126,7 @@ class LibraryPage(QWidget):
 
     def set_show_hidden(self, show: bool) -> None:
         self.show_hidden = show
+        self.refresh_status()
         self._run_search()
 
     def _run_search(self) -> None:

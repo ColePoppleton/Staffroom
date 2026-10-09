@@ -12,6 +12,20 @@ one or skip it and set it later in Settings.
 
 ![The first-run card](../first-run-dark.png)
 
+### How files are counted
+
+Every file count the library reports comes from one tally, so the sidebar
+footer, the Resources header, `staff library status` and the index summary
+always agree. A file is **indexed** when it is under the resources folder and
+the exclusion list allows it; the excluded are never counted. Hidden cruft
+(`.DS_Store`, `__pycache__`, zips, dot-files), cloud placeholders and files
+indexed by name only *are* counted, and reported as subsets rather than
+subtracted silently. **Shown** is indexed minus hidden: what the tree lists
+with *Hidden* off. So `563 files (24 hidden)  ·  3 name only` means 587 are
+indexed, the tree lists 563, and turning *Hidden* on makes it `587 files
+(incl. 24 hidden)`. `staff library status` prints the long form:
+`587 indexed: 563 shown, 24 hidden, 2 cloud-only, 3 name only`.
+
 Pick a tool, fill in its panel top to bottom, press the big button. Results
 appear below the inputs and files are written to the output folder, which the
 run bar names before you press Run: next to the input by default,

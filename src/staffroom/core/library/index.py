@@ -12,7 +12,7 @@ from pathlib import Path
 from staffroom.core.library.db import LibraryDB
 from staffroom.core.library.exclude import ExclusionList
 from staffroom.core.library.extract import CloudOnlyError, extract_text
-from staffroom.core.library.model import IndexStats, Resource
+from staffroom.core.library.model import IndexStats, LibraryCounts, Resource
 from staffroom.core.library.scan import scan
 from staffroom.core.log import get_logger
 from staffroom.core.privacy import find_identifier_text
@@ -47,6 +47,10 @@ class Indexer:
             self.db.commit()
         stale = [rel for rel in self.db.signatures() if rel not in seen]
         stats.removed = self.db.remove(stale)
+        # Excluded paths were never scanned and stale rows are gone, so the
+        # database now holds exactly the listable set: the same tally
+        # ``LibraryService.counts`` makes (#30).
+        stats.counts = LibraryCounts.tally(self.db.all(include_hidden=True))
         stats.seconds = time.perf_counter() - started
         self.db.set_meta("last_indexed", datetime.now(UTC).isoformat(timespec="seconds"))
         self.db.set_meta("root", str(self.root))
