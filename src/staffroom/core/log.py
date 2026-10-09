@@ -1,7 +1,8 @@
 """Logging setup shared by the CLI and the shell.
 
 The shell attaches an extra handler that feeds its log drawer; the CLI gets
-stderr. Both also write to a rotating file under the config directory.
+stderr. Both also write to a rotating file under the config directory when
+that directory can be written; when it cannot, they carry on with stderr.
 """
 
 from __future__ import annotations
@@ -42,8 +43,15 @@ def get_logger(name: str) -> logging.Logger:
 
 def setup_logging(
     level: str = "INFO", *, log_file: Path | None = None, stderr: bool = True
-) -> None:
-    """Idempotent: calling twice replaces the handlers rather than doubling them."""
+) -> Path | None:
+    """Idempotent: calling twice replaces the handlers rather than doubling them.
+
+    Returns the log file in use, or ``None`` when it could not be opened. A
+    config home that cannot be written (a locked-down school account, #60)
+    must never stop a command: logging then falls back to stderr alone, with
+    one warning line saying so. The launcher asks for no stderr handler; in
+    the fallback it gets one anyway, or the warning would have nowhere to go.
+    """
     logger = logging.getLogger(ROOT_LOGGER)
     logger.setLevel(level.upper())
     logger.propagate = False
@@ -52,11 +60,26 @@ def setup_logging(
         handler.close()
     formatter = logging.Formatter(FORMAT, DATEFMT)
     if stderr:
-        sh = _StderrHandler()
-        sh.setFormatter(formatter)
-        logger.addHandler(sh)
+        logger.addHandler(_stderr_handler(formatter))
     log_file = log_file or paths.log_file()
-    log_file.parent.mkdir(parents=True, exist_ok=True)
-    fh = RotatingFileHandler(log_file, maxBytes=512_000, backupCount=3, encoding="utf-8")
+    try:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        fh = RotatingFileHandler(log_file, maxBytes=512_000, backupCount=3, encoding="utf-8")
+    except OSError as exc:
+        if not stderr:
+            logger.addHandler(_stderr_handler(formatter))
+        logger.warning(
+            "Cannot open the log file %s (%s); logging to stderr only for this run",
+            log_file,
+            exc.strerror or exc,
+        )
+        return None
     fh.setFormatter(formatter)
     logger.addHandler(fh)
+    return log_file
+
+
+def _stderr_handler(formatter: logging.Formatter) -> logging.Handler:
+    sh = _StderrHandler()
+    sh.setFormatter(formatter)
+    return sh

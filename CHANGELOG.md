@@ -7,6 +7,12 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Fixed
+- `staff` no longer dies with a `PermissionError` traceback when the config
+  home (`~/.config/staffroom/` or `STAFFROOM_HOME`) cannot be written (#60).
+  `setup_logging` used to create `logs/` and open the log file with no
+  fallback, before any command ran; it now carries on with stderr alone and
+  prints one warning line naming the file it could not open. The launcher
+  takes the same path, so its startup gets the same fallback.
 - `staff usage` now counts CLI runs as well as launcher runs (#28): every
   `staff <tool> <command>` that finishes without a `ToolError` is recorded by
   the one wrapper in `cli.py`, so no tool needs its own call. The total stays

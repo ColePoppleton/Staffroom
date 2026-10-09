@@ -111,8 +111,11 @@ editor command Classroom launched. It is shown, not saved.
 **The app log** is the log drawer in the launcher (⌘L) and a file,
 `~/.config/staffroom/logs/staffroom.log`. The file rotates at 512 KB and
 keeps three older copies (`staffroom.log.1` to `.3`), so the folder never
-grows past about 2 MB; `staff` prints the same lines to stderr. Each line
-is a time, a level, the module and a message, and the messages hold:
+grows past about 2 MB; `staff` prints the same lines to stderr. If the
+config folder cannot be written (a locked-down school account), the file is
+skipped: one warning line says so, the run carries on, and the log goes to
+stderr only. Each line is a time, a level, the module and a message, and the
+messages hold:
 
 - which tool started and finished, with its one-line summary (*"12 scripts
   graded; aggregates saved to …"*);
