@@ -15,6 +15,15 @@ with every change; `just release <part>` turns it into a version.
   design pass over every section, eight redesigns shown as mockups beside today's screens
   (`docs/audits/2026-10-09/`), and the "Phase 9: The workbench" milestone (#80–#92).
 
+### Fixed
+- Quiz no longer overwrites one kind of sheet with another (#82). A retrieval
+  run is named for its date, `question_bank_retrieval_2026-10-09_donow_s1.pdf`,
+  and every export carries its seed, `question_bank_donow_s1.pdf`,
+  `question_bank_kahoot_s1.xlsx`, `question_bank_forms_s1.txt`, so a do-now and
+  the retrieval starter made after it both stay in the folder. A run that
+  replaces a file of the same name still overwrites it, but the log and the
+  summary now name it (`replaced question_bank_donow_s1.pdf`).
+
 ## [0.6.0] - 2026-10-09
 ### Added
 - Trace has a Preset dropdown with **Full trace** (the default, as before) and

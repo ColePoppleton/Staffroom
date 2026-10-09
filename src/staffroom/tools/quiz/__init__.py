@@ -48,6 +48,15 @@ def load_taught_log(path: Path, ctx: RunContext) -> Table:
     return table
 
 
+def _names_in(folder: Path) -> set[str]:
+    """The file names already in the output folder, so a run can say which of
+    its files replaced an earlier one rather than overwriting it silently."""
+    try:
+        return {p.name for p in folder.iterdir()}
+    except OSError:  # not there yet, or unreadable: nothing to replace
+        return set()
+
+
 def _as_of(text: str) -> date:
     """The retrieval date from the option, today when blank."""
     if not text.strip():
@@ -86,6 +95,7 @@ class QuizPlugin:
         pool = logic.filter_questions(bank.questions, options.topics, options.spec)
         ctx.log(f"{len(bank.questions)} questions in the bank, {len(pool)} after filters")
 
+        today: date | None = None
         if options.retrieval:
             log_path: Path | None = inputs.get("taught_log")
             if log_path is None:
@@ -107,7 +117,8 @@ class QuizPlugin:
                 raise ToolError("No questions match those filters.")
 
         notes: list[str] = []
-        stem = source.stem
+        stem = logic.output_stem(source.stem, options, today)
+        existing = _names_in(ctx.output_dir)
         written = chosen
         count_phrase = f"{len(chosen)} questions"
         ctx.progress(0.6, "Writing")
@@ -140,12 +151,21 @@ class QuizPlugin:
             preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
         for n in notes:
             ctx.log("Note: " + n)
+        summary = f"{count_phrase} → {', '.join(f.name for f in files)} in {ctx.output_dir}"
+        replaced = [f.name for f in files if f.name in existing]
+        if replaced:
+            ctx.log(
+                "Replaced the earlier file(s) of the same name: "
+                + ", ".join(replaced)
+                + ". Change the seed to keep both."
+            )
+            summary += "; replaced " + ", ".join(replaced)
         ctx.progress(1.0, "Done")
         return RunResult(
             tables={"chosen": logic.selection_table(written)},
             texts={"preview": preview},
             files=files,
-            summary=f"{count_phrase} → {', '.join(f.name for f in files)} in {ctx.output_dir}",
+            summary=summary,
         )
 
 

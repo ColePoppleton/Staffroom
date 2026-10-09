@@ -220,8 +220,8 @@ def test_kahoot_rows_and_files(bank: logic.Bank, tmp_path: Path) -> None:
     assert "SMTP" in smtp[1:5] and all(smtp[1:5])  # distractors borrowed from other short answers
     assert all(int(r[5]) in logic.KAHOOT_TIMES for r in rows)
 
-    files = write_kahoot(rows, tmp_path, "bank")
-    assert [f.name for f in files] == ["bank_kahoot.xlsx", "bank_kahoot.csv"]
+    files = write_kahoot(rows, tmp_path, "bank_kahoot_s1")
+    assert [f.name for f in files] == ["bank_kahoot_s1.xlsx", "bank_kahoot_s1.csv"]
     ws = load_workbook(files[0]).active
     assert ws is not None
     headers = [ws.cell(row=8, column=c).value for c in range(2, 9)]
@@ -326,10 +326,10 @@ def test_plugin_kahoot_summary_and_table_match_the_file(tmp_path: Path) -> None:
     result = plugin.run({"source": small, "options": options}, ctx)
     numbers = [row[0] for row in result.tables["chosen"].rows]
     assert numbers == [1, 2, 3, 4], "the skipped short answer must not be in the chosen table"
-    body = (out / "small_kahoot.csv").read_text().split("\n", 1)[1]  # after the FAKE marker
+    body = (out / "small_kahoot_s1.csv").read_text().split("\n", 1)[1]  # after the FAKE marker
     data_rows = list(csv.reader(io.StringIO(body)))[1:]
     assert len(data_rows) == len(numbers) == 4
-    assert result.summary.startswith("4 of 5 written; 1 short answer skipped: Q5 → small_kahoot")
+    assert result.summary.startswith("4 of 5 written; 1 short answer skipped: Q5 → small_kahoot_s1")
     assert any("Q5 skipped for Kahoot" in m and "found 0" in m for m in logged)
 
     # When nothing can be written the teacher gets a ToolError, not an empty file.
@@ -354,10 +354,10 @@ def test_forms_text_and_donow(bank: logic.Bank, tmp_path: Path) -> None:
         ctx,
     )
     assert sorted(p.name for p in tmp_path.iterdir()) == [
-        "question_bank_donow.docx",
-        "question_bank_donow.pdf",
-        "question_bank_donow_key.docx",
-        "question_bank_donow_key.pdf",
+        "question_bank_donow_s2.docx",
+        "question_bank_donow_s2.pdf",
+        "question_bank_donow_s2_key.docx",
+        "question_bank_donow_s2_key.pdf",
     ]
     assert "ANSWER KEY" in result.texts["preview"] and result.tables["chosen"].shape[0] == 4
 
@@ -393,7 +393,7 @@ def test_plugin_retrieval_and_cli(tmp_path: Path) -> None:
         ],
     )
     assert r.exit_code == 0, r.output
-    assert (tmp_path / "question_bank_kahoot.xlsx").exists()
+    assert (tmp_path / "question_bank_kahoot_s1.xlsx").exists()
     r = runner.invoke(app, ["quiz", "list", "--bank", str(EXAMPLES / "question_bank.md")])
     assert r.exit_code == 0 and "13 questions" in r.output
     r = runner.invoke(app, ["quiz", "check", "--bank", str(EXAMPLES / "question_bank.md")])
@@ -417,3 +417,63 @@ def test_plugin_retrieval_and_cli(tmp_path: Path) -> None:
     )
     assert r.exit_code == 0, r.output
     assert "networks" in r.output or "loops" in r.output
+
+
+def test_output_stem_names_the_kind_of_sheet() -> None:
+    day = date(2026, 10, 9)
+    assert logic.output_stem("bank", Options(fmt="donow", seed=1)) == "bank_donow_s1"
+    assert logic.output_stem("bank", Options(fmt="kahoot", seed=7), day) == "bank_kahoot_s7"
+    retrieval = Options(fmt="donow", seed=1, retrieval=True)
+    assert logic.output_stem("bank", retrieval, day) == "bank_retrieval_2026-10-09_donow_s1"
+    forms = Options(fmt="forms", seed=3, retrieval=True)
+    assert logic.output_stem("bank", forms, day) == "bank_retrieval_2026-10-09_forms_s3"
+
+
+def test_export_then_retrieval_in_one_folder_leaves_both_sets(tmp_path: Path) -> None:
+    # #82: Monday's do-now, then a retrieval starter, into the same folder.
+    logged: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path, log=logged.append)
+    bank_path = EXAMPLES / "question_bank.md"
+    donow = plugin.run({"source": bank_path, "options": Options(fmt="donow", count=4)}, ctx)
+    retrieval = plugin.run(
+        {
+            "source": bank_path,
+            "taught_log": EXAMPLES / "taught_log.csv",
+            "options": Options(fmt="donow", retrieval=True, today="2026-10-08", count=4),
+        },
+        ctx,
+    )
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "question_bank_donow_s1.docx",
+        "question_bank_donow_s1.pdf",
+        "question_bank_donow_s1_key.docx",
+        "question_bank_donow_s1_key.pdf",
+        "question_bank_retrieval_2026-10-08_donow_s1.docx",
+        "question_bank_retrieval_2026-10-08_donow_s1.pdf",
+        "question_bank_retrieval_2026-10-08_donow_s1_key.docx",
+        "question_bank_retrieval_2026-10-08_donow_s1_key.pdf",
+    ]
+    assert "replaced" not in donow.summary and "replaced" not in retrieval.summary
+    assert not any(m.startswith("Replaced") for m in logged)
+
+
+def test_a_repeat_run_says_which_files_it_replaced(tmp_path: Path) -> None:
+    logged: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path, log=logged.append)
+    inputs = {"source": EXAMPLES / "question_bank.md", "options": Options(fmt="forms", count=3)}
+    first = plugin.run(inputs, ctx)
+    assert "replaced" not in first.summary and logged and not any("Replaced" in m for m in logged)
+    # Different filters, same seed: the same name, so the earlier sheet is replaced, and said so.
+    again = {**inputs, "options": Options(fmt="forms", count=3, topics="binary")}
+    second = plugin.run(again, ctx)
+    assert [p.name for p in tmp_path.iterdir()] == ["question_bank_forms_s1.txt"]
+    assert second.summary.endswith("; replaced question_bank_forms_s1.txt")
+    assert (
+        "Replaced the earlier file(s) of the same name: question_bank_forms_s1.txt. "
+        "Change the seed to keep both."
+    ) in logged
+    # Any other file already in the folder is left alone and not mentioned.
+    (tmp_path / "notes.txt").write_text("FAKE DATA", encoding="utf-8")
+    third = plugin.run({**inputs, "options": Options(fmt="forms", count=3, seed=2)}, ctx)
+    assert "replaced" not in third.summary
+    assert (tmp_path / "question_bank_forms_s1.txt").exists()

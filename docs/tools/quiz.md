@@ -15,9 +15,14 @@ See [Question banks](../guide/question-banks.md) for the file format.
 | forms | numbered text with lettered options and a separate answers block |
 | donow | house-style docx and PDF with the key split off |
 
-Files are named after the bank: `<bank>_kahoot.xlsx` and `.csv`,
-`<bank>_forms.txt`, `<bank>_donow.docx` / `.pdf` and `<bank>_donow_key`
-([Outputs](../guide/outputs.md)). Retrieval mode looks at the topics taught
+Files are named after the bank, the kind of sheet and the seed:
+`<bank>_kahoot_s1.xlsx` and `.csv`, `<bank>_forms_s1.txt`,
+`<bank>_donow_s1.docx` / `.pdf` and `<bank>_donow_s1_key`. A retrieval run
+adds the date it picked for, `<bank>_retrieval_2026-10-08_donow_s1.pdf`, so
+it never replaces the do-now made before it. A run that does replace a file
+of the same name (same bank, kind, date and seed) says so in the log and
+summary; change the seed to keep both ([Outputs](../guide/outputs.md)).
+Retrieval mode looks at the topics taught
 one, three and six weeks ago, each with three days' leeway, and draws
 questions round-robin across the three windows; the run log lists what fell
 in each, and names any taught-log column other than `date` and `topic` as

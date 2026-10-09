@@ -14,8 +14,8 @@ KAHOOT_HEADER_ROW = 8  # the official template has instructions above, headers o
 
 
 def write_kahoot(rows: list[list[str]], out_dir: Path, stem: str) -> list[Path]:
-    """Kahoot's spreadsheet layout (.xlsx: headers on row 8, data from row 9,
-    question number in column A) plus a plain .csv with the same headers.
+    """``<stem>.xlsx`` in Kahoot's spreadsheet layout (headers on row 8, data from
+    row 9, question number in column A) plus ``<stem>.csv`` with the same headers.
     ``rows`` come from :func:`staffroom.tools.quiz.logic.kahoot_sheet`."""
     out_dir.mkdir(parents=True, exist_ok=True)
     wb = Workbook()
@@ -34,9 +34,9 @@ def write_kahoot(rows: list[list[str]], out_dir: Path, stem: str) -> list[Path]:
             ws.cell(
                 row=KAHOOT_HEADER_ROW + i, column=col, value=int(value) if col in (7,) else value
             )
-    xlsx = out_dir / f"{stem}_kahoot.xlsx"
+    xlsx = out_dir / f"{stem}.xlsx"
     wb.save(xlsx)
-    csv_path = out_dir / f"{stem}_kahoot.csv"
+    csv_path = out_dir / f"{stem}.csv"
     csv_path.write_text(kahoot_csv_text(rows), encoding="utf-8")
     return [xlsx, csv_path]
 
@@ -51,7 +51,7 @@ def kahoot_csv_text(rows: list[list[str]]) -> str:
 
 def write_forms(questions: list[Question], out_dir: Path, stem: str, title: str) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{stem}_forms.txt"
+    path = out_dir / f"{stem}.txt"
     path.write_text(forms_text(questions, title), encoding="utf-8")
     return [path]
 
@@ -93,4 +93,4 @@ def donow_document(questions: list[Question], title: str, today: date | None = N
 def write_donow(
     questions: list[Question], out_dir: Path, stem: str, title: str, style: HouseStyle | None = None
 ) -> list[Path]:
-    return export(donow_document(questions, title), out_dir, f"{stem}_donow", style=style)
+    return export(donow_document(questions, title), out_dir, stem, style=style)

@@ -260,6 +260,18 @@ def choose(questions: list[Question], count: int, seed: int) -> list[Question]:
     return sorted(pool[:count], key=lambda q: q.number)
 
 
+def output_stem(bank_stem: str, options: Options, as_of: date | None = None) -> str:
+    """The file stem for one run, so different kinds of sheet never share a name.
+
+    An export is ``<bank>_<format>_s<seed>`` (``question_bank_donow_s1``); a
+    retrieval run adds the date it was picked for,
+    ``<bank>_retrieval_<YYYY-MM-DD>_<format>_s<seed>``. The seed is last, as on
+    worksheets, and the same bank, kind, date, format and seed always give the
+    same name: that is a regenerated sheet, and it replaces the earlier one."""
+    kind = f"retrieval_{(as_of or date.today()).isoformat()}_" if options.retrieval else ""
+    return f"{bank_stem}_{kind}{options.fmt}_s{options.seed}"
+
+
 # ---------------------------------------------------------------- retrieval
 @dataclass(frozen=True)
 class TaughtEntry:
