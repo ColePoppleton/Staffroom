@@ -13,7 +13,11 @@ promote the edited version back beside the original as `name_v2.py`.
 2. **Lesson label**: one short line, e.g. `P3 Y9 loops`. Not a class, not pupils.
 3. **Open for class**.
 
-**Past sessions** lists every copy. Select one for *Diff vs original*,
+**Past sessions** lists every copy classroom made: the files in each
+`<date>/<lesson label>/` folder that has a `.origin.json`. Anything else in
+the sessions folder is left out, including `outputs/`, where tools save
+sheets made with no input of their own ([Outputs](../guide/outputs.md)),
+and folders or files you put there by hand. Select one for *Diff vs original*,
 *Re-open* or *Promote* (copies back next to the original under a new
 versioned name; never overwrites). Promote first compares the copy with the
 original and with the latest promoted version: an unchanged copy writes

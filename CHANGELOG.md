@@ -16,6 +16,13 @@ with every change; `just release <part>` turns it into a version.
   (`docs/audits/2026-10-09/`), and the "Phase 9: The workbench" milestone (#80–#92).
 
 ### Fixed
+- Classroom's **Past sessions** no longer lists the tools' shared output folder
+  (#97). A worksheet made with no input of its own goes to
+  `<sessions folder>/outputs/worksheet/`, and it showed up as a lesson on day
+  `outputs` with Diff and Promote buttons. Only real sessions are listed now: a
+  date-named day folder holding lesson folders with a `.origin.json`
+  (`classroom.logic.is_session_folder`); stray files and hand-made folders are
+  left out too.
 - Quiz no longer overwrites one kind of sheet with another (#82). A retrieval
   run is named for its date, `question_bank_retrieval_2026-10-09_donow_s1.pdf`,
   and every export carries its seed, `question_bank_donow_s1.pdf`,

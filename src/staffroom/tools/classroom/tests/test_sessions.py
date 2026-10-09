@@ -153,6 +153,31 @@ def test_diff_and_promote_without_origin(tmp_path: Path) -> None:
         sessions.resolve_session_file(tmp_path / "sessions", "2026-10-06/x/missing.py")
 
 
+def test_list_sessions_lists_only_real_sessions(
+    resources_root: Path, tmp_path: Path, runner: Runner
+) -> None:
+    """Only <date>/<label>/ folders classroom made are sessions: the shared
+    tool output folder, stray files and hand-made folders are not (#97)."""
+    root = tmp_path / "sessions"
+    original = resources_root / "Python" / "Python_Course" / "while_loops.py"
+    sessions.open_for_class(
+        original, "P3 Y9 loops", root, "open {file}", today=date(2026, 10, 6), runner=runner
+    )
+    # What a tool writes with no input of its own (core.paths.fallback_output_dir).
+    (root / "outputs" / "worksheet").mkdir(parents=True)
+    (root / "outputs" / "worksheet" / "sheet.pdf").write_bytes(b"%PDF")
+    (root / "notes.txt").write_text("x")
+    (root / "Spare" / "old").mkdir(parents=True)
+    (root / "Spare" / "old" / "a.py").write_text("x")
+    (root / "2026-10-06" / "loose.py").write_text("x")
+    (root / "2026-10-06" / "scratch").mkdir()
+    (root / "2026-10-06" / "scratch" / "b.py").write_text("x")
+
+    listed = sessions.list_sessions(root)
+    assert [f.rel_path for f in listed] == ["2026-10-06/P3 Y9 loops/while_loops.py"]
+    assert sessions.list_sessions(root / "outputs") == []
+
+
 def test_label_is_validated(resources_root: Path, tmp_path: Path, runner: Runner) -> None:
     original = resources_root / "Python" / "notes.md"
     with pytest.raises(ValueError, match="short label"):
