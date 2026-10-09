@@ -125,6 +125,10 @@ def _save_screenshot(app: QApplication, window: MainWindow, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     ok = window.grab().save(str(path))
     print(("saved " if ok else "FAILED to save ") + str(path))
+    # A first index may still be running (a fresh home, or a folder indexed
+    # for the first time): stop it before the window goes, or Qt aborts the
+    # process after the PNG is written (#40).
+    window.wait_for_workers()
     app.exit(0 if ok else 1)
 
 

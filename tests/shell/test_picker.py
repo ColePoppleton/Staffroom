@@ -24,6 +24,7 @@ def test_tree_then_results(qtbot: QtBot, service: LibraryService, resources_root
 
     dialog.search.setText("while")
     assert dialog.stack.currentWidget() is dialog.results
+    # item(i) wrappers are dropped with each comprehension; the list is not cleared meanwhile (#54).
     rels = [dialog.results.item(i).data(REL_ROLE) for i in range(dialog.results.count())]
     assert "Python/Python_Course/while_loops.py" in rels
     assert "Python/Python_Course/while_loops.pptx" in rels  # by name

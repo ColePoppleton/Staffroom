@@ -8,23 +8,15 @@ from pathlib import Path
 from openpyxl import Workbook
 
 from staffroom.core.export import Document, HouseStyle, Numbered, Paragraph, export
-from staffroom.tools.quiz.logic import (
-    KAHOOT_HEADERS,
-    Question,
-    forms_text,
-    kahoot_csv,
-    kahoot_rows,
-)
+from staffroom.tools.quiz.logic import KAHOOT_HEADERS, Question, forms_text, kahoot_csv
 
 KAHOOT_HEADER_ROW = 8  # the official template has instructions above, headers on row 8
 
 
-def write_kahoot(
-    questions: list[Question], out_dir: Path, stem: str, notes: list[str]
-) -> list[Path]:
+def write_kahoot(rows: list[list[str]], out_dir: Path, stem: str) -> list[Path]:
     """Kahoot's spreadsheet layout (.xlsx: headers on row 8, data from row 9,
-    question number in column A) plus a plain .csv with the same headers."""
-    rows = kahoot_rows(questions, notes)
+    question number in column A) plus a plain .csv with the same headers.
+    ``rows`` come from :func:`staffroom.tools.quiz.logic.kahoot_sheet`."""
     out_dir.mkdir(parents=True, exist_ok=True)
     wb = Workbook()
     ws = wb.active
@@ -45,17 +37,10 @@ def write_kahoot(
     xlsx = out_dir / f"{stem}_kahoot.xlsx"
     wb.save(xlsx)
     csv_path = out_dir / f"{stem}_kahoot.csv"
-    csv_path.write_text(
-        "# FAKE DATA\n" + kahoot_csv(rows) if _marked(questions) else kahoot_csv(rows),
-        encoding="utf-8",
-    )
-    return [xlsx, csv_path]
-
-
-def _marked(questions: list[Question]) -> bool:
     # Question banks never hold pupil data, but the pre-commit hook wants a
     # marker on any committed CSV; keep outputs committable in examples/.
-    return True
+    csv_path.write_text("# FAKE DATA\n" + kahoot_csv(rows), encoding="utf-8")
+    return [xlsx, csv_path]
 
 
 def write_forms(questions: list[Question], out_dir: Path, stem: str, title: str) -> list[Path]:

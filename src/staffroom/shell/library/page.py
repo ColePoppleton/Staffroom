@@ -120,7 +120,7 @@ class LibraryPage(QWidget):
         self._run_search()
 
     def _run_search(self) -> None:
-        self.results.clear()
+        self.results.clear()  # invalidates the row wrappers too, unlike QStandardItemModel (#54)
         if not self.query:
             self.results.hide()
             return
@@ -162,9 +162,25 @@ class LibraryPage(QWidget):
         worker.progress.connect(self._on_progress)
         worker.succeeded.connect(self._on_indexed)
         worker.failed.connect(self._on_index_failed)
+        worker.cancelled.connect(self._on_index_cancelled)
         worker.finished.connect(self._on_worker_finished)
         self.worker = worker
         worker.start()
+
+    def stop_index(self, timeout_ms: int = 10_000) -> bool:
+        """Stop a running index at the next file and wait for its thread.
+        Called before the window goes away: a ``QThread`` destroyed while
+        running aborts the whole process. Returns True when no index thread
+        is running afterwards; the indexer keeps what it had done so far and
+        the next launch finishes the job (no ``last_indexed`` is stamped)."""
+        worker = self.worker
+        if worker is None or not worker.isRunning():
+            return True
+        worker.requestInterruption()
+        stopped = worker.wait(timeout_ms)
+        if not stopped:
+            log.error("library index did not stop within %d ms", timeout_ms)
+        return stopped
 
     def _on_worker_finished(self) -> None:
         if self.worker is not None:
@@ -185,6 +201,11 @@ class LibraryPage(QWidget):
         self._run_search()
         log.info("library: %s", stats.summary())
         self._last_stats = stats
+
+    def _on_index_cancelled(self) -> None:
+        self.progress.hide()
+        self.refresh_status()
+        log.info("library index stopped early; it resumes on the next launch")
 
     def _on_index_failed(self, message: str) -> None:
         self.progress.hide()

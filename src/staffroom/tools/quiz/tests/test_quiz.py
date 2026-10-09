@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 
 from staffroom.cli import app
 from staffroom.core.config import load_config
-from staffroom.core.plugin import RunContext
+from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.quiz import logic, plugin
 from staffroom.tools.quiz.export import write_kahoot
 from staffroom.tools.quiz.logic import KAHOOT_HEADERS, Options
@@ -85,9 +85,10 @@ def test_retrieval_picks_only_from_taught_windows(bank: logic.Bank) -> None:
 
 
 def test_kahoot_rows_and_files(bank: logic.Bank, tmp_path: Path) -> None:
-    notes: list[str] = []
-    rows = logic.kahoot_rows(bank.questions, notes)
+    sheet = logic.kahoot_sheet(bank.questions)
+    rows = sheet.rows
     assert all(len(r) == 7 for r in rows)
+    assert len(rows) == len(sheet.written) == 13 and sheet.skipped == ()
     assert rows[0][0] == "What does CPU stand for?" and rows[0][6] == "1" and rows[0][5] == "20"
     tf = next(r for r in rows if r[0] == "RAM is volatile.")
     assert tf[1:5] == ["True", "False", "", ""] and tf[6] == "1"
@@ -97,7 +98,7 @@ def test_kahoot_rows_and_files(bank: logic.Bank, tmp_path: Path) -> None:
     assert "SMTP" in smtp[1:5] and all(smtp[1:5])  # distractors borrowed from other short answers
     assert all(int(r[5]) in logic.KAHOOT_TIMES for r in rows)
 
-    files = write_kahoot(bank.questions, tmp_path, "bank", notes)
+    files = write_kahoot(rows, tmp_path, "bank")
     assert [f.name for f in files] == ["bank_kahoot.xlsx", "bank_kahoot.csv"]
     ws = load_workbook(files[0]).active
     assert ws is not None
@@ -111,10 +112,109 @@ def test_kahoot_rows_and_files(bank: logic.Bank, tmp_path: Path) -> None:
 
 def test_clipping_and_time_snapping() -> None:
     long = logic.Question(1, "x" * 130, "mcq", ("a" * 80, "b"), (0,), "", (), 25)
-    notes: list[str] = []
-    rows = logic.kahoot_rows([long], notes)
+    sheet = logic.kahoot_sheet([long])
+    rows = sheet.rows
     assert len(rows[0][0]) == 120 and len(rows[0][1]) == 75 and rows[0][5] == "20"
-    assert len(notes) == 2
+    assert len(sheet.notes) == 2
+
+
+def _short(number: int, text: str, answer: str, tags: str) -> logic.Question:
+    return logic.Question(number, text, "short", (), (), answer, tuple(tags.split(",")))
+
+
+def test_kahoot_distractors_prefer_topic_then_spec_then_anywhere() -> None:
+    # Q1 is the question; the only same-topic donor is Q2, the only same-spec-section
+    # donor is Q3, and Q4..Q6 are unrelated. All three tiers must be used, nearest first.
+    q = _short(1, "1010 in denary?", "10", "ocr:1.2.4,topic:binary")
+    pool = [
+        q,
+        _short(2, "255 in binary?", "11111111", "ocr:1.2.4,topic:binary"),
+        _short(3, "Bits in a byte?", "8", "ocr:1.2.3,topic:data"),
+        _short(4, "Email protocol?", "SMTP", "ocr:1.3.2,topic:networks"),
+        _short(5, "Web protocol?", "HTTP", "ocr:1.3.2,topic:networks"),
+        _short(6, "Secure web protocol?", "HTTPS", "ocr:1.3.2,topic:networks"),
+    ]
+    sheet = logic.kahoot_sheet([q], pool)
+    options = set(sheet.rows[0][1:5])
+    assert {"10", "11111111", "8"} <= options and len(options & {"SMTP", "HTTP", "HTTPS"}) == 1
+    # Within the topic there is nothing to say; outside it the note names the sources.
+    assert len(sheet.notes) == 1
+    note = sheet.notes[0]
+    assert note.startswith("Q1: ") and "outside topic 'binary'" in note
+    assert "'8' (Q3, data)" in note
+    assert any(f"(Q{n}, networks)" in note for n in (4, 5, 6))
+
+    # Enough same-topic donors: nothing borrowed from elsewhere, no note.
+    binary = [
+        q,
+        _short(2, "a", "11111111", "topic:binary"),
+        _short(3, "b", "1F", "topic:binary"),
+        _short(4, "c", "8", "topic:binary"),
+        _short(5, "d", "SMTP", "topic:networks"),
+    ]
+    sheet = logic.kahoot_sheet([q], binary)
+    assert set(sheet.rows[0][1:5]) == {"10", "11111111", "1F", "8"} and sheet.notes == []
+
+
+def test_kahoot_borrows_from_the_whole_bank_and_dedupes(bank: logic.Bank) -> None:
+    # Two binary questions chosen out of the bank: on their own they have one distractor
+    # each, so the bank's other short answers must supply the rest, same topic first.
+    chosen = [q for q in bank.questions if q.number in (5, 6)]
+    sheet = logic.kahoot_sheet(chosen, bank.questions)
+    assert [q.number for q in sheet.written] == [5, 6] and sheet.skipped == ()
+    for row in sheet.rows:
+        assert set(row[1:5]) <= {"10", "11111111", "1F", "8"}  # never SMTP
+    assert sheet.notes == []
+    # Answers equal to the question's own, or repeated among donors, count once.
+    q = _short(1, "x", "8", "topic:t")
+    pool = [q, _short(2, "a", "8", "topic:t"), _short(3, "b", " 8 ", "topic:t")]
+    pool += [_short(4, "c", "9", "topic:t"), _short(5, "d", "10", "topic:t")]
+    sheet = logic.kahoot_sheet([q], pool)
+    assert sheet.rows == [] and len(sheet.skipped) == 1
+    assert "too few distractors" in sheet.skipped[0][1] and "found 2" in sheet.skipped[0][1]
+
+
+def test_kahoot_sheet_reports_what_was_written(bank: logic.Bank) -> None:
+    lonely = _short(14, "Which gate outputs 1 only when both inputs are 1?", "AND", "topic:logic")
+    chosen = [bank.questions[0], bank.questions[2], lonely]
+    sheet = logic.kahoot_sheet(chosen, [*bank.questions[:4], lonely])  # no other short answers
+    assert [q.number for q in sheet.written] == [1, 3] and len(sheet.rows) == 2
+    assert [q.number for q, _ in sheet.skipped] == [14]
+    assert logic.kahoot_report(sheet, 3) == "2 of 3 written; 1 short answer skipped: Q14"
+    assert logic.kahoot_report(logic.kahoot_sheet(bank.questions[:2]), 2) == "2 questions"
+    # An mcq whose correct option is beyond the fourth is skipped too, and the summary says so
+    # without calling it a short answer.
+    five = logic.Question(20, "Pick", "mcq", ("a", "b", "c", "d", "e"), (4,), "", ())
+    sheet = logic.kahoot_sheet([bank.questions[0], five, lonely], [*bank.questions[:4], lonely])
+    assert logic.kahoot_report(sheet, 3) == "1 of 3 written; 2 skipped: Q20, Q14"
+
+
+def test_plugin_kahoot_summary_and_table_match_the_file(tmp_path: Path) -> None:
+    # The first four example questions (two mcq, two tf: no short answers at all) plus
+    # one short answer that therefore has nothing to borrow from.
+    text = (EXAMPLES / "question_bank.md").read_text().split("## What is 1010 in denary?")[0]
+    text += "## Which gate outputs 1 only when both inputs are 1?\ntype: short\n"
+    text += "tags: topic:logic\nanswer: AND\n"
+    small = tmp_path / "small.md"
+    small.write_text(text, encoding="utf-8")
+    out = tmp_path / "out"
+    logged: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=out, log=logged.append)
+    options = Options(fmt="kahoot", count=5, seed=1)  # picks all five
+    result = plugin.run({"source": small, "options": options}, ctx)
+    numbers = [row[0] for row in result.tables["chosen"].rows]
+    assert numbers == [1, 2, 3, 4], "the skipped short answer must not be in the chosen table"
+    body = (out / "small_kahoot.csv").read_text().split("\n", 1)[1]  # after the FAKE marker
+    data_rows = list(csv.reader(io.StringIO(body)))[1:]
+    assert len(data_rows) == len(numbers) == 4
+    assert result.summary.startswith("4 of 5 written; 1 short answer skipped: Q5 → small_kahoot")
+    assert any("Q5 skipped for Kahoot" in m and "found 0" in m for m in logged)
+
+    # When nothing can be written the teacher gets a ToolError, not an empty file.
+    only = tmp_path / "only.md"
+    only.write_text("## Gate?\ntype: short\ntags: topic:logic\nanswer: AND\n", encoding="utf-8")
+    with pytest.raises(ToolError, match="Nothing could be exported for Kahoot"):
+        plugin.run({"source": only, "options": Options(fmt="kahoot", count=1)}, ctx)
 
 
 def test_forms_text_and_donow(bank: logic.Bank, tmp_path: Path) -> None:

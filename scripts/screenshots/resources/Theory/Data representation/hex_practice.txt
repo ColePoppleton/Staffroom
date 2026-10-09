@@ -1,0 +1,8 @@
+FAKE DATA: invented practice questions for screenshots.
+
+Hexadecimal practice
+
+1. Write 2F in binary.
+2. Write 1101 0011 in hexadecimal.
+3. Why do programmers prefer hex to binary when writing colour codes?
+4. Convert 255 to hex.

@@ -31,7 +31,8 @@ def test_resources_mode_shows_tree_and_page(window: MainWindow) -> None:
     assert window.config.general.sidebar_mode == "resources"
     model = window.sidebar.resources.model
     assert model.rowCount() >= 2  # Python/, Scratch/
-    top = [model.item(i).text() for i in range(model.rowCount())]
+    # Indexes, not items: a QStandardItem wrapper can outlive its item (#49).
+    top = [model.index(i, 0).data() for i in range(model.rowCount())]
     assert top[:2] == ["Python", "Scratch"]
     # hidden cruft is absent by default
     flags = Qt.MatchFlag.MatchExactly | Qt.MatchFlag.MatchRecursive
@@ -95,6 +96,7 @@ def test_search_lists_results_and_selecting_previews(window: MainWindow) -> None
     window.sidebar.resources.search.setText("while")
     results = window.library_page.results
     assert results.isVisibleTo(window.library_page)
+    # item(i) wrappers are dropped with each comprehension; the list is not cleared meanwhile (#54).
     rels = [results.item(i).data(Qt.ItemDataRole.UserRole) for i in range(results.count())]
     assert "Python/Python_Course/while_loops.py" in rels
     assert "Python/OCR Booklet/booklet.pdf" in rels

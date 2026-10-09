@@ -38,10 +38,9 @@ gui *ARGS:
 new NAME:
     uv run staff new {{NAME}}
 
-# Render the launcher (marks panel, example loaded, run) to docs/ in both themes; outputs go to a throwaway folder
+# Regenerate every screenshot the docs reference, offscreen, from a throwaway home and the fixture resources in scripts/screenshots/
 screenshots:
-    QT_QPA_PLATFORM=offscreen uv run staffroom --tool marks --open examples/marks_10x.csv --run --theme dark --screenshot docs/launcher-dark.png
-    QT_QPA_PLATFORM=offscreen uv run staffroom --tool marks --open examples/marks_10x.csv --run --theme light --screenshot docs/launcher-light.png
+    ./scripts/screenshots.sh
 
 # Build the thin launcher app (runs this checkout via uv; updates need no reinstall)
 app:

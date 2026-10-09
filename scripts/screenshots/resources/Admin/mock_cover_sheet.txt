@@ -1,0 +1,8 @@
+FAKE DATA: an invented, filled-in cover sheet used only to show the library's
+name-only banner in a screenshot. There is no pupil here; the number is made up.
+
+Mock examination cover sheet
+Paper: Computer Systems (invented)
+Centre number: 12345
+Candidate number: 4021
+Marks awarded: 47 / 80

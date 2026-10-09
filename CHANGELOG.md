@@ -6,6 +6,56 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Fixed
+- Audited every `QListWidgetItem` the shell reaches for the stale-wrapper hazard
+  behind #49 (#54): the tool list, the string-list editor and the library result
+  lists are safe as they stand, because PySide invalidates row wrappers on
+  `QListWidget.clear()` and with the list, and `item(i)` wrappers never outlive
+  the call that made them. Each site now says why, and
+  `tests/shell/test_lifetime.py` pins the wrapper counts for all three.
+- Fade no longer makes duplicate or blank-free versions when asked for more
+  versions than there are fadeable lines (#24): versions are capped at the
+  fadeable-line count with a log note, so every version has at least one
+  blank and strictly more than the one before. A file that is not valid
+  Python is refused with the same "That is not valid Python: … (line n)"
+  message as the other tools. Range mistakes say what is wrong: lines past
+  the end of the file or below 1, ranges typed without choosing the `ranges`
+  order, and listed lines that are headers, comments or blank (skipped with
+  a log note, or an explanation when nothing is left to fade).
+- `staff update` and Settings › Updates compare the checkout with the released
+  branch (`origin/main`, or `release_branch` in config) whatever branch it is
+  on, and name the newest release tag when one is ahead (#25). A checkout on
+  another branch ("on dev; releases are on main"), with no upstream, or
+  detached gets one plain line instead of git's "ambiguous argument" error;
+  the release is reported but never pulled from there, and the update never
+  switches branch.
+- Quiz's Kahoot export reports what it actually wrote (#23): the summary and
+  the chosen-questions table describe the rows in the file ("3 of 5 written;
+  2 short answers skipped: Q5, Q7"), every skipped question has its reason in
+  the log, and an export that would be empty stops with a message instead of
+  writing a file. Short-answer distractors are now borrowed from the whole
+  bank rather than only the chosen questions, nearest first (same topic tag,
+  then the same spec section, then anywhere), and the log names the source
+  question and topic whenever one had to come from outside the topic.
+- The launcher no longer crashes or aborts around a running library index
+  (#49, #40). The Resources tree is built through model indexes instead of
+  `QStandardItem` objects, whose Python wrappers outlived the items and made
+  the next Qt object at that address come back as the wrong type (the flaky
+  `'QStandardItem' object has no attribute 'selectionChanged'` on CI).
+  Closing the window, a `--screenshot` run and the test fixtures now stop a
+  running index at its next file and wait for every worker thread
+  (`MainWindow.wait_for_workers`), so Qt never destroys a running `QThread`;
+  an index stopped early keeps what it has done and finishes on the next
+  launch. `ActionTable` ignores a refresh that arrives after its view is gone.
+
+### Changed
+- Docs screenshots redone after the sidebar reorder and the first-run card
+  (#46): every image the docs reference shows the workflow-ordered sidebar
+  without `hello`; `just screenshots` now runs `scripts/screenshots.sh`,
+  which renders the whole set offscreen from a throwaway `STAFFROOM_HOME`
+  and the invented fixture resources in `scripts/screenshots/resources/`.
+  Ten unreferenced PNGs are gone; the first-run card and the Marks warnings
+  run are now shown in the guide.
 
 ## [0.4.0] - 2026-10-08
 ### Added

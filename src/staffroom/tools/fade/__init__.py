@@ -35,8 +35,18 @@ class FadePlugin:
         source, name = code_from_inputs(inputs)
         try:
             versions = logic.fade_versions(source, options)
+        except SyntaxError as exc:
+            raise ToolError(f"That is not valid Python: {exc.msg} (line {exc.lineno})") from exc
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
+        for _line, why in logic.unfadeable_lines(source, options):
+            ctx.log(f"Skipped: {why}")
+        if len(versions) < options.steps:
+            ctx.log(
+                f"Asked for {options.steps} versions but only {len(versions)} "
+                f"line{'s' if len(versions) != 1 else ''} can fade, so made {len(versions)} "
+                "(one more blank each time)."
+            )
         ctx.log(
             f"{len(versions)} versions; blanks per version: "
             + ", ".join(str(logic.blank_count(v)) for v in versions)
