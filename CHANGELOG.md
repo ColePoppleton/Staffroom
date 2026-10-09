@@ -6,6 +6,10 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Changed
+- CI and the release workflow run on Linux instead of macOS, which uses a tenth of the
+  Actions allowance on a private repo. macOS-only packaging tests skip there.
+
 ### Added
 - Product and design audit 2026-10-09 (`docs/audits/2026-10-09.md`): the first with a
   design pass over every section, eight redesigns shown as mockups beside today's screens
