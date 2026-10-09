@@ -83,12 +83,23 @@ def test_list_diff_promote_reopen(
     diff = sessions.diff_against_original(copy)
     assert "-while answer != 'yes':" in diff and "+while answer != 'y':" in diff
 
-    promoted = sessions.promote(copy, resources_root)
-    assert promoted == original.parent / "exercise_3a_v2.py"
-    assert promoted.read_text() == copy.read_text()
+    first = sessions.promote(copy, resources_root)
+    assert first.created and first.target == original.parent / "exercise_3a_v2.py"
+    assert first.target.read_text() == copy.read_text()
     assert original.read_text() != copy.read_text()  # original untouched
+    assert first.summary == "Promoted as exercise_3a_v2.py next to the original"
+
+    # Promoting the same unchanged copy again writes nothing and says so (#32).
     again = sessions.promote(copy, resources_root)
-    assert again.name == "exercise_3a_v3.py"  # never overwrites
+    assert not again.created and again.target == first.target
+    assert again.summary == "Already promoted as exercise_3a_v2.py: the copy has not changed since"
+    assert not (original.parent / "exercise_3a_v3.py").exists()
+
+    # A further edit promotes as v3; v2 is left alone (never overwrites).
+    copy.write_text(copy.read_text() + "print('bye')\n")
+    third = sessions.promote(copy, resources_root)
+    assert third.created and third.target.name == "exercise_3a_v3.py"
+    assert "print('bye')" not in first.target.read_text()
 
     stats = service.index()
     assert stats.added == 2
@@ -98,6 +109,36 @@ def test_list_diff_promote_reopen(
 
     argv = sessions.reopen(copy, "python3 -m idlelib {file}", runner)
     assert argv == ["python3", "-m", "idlelib", str(copy)] and runs[-1] == argv
+
+
+def test_promote_unchanged_copy_writes_nothing(
+    resources_root: Path, tmp_path: Path, runner: Runner
+) -> None:
+    original = resources_root / "Python" / "Python_Course" / "while_loops.py"
+    before = sorted(p.name for p in original.parent.iterdir())
+    copy, _ = sessions.open_for_class(
+        original,
+        "P3 Y9 loops",
+        tmp_path / "s",
+        "open {file}",
+        today=date(2026, 10, 6),
+        runner=runner,
+    )
+    outcome = sessions.promote(copy, resources_root)
+    assert not outcome.created and outcome.matches_original and outcome.target == original
+    assert outcome.summary.startswith("No changes: the copy matches the original while_loops.py")
+    assert sorted(p.name for p in original.parent.iterdir()) == before  # nothing written
+
+    # The compare is against the *latest* version: an edit equal to v2 while v3 exists
+    # is a new version, because v3 is what the library would open.
+    copy.write_text("# v2\n")
+    v2 = sessions.promote(copy, resources_root)
+    copy.write_text("# v3\n")
+    v3 = sessions.promote(copy, resources_root)
+    assert (v2.target.name, v3.target.name) == ("while_loops_v2.py", "while_loops_v3.py")
+    copy.write_text("# v2\n")
+    back = sessions.promote(copy, resources_root)
+    assert back.created and back.target.name == "while_loops_v4.py"
 
 
 def test_diff_and_promote_without_origin(tmp_path: Path) -> None:

@@ -269,16 +269,24 @@ class TaughtEntry:
 
 def parse_taught_log(text: str) -> tuple[list[TaughtEntry], list[str]]:
     """CSV with ``date,topic`` columns (any order, header required). Lines
-    starting with ``#`` (the fake-data marker) are skipped."""
+    starting with ``#`` (the fake-data marker) are skipped. Any other column
+    is ignored and named in the messages, once, by its header only: the log
+    is date and topic, so whatever such a column holds is never read back."""
     rows = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
     entries: list[TaughtEntry] = []
     errors: list[str] = []
     if not rows:
         return entries, ["taught log is empty"]
-    header = [h.strip().lower() for h in rows[0].split(",")]
+    raw_header = [h.strip() for h in rows[0].split(",")]
+    header = [h.lower() for h in raw_header]
     if "date" not in header or "topic" not in header:
         return entries, ["taught log needs 'date' and 'topic' columns"]
     date_col, topic_col = header.index("date"), header.index("topic")
+    for n, (raw, name) in enumerate(zip(raw_header, header, strict=True), 1):
+        if n - 1 in (date_col, topic_col):
+            continue
+        what = f"column {raw!r}" if name else f"unnamed column {n}"
+        errors.append(f"ignored {what} — the log is date and topic only")
     for i, row in enumerate(rows[1:], 2):
         cells = [c.strip() for c in row.split(",")]
         day_text = cells[date_col] if date_col < len(cells) else ""

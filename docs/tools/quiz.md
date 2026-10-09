@@ -20,7 +20,9 @@ Files are named after the bank: `<bank>_kahoot.xlsx` and `.csv`,
 ([Outputs](../guide/outputs.md)). Retrieval mode looks at the topics taught
 one, three and six weeks ago, each with three days' leeway, and draws
 questions round-robin across the three windows; the run log lists what fell
-in each. *Do-now*, *spec point* and *retrieval windows* are in the
+in each, and names any taught-log column other than `date` and `topic` as
+ignored ([Taught log](../guide/question-banks.md#taught-log-for-retrieval-mode)).
+*Do-now*, *spec point* and *retrieval windows* are in the
 [Glossary](../guide/glossary.md#quiz).
 
 ## Short answers in Kahoot

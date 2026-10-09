@@ -6,6 +6,15 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Changed
+- `classroom` promote compares the copy with the original and with the latest
+  promoted version before writing: an unchanged copy makes no new file and
+  the message says `Already promoted as year9_v2.py` (or that it matches the
+  original). The CLI exits 0 and prints no path when nothing was written (#32).
+- `quiz` names any taught-log column other than `date` and `topic` in the run
+  log (`ignored column 'class' — the log is date and topic only`), by header
+  only; the column's contents are never read or shown (#32).
+
 ### Fixed
 - `staff` no longer dies with a `PermissionError` traceback when the config
   home (`~/.config/staffroom/` or `STAFFROOM_HOME`) cannot be written (#60).

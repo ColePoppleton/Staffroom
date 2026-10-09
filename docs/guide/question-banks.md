@@ -44,6 +44,9 @@ any spec tag that is not in the taxonomy.
 
 A CSV with `date,topic` columns. Topic and date only, never a class or a
 pupil. Start it with `# FAKE DATA` if it is an example you intend to commit.
+Any other column is ignored, and the run log names it once by its header
+(`ignored column 'class' — the log is date and topic only`); what the column
+holds is never read or shown. Take it out of the file.
 
 ```csv
 date,topic

@@ -15,7 +15,11 @@ promote the edited version back beside the original as `name_v2.py`.
 
 **Past sessions** lists every copy. Select one for *Diff vs original*,
 *Re-open* or *Promote* (copies back next to the original under a new
-versioned name; never overwrites).
+versioned name; never overwrites). Promote first compares the copy with the
+original and with the latest promoted version: an unchanged copy writes
+nothing, and the message says so (`Already promoted as resource_v2.py: the
+copy has not changed since`, or `No changes: the copy matches the original`).
+Edit the copy again and the next promote makes `_v3`.
 
 Each session folder also holds a `.origin.json` with the lesson label and,
 for each copy, the absolute path of the original it came from: that is how

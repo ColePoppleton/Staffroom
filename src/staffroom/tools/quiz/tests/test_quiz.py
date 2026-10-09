@@ -84,6 +84,45 @@ def test_retrieval_picks_only_from_taught_windows(bank: logic.Bank) -> None:
     ]
 
 
+def test_taught_log_warns_about_extra_columns_but_never_their_values() -> None:
+    # A column the log should not have (#32): it is ignored, named once in the
+    # messages, and nothing in it is ever repeated back.
+    text = (
+        "# FAKE DATA\n"
+        "Date,Class,topic,Room,\n"
+        "2026-09-17,Y9,loops,IT2,\n"
+        "2026-09-24,Y9,searching,IT2,\n"
+    )
+    entries, messages = logic.parse_taught_log(text)
+    assert [e.topic for e in entries] == ["loops", "searching"]
+    assert messages == [
+        "ignored column 'Class' — the log is date and topic only",
+        "ignored column 'Room' — the log is date and topic only",
+        "ignored unnamed column 5 — the log is date and topic only",
+    ]
+    joined = " ".join(messages)
+    assert "Y9" not in joined and "IT2" not in joined
+    # The usual log has nothing to say.
+    assert logic.parse_taught_log("date,topic\n2026-09-17,loops\n")[1] == []
+
+
+def test_plugin_logs_extra_taught_log_columns(tmp_path: Path) -> None:
+    log_path = tmp_path / "taught.csv"
+    log_path.write_text(
+        "# FAKE DATA\ndate,topic,class\n2026-10-01,networks,Y10\n", encoding="utf-8"
+    )
+    logged: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path / "out", log=logged.append)
+    options = Options(fmt="forms", retrieval=True, today="2026-10-08", count=3, seed=1)
+    result = plugin.run(
+        {"source": EXAMPLES / "question_bank.md", "taught_log": log_path, "options": options},
+        ctx,
+    )
+    assert result.tables["chosen"].rows
+    assert "Log: ignored column 'class' — the log is date and topic only" in logged
+    assert not any("Y10" in m for m in logged)
+
+
 def test_kahoot_rows_and_files(bank: logic.Bank, tmp_path: Path) -> None:
     sheet = logic.kahoot_sheet(bank.questions)
     rows = sheet.rows
