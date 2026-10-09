@@ -69,3 +69,21 @@ def test_install_forgets_the_dist_copy(tmp_path: Path, monkeypatch: pytest.Monke
     ]
     assert ["mdimport", str(target)] in calls
     assert any(c[:4] == ["codesign", "--force", "--deep", "--sign"] for c in calls)
+
+
+def test_bundle_version_follows_the_package(tmp_path: Path) -> None:
+    # Finder's Get Info showed 0.1.0 whatever the checkout ran (#69).
+    from staffroom import __version__
+
+    app = make_launcher.build(tmp_path, Path("/repo"), Path("/usr/local/bin/uv"))
+    with (app / "Contents" / "Info.plist").open("rb") as fh:
+        plist = plistlib.load(fh)
+    assert plist["CFBundleShortVersionString"] == make_launcher.package_version()
+    assert plist["CFBundleShortVersionString"] == __version__
+    assert plist["CFBundleVersion"] == __version__
+
+    app = make_launcher.build(tmp_path, Path("/repo"), Path("/uv"), version="0.7.0rc1")
+    with (app / "Contents" / "Info.plist").open("rb") as fh:
+        plist = plistlib.load(fh)
+    assert plist["CFBundleShortVersionString"] == "0.7.0rc1"
+    assert plist["CFBundleVersion"] == "0.7.0"

@@ -6,6 +6,23 @@
 uv tool upgrade staffroom
 ```
 
+## Which version am I running?
+
+The sidebar header shows it under the app name, for example `v0.5.0 · 9 tools`.
+
+![The sidebar header with the version, dark theme](../sidebar-header-dark.png)
+![The sidebar header with the version, light theme](../sidebar-header-light.png)
+
+Settings › Updates says the same at the top of the card. On a release tag it
+is just the version (`Running Staffroom 0.5.0`); anywhere else it adds the
+branch and the short commit (`Running Staffroom 0.5.0 (dev, a1b2c3d)`), which
+is what to quote when reporting a problem. From the terminal:
+`staffroom --version` or `staff version`.
+
+The launcher app's Get Info in Finder shows the version it was built from.
+`just install` rebuilds it; an update through the app or `staff update` does
+not, so Get Info can lag behind the sidebar until the next `just install`.
+
 ## Running from a checkout (the macOS launcher app)
 
 The app checks the git remote when it starts and compares your checkout with

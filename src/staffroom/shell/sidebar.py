@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from staffroom import __version__
 from staffroom.core.plugin import ToolPlugin
 from staffroom.shell.library.sidebar_panel import ResourcesPanel
 
@@ -70,10 +71,14 @@ class Sidebar(QWidget):
         brand_layout.setSpacing(2)
         title = QLabel("Staffroom")
         title.setObjectName("Brand")
-        sub = QLabel(f"{len(plugins)} tool{'s' if len(plugins) != 1 else ''} installed")
-        sub.setObjectName("BrandSub")
+        # The running version, so "am I on the latest release?" has an answer in
+        # the window (#69). Settings > Updates adds the branch and commit.
+        tools = f"{len(plugins)} tool{'s' if len(plugins) != 1 else ''}"
+        self.brand_sub = QLabel(f"v{__version__} · {tools}")
+        self.brand_sub.setObjectName("BrandSub")
+        self.brand_sub.setToolTip(f"Staffroom {__version__}. Settings › Updates has the details.")
         brand_layout.addWidget(title)
-        brand_layout.addWidget(sub)
+        brand_layout.addWidget(self.brand_sub)
         layout.addWidget(brand)
 
         tabs = QWidget()

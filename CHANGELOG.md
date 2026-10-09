@@ -16,6 +16,12 @@ with every change; `just release <part>` turns it into a version.
   handed out. Presets for an options form are part of the shared panel
   vocabulary (`OptionsForm.presets`, `core.panel.preset`) and widget kit, so
   any tool can offer them.
+- The launcher shows the running version: the sidebar header reads
+  `v0.5.0 · 9 tools`, and Settings › Updates says `Running Staffroom 0.5.0`,
+  adding the branch and short commit off a release tag (`0.5.0 (dev, a1b2c3d)`).
+  `packaging/make_launcher.py` writes the package version into the bundle's
+  `CFBundleShortVersionString` and `CFBundleVersion`, so Finder's Get Info
+  matches after `just install` (#69).
 
 ### Changed
 - The `/audit` skill now has a design pass (task flow, hierarchy, structure, density,

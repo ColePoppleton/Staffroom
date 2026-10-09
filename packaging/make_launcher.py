@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import os
 import plistlib
+import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,13 +40,32 @@ fi
 exec "$UV" run --quiet staffroom "$@"
 """
 
+
+def package_version(root: Path = ROOT) -> str:
+    """The version in pyproject.toml: what ``staffroom.__version__`` reports
+    once the checkout is synced. Read from the file so a fresh build never
+    depends on what happens to be installed."""
+    with (root / "pyproject.toml").open("rb") as fh:
+        return str(tomllib.load(fh)["project"]["version"])
+
+
+def bundle_version(version: str) -> str:
+    """``CFBundleVersion`` wants up to three dot-separated integers; keep the
+    numeric release part of a version such as ``0.6.0rc1`` or ``0.6.0+local``."""
+    match = re.match(r"\d+(\.\d+){0,2}", version)
+    return match.group(0) if match else "0"
+
+
 LSREGISTER = (
     "/System/Library/Frameworks/CoreServices.framework/Frameworks/"
     "LaunchServices.framework/Support/lsregister"
 )
 
 
-def build(out_dir: Path, repo: Path, uv: Path) -> Path:
+def build(out_dir: Path, repo: Path, uv: Path, version: str | None = None) -> Path:
+    """Write the bundle. ``version`` defaults to the package version, so
+    Finder's Get Info matches what the app shows in its sidebar."""
+    version = version or package_version()
     app = out_dir / f"{APP_NAME}.app"
     if app.exists():
         shutil.rmtree(app)
@@ -60,8 +81,8 @@ def build(out_dir: Path, repo: Path, uv: Path) -> Path:
         "CFBundleName": APP_NAME,
         "CFBundleDisplayName": APP_NAME,
         "CFBundleIdentifier": "uk.staffroom.launcher",
-        "CFBundleVersion": "1",
-        "CFBundleShortVersionString": "0.1.0",
+        "CFBundleVersion": bundle_version(version),
+        "CFBundleShortVersionString": version,
         "CFBundlePackageType": "APPL",
         "CFBundleExecutable": "staffroom",
         "CFBundleIconFile": "icon.icns",

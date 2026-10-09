@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QUrl, Signal
+from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QComboBox,
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from staffroom import __version__
 from staffroom.core import paths
 from staffroom.core.config import Config
 from staffroom.core.launch import EDITOR_PRESETS, preset_for
@@ -191,6 +192,9 @@ class SettingsPage(QWidget):
             f"sync; nothing is pulled while the checkout is on another branch, has local "
             f"edits or has diverged. Restart afterwards.",
         )
+        self.version_label = make_label(self._version_text(__version__))
+        self.version_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        updates.body.addWidget(self.version_label)
         update_row = QHBoxLayout()
         self.update_status = make_label("Checking…", "muted")
         self.check_button = QPushButton("Check for updates")
@@ -274,6 +278,7 @@ class SettingsPage(QWidget):
 
         assert isinstance(status, UpdateStatus)
         self.check_button.setEnabled(True)
+        self.version_label.setText(self._version_text(status.running_version(__version__)))
         self.update_status.setText(status.describe())
         self.update_status.setProperty("role", "danger" if status.error else "muted")
         self.update_status.style().unpolish(self.update_status)
@@ -289,6 +294,10 @@ class SettingsPage(QWidget):
         else:
             self.update_button.setToolTip("")
         self.update_available.emit(status.available)
+
+    @staticmethod
+    def _version_text(running: str) -> str:
+        return f"Running Staffroom {running}"
 
     def apply_update(self) -> None:
         from staffroom.shell.update_worker import ApplyWorker
