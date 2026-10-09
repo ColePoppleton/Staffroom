@@ -44,7 +44,11 @@ indexed, the tree lists 563, and turning *Hidden* on makes it `587 files
 Pick a tool, fill in the inputs down the left, press the button at their foot
 (or ⌘↵). Results appear on the right, beside the inputs, so you can change one
 setting and run again without scrolling; a tool with more than one result shows
-them as tabs (Trace: the completed table and the sheet preview). Files are
+them as tabs (Trace: the completed table, then the sheet and the key). A tool
+that writes a sheet shows the PDF itself, page by page, under *Sheet* and *Key*
+tabs: the current page large, every page as a thumbnail beside it, *Open PDF*
+and *Print…* under them. Told to write Word only, it says so over the plain
+text instead. Files are
 written to the output folder, named under the Run button before you press it:
 next to the input by default,
 `~/TeachingSessions/outputs/<tool>/` for tools with no input file, or

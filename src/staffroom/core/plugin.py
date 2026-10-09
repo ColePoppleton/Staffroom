@@ -14,7 +14,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from staffroom.core.config import Config
 from staffroom.core.library.service import ResourceService
-from staffroom.core.panel import PanelSpec
+from staffroom.core.panel import Pages, PanelSpec
 from staffroom.core.table import Table
 
 Inputs = Mapping[str, Any]
@@ -37,6 +37,10 @@ class RunResult:
 
     ``labels`` optionally names a file's button (``{chart: "Chart"}``); a file
     without one is named from its file name (see :mod:`staffroom.core.outcome`).
+
+    ``pages`` fills a ``PagePreview`` with the PDFs the run wrote (build the
+    value with :func:`staffroom.core.panel.pages_from`). Paths only: the shell
+    reads the files.
     """
 
     tables: dict[str, Table] = field(default_factory=dict)
@@ -46,6 +50,7 @@ class RunResult:
     summary: str = ""
     outcome: str = ""
     labels: dict[Path, str] = field(default_factory=dict)
+    pages: dict[str, Pages] = field(default_factory=dict)
 
 
 @dataclass

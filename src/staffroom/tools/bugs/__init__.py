@@ -6,7 +6,7 @@ from typing import Any
 
 from staffroom.core.codeinput import code_from_inputs
 from staffroom.core.export import export, house_style_from, to_text
-from staffroom.core.panel import PanelSpec
+from staffroom.core.panel import PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.core.runner import RunOutcome, capped_note, run_source
 from staffroom.core.table import Table
@@ -116,9 +116,11 @@ class BugsPlugin:
                 for v in variants
             ],
         )
+        sheet_text, key_text = to_text(doc.sheet()), to_text(doc.key())
         return RunResult(
             tables={"key": key},
-            texts={"preview": to_text(doc.sheet()) + "\n\n" + to_text(doc.key())},
+            texts={"preview": sheet_text + "\n\n" + key_text},  # the CLI's --preview
+            pages={"pages": pages_from(files, sheet_text=sheet_text, key_text=key_text)},
             files=files,
             summary=f"{len(variants)} variants written to {out}",
             outcome=f"{len(variants)} buggy versions · lines "

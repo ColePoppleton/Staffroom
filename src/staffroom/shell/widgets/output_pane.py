@@ -10,6 +10,11 @@ Top to bottom:
 * The main view: one tab per main output (see :func:`core.panel.main_outputs`).
   A single main output still gets its one tab, so the title sits in the same
   place in every tool. Each tab shows a short hint until its first result.
+  A ``PagePreview`` takes two tabs, *Sheet* and *Key* (each with its page
+  count), sharing one :class:`PagePreviewWidget` that moves to whichever is
+  current; the PDF's file name sits at the tab bar's right. A run with no
+  pages for it hides both tabs, and an ``optional`` text view shows its tab
+  only while the latest run filled it.
   With ``main_layout="row"`` the main outputs sit side by side instead, each
   in a titled card (a report: chart beside table), stacking when the pane is
   too narrow for them.
@@ -51,6 +56,7 @@ from staffroom.core.panel import (
     ImageView,
     MainLayout,
     OutputWidget,
+    PagePreview,
     ResultsTable,
     StatTiles,
     TextView,
@@ -68,6 +74,7 @@ from staffroom.shell.widgets.code_view import CodeViewWidget
 from staffroom.shell.widgets.elided_label import ElidedLabel
 from staffroom.shell.widgets.image_view import ImageViewWidget
 from staffroom.shell.widgets.input_group import eyebrow
+from staffroom.shell.widgets.page_preview import PagePreviewWidget, pages_phrase
 from staffroom.shell.widgets.result_strip import ResultStrip
 from staffroom.shell.widgets.stat_tiles import StatTilesWidget
 from staffroom.shell.widgets.table_view import TableModel, TableWidget
@@ -193,6 +200,7 @@ class MainRow(QWidget):
 
 class OutputPane(QWidget):
     action_requested = Signal(str, object)  # from any ActionTable: name, row dict
+    open_requested = Signal(object)  # Path: a page preview's Open PDF
 
     def __init__(
         self,
@@ -214,6 +222,14 @@ class OutputPane(QWidget):
         self.images: dict[str, ImageViewWidget] = {}
         self.tiles: dict[str, StatTilesWidget] = {}
         self.charts: dict[str, BarChartWidget] = {}
+        self.page_previews: dict[str, PagePreviewWidget] = {}
+        self.page_names: dict[str, QLabel] = {}  # per PagePreview: its PDF's name, in the corner
+        # Per main tab, in order: the view's key and, for a PagePreview, its part.
+        self.tab_refs: list[tuple[str, str | None]] = []
+        # PagePreview key -> part -> its tab page's layout, which takes the preview in turn
+        self._page_tabs: dict[str, dict[str, QVBoxLayout]] = {}
+        self._page_labels: dict[tuple[str, str], str] = {}  # (key, part) -> "Sheet"
+        self._optional: set[str] = set()  # optional text views: tab shown only when filled
         self.copy_buttons: dict[str, QPushButton] = {}
         self.corner_buttons: dict[str, QPushButton] = {}  # per main view, shown with its tab
         self.cards: dict[str, ReportCard] = {}
@@ -287,13 +303,90 @@ class OutputPane(QWidget):
         self._corner.setContentsMargins(0, 0, 0, 4)
         self._corner.setSpacing(6)
         for spec in main:
+            if isinstance(spec, PagePreview):
+                self._add_page_tabs(tabs, spec)
+                continue
             index = tabs.addTab(self._main_page(spec), spec.label)
             tabs.setTabToolTip(index, spec.label)
+            self.tab_refs.append((spec.key, None))
+            if isinstance(spec, TextView) and spec.optional:
+                self._optional.add(spec.key)
+                tabs.setTabVisible(index, False)
         tabs.setCornerWidget(corner, Qt.Corner.TopRightCorner)
         tabs.currentChanged.connect(self._show_corner)
         self._show_corner(tabs.currentIndex())
         self.body_layout.addWidget(tabs, 1)
         tabs.setVisible(bool(main))
+
+    def _add_page_tabs(self, tabs: QTabWidget, spec: PagePreview) -> None:
+        """Two tabs, sheet and key, sharing one preview that moves to the
+        current one (:meth:`_show_corner`)."""
+        preview = PagePreviewWidget()
+        self.page_previews[spec.key] = preview
+        preview.open_requested.connect(self.open_requested.emit)
+        preview.part_requested.connect(lambda part, k=spec.key: self.show_part(k, part))
+        preview.page_changed.connect(lambda k=spec.key: self._name_page(k))
+        holder = QWidget()
+        holder.setObjectName("PageHolder")
+        stack = QStackedLayout(holder)
+        stack.setContentsMargins(0, 0, 0, 0)
+        empty = QLabel(self.empty_text)
+        empty.setProperty("role", "placeholder")
+        empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty.setWordWrap(True)
+        stack.addWidget(empty)
+        stack.addWidget(preview)
+        self._waiting[spec.key] = stack
+        name = QLabel("")
+        name.setProperty("role", "faint")
+        name.setVisible(False)
+        self.page_names[spec.key] = name
+        self._corner.addWidget(name)
+        pages: dict[str, QVBoxLayout] = {}
+        for part, label in (("sheet", spec.sheet_label), ("key", spec.key_label)):
+            page = QWidget()
+            page.setObjectName("OutputPage")
+            layout = QVBoxLayout(page)
+            layout.setContentsMargins(0, 12, 0, 0)
+            layout.setSpacing(0)
+            index = tabs.addTab(page, label)
+            tabs.setTabToolTip(index, f"{spec.label}: {label.lower()}")
+            self._page_labels[(spec.key, part)] = label
+            self.tab_refs.append((spec.key, part))
+            pages[part] = layout
+        self._page_tabs[spec.key] = pages
+        pages["sheet"].addWidget(holder)
+        self.sections[spec.key] = holder
+
+    def _tab_index(self, key: str, part: str | None = None) -> int:
+        try:
+            return self.tab_refs.index((key, part))
+        except ValueError:
+            return -1
+
+    def show_part(self, key: str, part: str) -> None:
+        """Bring a page preview's ``part`` tab to the front."""
+        index = self._tab_index(key, part)
+        if self.tabs is not None and index >= 0 and self.tabs.isTabVisible(index):
+            self.tabs.setCurrentIndex(index)
+
+    def _count_pages(self, key: str) -> None:
+        """Each page tab says how many pages it holds ("Sheet · 2 pages")."""
+        preview = self.page_previews[key]
+        for part in ("sheet", "key"):
+            index = self._tab_index(key, part)
+            if self.tabs is None or index < 0:
+                continue
+            label = self._page_labels[(key, part)]
+            count = preview.page_count(part)
+            self.tabs.setTabText(index, f"{label} · {pages_phrase(count)}" if count else label)
+
+    def _name_page(self, key: str) -> None:
+        preview = self.page_previews[key]
+        path = preview.path()
+        label = self.page_names[key]
+        label.setText(path.name if path else "")
+        label.setToolTip(str(path) if path else "")
 
     def _main_row(self, main: list[ViewWidget]) -> QWidget:
         """The ``"row"`` layout: a hint until the first result, then the cards."""
@@ -351,6 +444,12 @@ class OutputPane(QWidget):
             return image, []
         if isinstance(spec, ActionTable):
             return self._action_table(spec), []
+        if isinstance(spec, PagePreview):  # outside the tabs: its thumbnails switch parts
+            preview = PagePreviewWidget()
+            preview.setMinimumHeight(MAIN_MIN_HEIGHT)
+            preview.open_requested.connect(self.open_requested.emit)
+            self.page_previews[spec.key] = preview
+            return preview, []
         text_view = self._text_view(spec)
         extras: list[QWidget] = []
         if spec.copy_button:
@@ -398,6 +497,7 @@ class OutputPane(QWidget):
                 if isinstance(extra, QPushButton):
                     self.corner_buttons[spec.key] = extra
         else:
+            assert isinstance(spec, TextView), spec  # a PagePreview takes its own tabs
             text_view = self._text_view(spec)
             content_layout.addWidget(text_view, 1)
             if spec.copy_button:
@@ -441,7 +541,7 @@ class OutputPane(QWidget):
                 view.setVisible(False)
                 caption.setVisible(False)
             self._below_hidden.add(spec.key)
-        elif isinstance(spec, StatTiles | BarChart):
+        elif isinstance(spec, StatTiles | BarChart | PagePreview):
             content, extras = self._content(spec)
             layout.addWidget(content)
             for extra in extras:
@@ -585,14 +685,62 @@ class OutputPane(QWidget):
         return copy
 
     def _show_corner(self, index: int) -> None:
-        """Only the current tab's buttons (Copy, a chart's Table switch) show
-        in the tab bar's corner."""
-        current = self.main_keys[index] if 0 <= index < len(self.main_keys) else None
+        """Only the current tab's buttons (Copy, a chart's Table switch, a
+        page preview's file name) show in the tab bar's corner. A page tab
+        takes the preview widget into itself and shows its part."""
+        current, part = self.tab_refs[index] if 0 <= index < len(self.tab_refs) else (None, None)
         for key, button in [*self.copy_buttons.items(), *self.corner_buttons.items()]:
             if key in self.main_keys:
                 button.setVisible(key == current)
+        for key, label in self.page_names.items():
+            label.setVisible(key == current and bool(label.text()))
+        if current in self.page_previews and part is not None:
+            holder = self.sections[current]
+            layouts = self._page_tabs[current]
+            if layouts[part].indexOf(holder) < 0:
+                for layout in layouts.values():
+                    layout.removeWidget(holder)
+                layouts[part].addWidget(holder)
+                holder.show()
+            preview = self.page_previews[current]
+            if preview.part != part or preview.pages is None:
+                preview.show_part(part)
+
+    def _set_tab_visible(self, index: int, visible: bool) -> None:
+        tabs = self.tabs
+        if tabs is None or index < 0 or tabs.isTabVisible(index) == visible:
+            return
+        tabs.setTabVisible(index, visible)
+        if not tabs.isTabVisible(tabs.currentIndex()):
+            first = next((i for i in range(tabs.count()) if tabs.isTabVisible(i)), -1)
+            if first >= 0:
+                tabs.setCurrentIndex(first)
 
     # -- filling ---------------------------------------------------------
+    def _apply_pages(self, key: str, result: RunResult, *, run: bool) -> None:
+        pages = result.pages.get(key)
+        sheet_tab, key_tab = self._tab_index(key, "sheet"), self._tab_index(key, "key")
+        if pages is None:
+            if run:
+                self._set_tab_visible(sheet_tab, False)
+                self._set_tab_visible(key_tab, False)
+            return
+        preview = self.page_previews[key]
+        preview.set_pages(pages)
+        self._filled(key)
+        self._set_tab_visible(sheet_tab, True)
+        self._set_tab_visible(key_tab, preview.has_part("key"))
+        self._count_pages(key)
+        self._name_page(key)
+        if self.tabs is not None and sheet_tab >= 0:
+            # A fresh result opens on the sheet's first page, unless the
+            # teacher is looking at another view (trace's table).
+            current = self.tabs.currentIndex()
+            if self.tab_refs[current][0] == key and current != sheet_tab:
+                self.tabs.setCurrentIndex(sheet_tab)
+            else:
+                self._show_corner(current)
+
     @staticmethod
     def _fit_text_height(view: QPlainTextEdit) -> None:
         """A secondary text (notes, a diff) takes the height of its lines, up
@@ -636,6 +784,11 @@ class OutputPane(QWidget):
         for key, chart in self.charts.items():
             chart.set_table(None)
             self._emptied(key)
+        for key, preview in self.page_previews.items():
+            preview.clear()  # let go of the files before the run rewrites them
+            self._emptied(key)
+            self._count_pages(key)
+            self._name_page(key)
         self.log_view.clear()
         self.log_tail.setText("run log")
 
@@ -645,7 +798,14 @@ class OutputPane(QWidget):
         if last:
             self.log_tail.setText(last)
 
-    def apply(self, result: RunResult) -> None:
+    def busy(self) -> bool:
+        """Whether a page preview is still drawing thumbnails."""
+        return any(p.busy() for p in self.page_previews.values())
+
+    def apply(self, result: RunResult, *, run: bool = True) -> None:
+        """Fill the views ``result`` has values for. ``run`` (a run, not a row
+        action or a refresh) also hides the views that are only shown while
+        filled: page previews without pages, optional text views."""
         for key, widget in self.action_tables.items():
             table = result.tables.get(key)
             if table is not None:
@@ -657,6 +817,10 @@ class OutputPane(QWidget):
                 if key in self._fit_below_text:
                     self._fit_text_height(text_view)
                 self._filled(key)
+            if key in self._optional and (text is not None or run):
+                self._set_tab_visible(self._tab_index(key), text is not None)
+        for key in self.page_previews:
+            self._apply_pages(key, result, run=run)
         for key, (model, view, caption) in self.tables.items():
             table = result.tables.get(key)
             if table is None:

@@ -6,10 +6,10 @@ from staffroom.core.panel import (
     CodeSource,
     LogArea,
     OptionsForm,
+    PagePreview,
     PanelSpec,
     ResultsTable,
     TextArea,
-    TextView,
 )
 from staffroom.core.runner import limits_note
 from staffroom.tools.bugs.logic import TIMEOUT, Options
@@ -35,8 +35,8 @@ def panel_spec() -> PanelSpec:
         ),
         outputs=(
             # Each variant names the line it broke: a row lights it in the program.
-            ResultsTable(key="key", label="Key", line_column="Line"),
-            TextView(key="preview", label="Preview (sheet, then key)"),
+            ResultsTable(key="key", label="What each bug does", line_column="Line"),
+            PagePreview(key="pages", label="Bug hunt"),
             LogArea(),
         ),
         run_label="Make variants",

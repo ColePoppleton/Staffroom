@@ -110,6 +110,7 @@ class ToolPanel(QWidget):
         self.worker: RunWorker | None = None
         self.last_result: RunResult | None = None
         self._last_ok = False
+        self._is_run = False  # the worker running is a run (not a row action)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -163,6 +164,7 @@ class ToolPanel(QWidget):
             details_key=plugin.name,
         )
         self.results.action_requested.connect(self.start_action)
+        self.results.open_requested.connect(self.open_file)
         self.strip = self.results.strip
         self.strip.open_requested.connect(self.open_file)
         self.strip.reveal_requested.connect(self.reveal_file)
@@ -475,7 +477,7 @@ class ToolPanel(QWidget):
         worker = RunWorker(
             self.plugin, inputs, self.config, self.output_dir(inputs), resources=self.resources
         )
-        self._launch(worker)
+        self._launch(worker, run=True)
 
     def start_action(self, name: str, row: dict[str, Any]) -> None:
         """A row action from an ActionTable, run off the GUI thread."""
@@ -528,13 +530,14 @@ class ToolPanel(QWidget):
         )
         for name in self.spec.refresh_actions():
             try:
-                self.results.apply(plugin.act(name, {}, ctx))
+                self.results.apply(plugin.act(name, {}, ctx), run=False)
             except Exception as exc:
                 log.warning("%s refresh %s failed: %s", plugin.name, name, exc)
                 self.results.append_log(f"Could not refresh: {exc}")
 
-    def _launch(self, worker: RunWorker, *, quiet: bool = False) -> None:
+    def _launch(self, worker: RunWorker, *, quiet: bool = False, run: bool = False) -> None:
         self._quiet = quiet
+        self._is_run = run
         self.run_bar.set_running(True)
         if not quiet:
             self.strip.set_running()
@@ -576,7 +579,7 @@ class ToolPanel(QWidget):
 
     def _on_success(self, result: RunResult) -> None:
         self.last_result = result
-        self.results.apply(result)
+        self.results.apply(result, run=self._is_run)
         self.run_bar.set_progress(1.0)
         if not self._quiet:
             self.strip.show_result(result)

@@ -6,8 +6,8 @@ from staffroom.core.panel import (
     CodeSource,
     LogArea,
     OptionsForm,
+    PagePreview,
     PanelSpec,
-    TextView,
 )
 from staffroom.tools.fade.logic import Options
 
@@ -24,6 +24,6 @@ def panel_spec() -> PanelSpec:
             CodeSource(key="source", label="Worked solution", required=False),
             OptionsForm(key="options", schema=Options),
         ),
-        outputs=(TextView(key="preview", label="Preview (sheet, then key)"), LogArea()),
+        outputs=(PagePreview(key="pages", label="Faded versions"), LogArea()),
         run_label="Make versions",
     )

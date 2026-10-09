@@ -34,6 +34,7 @@ class Palette:
     code_number: str
     code_builtin: str
     code_name: str
+    paper: str = "#ffffff"  # a printed page, in both themes
 
 
 DARK = Palette(

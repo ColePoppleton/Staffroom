@@ -118,6 +118,10 @@ class OptionsFormWidget(QWidget):
     def value(self) -> Any:
         return self.schema(**{name: get() for name, get in self._getters.items()})
 
+    def set_field(self, name: str, value: Any) -> None:
+        """Set one shown field, as if the teacher had edited it."""
+        self._setters[name](value)
+
     # -- presets -----------------------------------------------------------
     def current_preset(self) -> str:
         """The dropdown's text: a preset name, or "Custom"."""

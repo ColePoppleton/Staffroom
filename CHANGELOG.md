@@ -7,6 +7,18 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Changed
+- Worksheet, Parsons, Trace, Bugs, Fade and the quiz do-now show the PDF the run
+  wrote instead of an ASCII rendering of it (#85): *Sheet* and *Key* tabs with
+  their page counts, the current page large and whole, thumbnails of every page
+  of both down the side (drawn off the GUI thread, and only once they scroll
+  into view, so a 17-page bugs sheet opens as fast as one page), *Open PDF* and
+  *Print…* (the system print dialog, then the pages as shown). A run told to
+  write Word only says so over the text of the sheet, never an empty page. The
+  quiz's Kahoot and Forms text moves to a *Paste text* tab shown only for those
+  formats; Bugs' table is *What each bug does* and Trace's *Completed table*.
+  The command line's `--preview` text is unchanged. The vocabulary gains
+  `PagePreview`, `Pages` / `pages_from`, `RunResult.pages` and
+  `TextView.optional`; screenshots take `--tab` and `--option field=value`.
 - The five code tools (Parsons, Trace, Bugs, Fade, Pseudocode) take their program
   in one input (#86): a chip naming the file (its Library path, *Change ▾* for From
   library or Browse) over the program itself, read-only, highlighted and numbered

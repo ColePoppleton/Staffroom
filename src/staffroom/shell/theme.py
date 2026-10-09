@@ -358,6 +358,26 @@ QTabWidget#OutputTabs > QTabBar::tab:selected {{
 }}
 QTabWidget#OutputTabs > QTabBar::tab:hover:!selected {{ color: {p.text}; }}
 
+/* ---------------------------------------------------------- the page preview (paper is white
+   in both themes: it is what the printer makes) */
+PageCanvas {{
+    border: none; background: transparent; qproperty-canvasColor: {p.surface_alt};
+}}
+QListView#PageRail {{
+    background: transparent; border: none; padding: 0px;
+    qproperty-paperColor: {p.paper}; qproperty-edgeColor: {p.border_strong};
+    qproperty-textColor: {p.text}; qproperty-captionColor: {p.text_muted};
+}}
+/* the accent rings the page shown large: where you are */
+QListView#PageRail[ring="current"] {{ qproperty-accentColor: {p.accent}; }}
+QListView#PageRail::item, QListView#PageRail::item:hover, QListView#PageRail::item:selected {{
+    background: transparent; padding: 0px;
+}}
+QLabel#PageNote {{
+    background: {p.surface}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
+    padding: 10px 12px; color: {p.text};
+}}
+
 /* ---------------------------------------------------------- reports (stat tiles, charts, cards) */
 QFrame#StatTile {{
     background: {p.surface}; border: 1px solid {p.border}; border-radius: {RADIUS}px;

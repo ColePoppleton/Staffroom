@@ -21,6 +21,7 @@ from staffroom.core.panel import (
     BarChart,
     ImageView,
     LogArea,
+    PagePreview,
     ResultsTable,
     StatTiles,
     TablePreview,
@@ -96,6 +97,8 @@ def first_result(panel: ToolPanel) -> QWidget:
         return pane.text_views[key]
     if key in pane.charts:
         return pane.charts[key]
+    if key in pane.page_previews:
+        return pane.page_previews[key].canvas
     return pane.action_tables[key]
 
 
@@ -159,14 +162,18 @@ def test_every_panel_is_inputs_pane_plus_output_pane(window: MainWindow) -> None
         assert len(groups) == len(own), plugin.name
         assert not panel.inputs_pane.findChildren(QWidget, "Card")
         # A tab per main output, in spec order; or a titled card each in a row.
+        # A page preview is two tabs, sheet and key.
         main = [w.label for w in main_outputs(panel.spec.outputs)]
+        tab_labels: list[str] = []
+        for w in main_outputs(panel.spec.outputs):
+            tab_labels += [w.sheet_label, w.key_label] if isinstance(w, PagePreview) else [w.label]
         if panel.spec.main_layout == "row":
             assert panel.results.tabs is None, plugin.name
             assert [c.title.text() for c in panel.results.cards.values()] == main
         else:
             tabs = panel.results.tabs
             assert tabs is not None
-            assert [tabs.tabText(i) for i in range(tabs.count())] == main, plugin.name
+            assert [tabs.tabText(i) for i in range(tabs.count())] == tab_labels, plugin.name
 
 
 def test_first_result_is_visible_after_a_run_in_every_tool(

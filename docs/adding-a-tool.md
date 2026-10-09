@@ -241,9 +241,14 @@ sandbox.
 Build a `core.export.Document`, add blocks to `doc.section()` and to
 `doc.section("Answer key", answers=True)`, then call
 `export(doc, ctx.output_dir, stem, formats)`. That writes the sheet and a
-separate key in each format with the house header and footer. `to_text(doc)`
-gives a preview for a `TextView`. `tools/worksheet` and `tools/parsons` are
-the references. The blocks are `Heading`, `Paragraph`, `Code`, `Numbered`,
+separate key in each format with the house header and footer. Show what was
+written with `PagePreview(key="pages")` and
+`pages={"pages": pages_from(files, sheet_text=..., key_text=...)}` in the
+result: the panel gets *Sheet* and *Key* tabs with the real PDF pages, page
+thumbnails, *Open PDF* and *Print…*; a run that wrote Word only shows a note
+over `to_text` of the sheet and key instead. Keep `texts["preview"] =
+to_text(...)` for the command line's `--preview`. `tools/worksheet` and
+`tools/parsons` are the references. The blocks are `Heading`, `Paragraph`, `Code`, `Numbered`,
 `TableBlock`, `HintBox`, `BoxedBlocks` (numbered cut-out cells with dashed
 cut lines, laid out in columns), `AnswerGrid` (empty boxes headed by
 position) and `PageBreak`. A new block goes in `core/export/model.py` with a

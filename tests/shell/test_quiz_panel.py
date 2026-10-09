@@ -31,5 +31,5 @@ def test_quiz_panel_exports_kahoot(window: MainWindow, qtbot: QtBot, tmp_path: P
         panel.start_run()
     assert blocker.args == [True], panel.strip.text()
     assert panel.results.tables["chosen"][0].rowCount() == 10
-    assert "Question - max 120 characters" in panel.results.text_views["preview"].toPlainText()
+    assert "Question - max 120 characters" in panel.results.text_views["paste"].toPlainText()
     assert (tmp_path / "out" / "question_bank_kahoot_s1.xlsx").exists()

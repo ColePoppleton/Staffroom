@@ -6,8 +6,8 @@ from staffroom.core.panel import (
     CodeSource,
     LogArea,
     OptionsForm,
+    PagePreview,
     PanelSpec,
-    TextView,
 )
 from staffroom.tools.parsons.logic import Options
 
@@ -20,6 +20,6 @@ def panel_spec() -> PanelSpec:
             CodeSource(key="source", label="Working program", required=False),
             OptionsForm(key="options", schema=Options),
         ),
-        outputs=(TextView(key="preview", label="Preview (sheet, then key)"), LogArea()),
+        outputs=(PagePreview(key="pages", label="Parsons problem"), LogArea()),
         run_label="Make worksheet",
     )

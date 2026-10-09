@@ -31,7 +31,9 @@ TablePreview       (display only; never appears in ``inputs``)
 Output widgets fill from a ``RunResult``: ``ResultsTable``, ``ActionTable``,
 ``StatTiles`` (build its table with :func:`stat_table`) and ``BarChart`` from
 ``tables[key]``, ``ImageView`` from ``images[key]``, ``TextView`` from
-``texts[key]`` (and a ``BarChart`` takes a one-line caption from there). A
+``texts[key]`` (and a ``BarChart`` takes a one-line caption from there),
+``PagePreview`` from ``pages[key]`` (build its :class:`Pages` with
+:func:`pages_from` over the files the run wrote). A
 ``ResultsTable`` with ``line_column`` points its rows at lines of the panel's
 ``CodeSource``: selecting a row lights its line, clicking a line selects its
 rows. An
@@ -45,7 +47,8 @@ The shell lays every panel out the same way: the inputs in a column on the
 left with the run button at its foot, the outputs filling the right. Outputs
 are either *main* views (the reason for the visit: a table, a chart, a
 preview; more than one becomes tabs, or sits side by side with
-``PanelSpec.main_layout="row"``), *top* (a headline over the main view, such
+``PanelSpec.main_layout="row"``; a ``PagePreview`` is two tabs, *Sheet* and
+*Key*), *top* (a headline over the main view, such
 as ``StatTiles``) or *below* (secondary: lists to act on, notes, a folded
 detail table), stacked under the main view. :func:`top_outputs`,
 :func:`main_outputs` and :func:`below_outputs` decide, from each widget's
@@ -509,7 +512,11 @@ class ImageView:
 class TextView:
     """A read-only block of text (``RunResult.texts[key]``), e.g. a diff.
     ``copy_button`` adds a Copy button that puts the text on the clipboard.
-    ``code`` shows it as the code views do: numbered lines, highlighted."""
+    ``code`` shows it as the code views do: numbered lines, highlighted.
+
+    ``optional`` (for a main view) shows its tab only while the latest run
+    filled it: for text one kind of run makes and another does not (a quiz's
+    Kahoot rows, which a printable do-now has no use for)."""
 
     key: str
     label: str = "Output"
@@ -517,6 +524,78 @@ class TextView:
     copy_button: bool = False
     place: Place | None = None
     code: bool = False
+    optional: bool = False
+
+
+@dataclass(frozen=True)
+class Pages:
+    """What a :class:`PagePreview` shows after a run: the PDFs it wrote.
+
+    ``sheet`` and ``key`` are the sheet's and the answer key's PDF (``key`` is
+    None for a document without answers). With no PDF at all (the teacher
+    asked for Word only) the preview shows ``note`` instead of pages, over
+    ``sheet_text`` / ``key_text`` (the plain-text rendering, so the tab is
+    never empty). Build it with :func:`pages_from`."""
+
+    sheet: Path | None = None
+    key: Path | None = None
+    note: str = ""
+    sheet_text: str = ""
+    key_text: str = ""
+
+    @property
+    def has_pdf(self) -> bool:
+        return self.sheet is not None or self.key is not None
+
+
+NO_PDF_NOTE = (
+    "No PDF this time: Output is set to docx only, so there are no pages to show. "
+    "Choose pdf or both to see the printed pages here. Below is the plain text."
+)
+KEY_STEM_SUFFIX = "_key"
+
+
+def pages_from(
+    files: Iterable[Path],
+    *,
+    sheet_text: str = "",
+    key_text: str = "",
+    note: str = NO_PDF_NOTE,
+) -> Pages:
+    """The :class:`Pages` for the files a run wrote: the sheet's PDF and its
+    key's (``stem.pdf`` / ``stem_key.pdf``, as :func:`staffroom.core.export.export`
+    names them). Pure: it only looks at the names. ``sheet_text`` and
+    ``key_text`` are shown, under ``note``, only when no PDF was written."""
+    pdfs = [f for f in files if f.suffix.lower() == ".pdf"]
+    stems = {f.stem for f in pdfs}
+    key = next(
+        (
+            f
+            for f in pdfs
+            if f.stem.endswith(KEY_STEM_SUFFIX) and f.stem[: -len(KEY_STEM_SUFFIX)] in stems
+        ),
+        None,
+    )
+    sheet = next((f for f in pdfs if f != key), None)
+    if sheet is None and key is None:
+        return Pages(note=note, sheet_text=sheet_text, key_text=key_text)
+    return Pages(sheet=sheet, key=key)
+
+
+@dataclass(frozen=True)
+class PagePreview:
+    """The pages a run wrote, as they will print (``RunResult.pages[key]``, a
+    :class:`Pages`): the current page large, thumbnails of every page of the
+    sheet and the key beside it, *Open PDF* and *Print…*. It takes two main
+    tabs, ``sheet_label`` and ``key_label`` (the Key tab only when there is a
+    key). A run whose result has no ``pages[key]`` hides both tabs (e.g. a
+    quiz exported for Kahoot has nothing to print)."""
+
+    key: str
+    label: str = "Pages"
+    sheet_label: str = "Sheet"
+    key_label: str = "Key"
+    place: Place | None = None
 
 
 @dataclass(frozen=True)
@@ -550,8 +629,10 @@ class LogArea:
     label: str = "Log"
 
 
-OutputWidget = ResultsTable | ActionTable | ImageView | TextView | StatTiles | BarChart | LogArea
-ViewWidget = ResultsTable | ActionTable | ImageView | TextView | StatTiles | BarChart
+OutputWidget = (
+    ResultsTable | ActionTable | ImageView | TextView | StatTiles | BarChart | PagePreview | LogArea
+)
+ViewWidget = ResultsTable | ActionTable | ImageView | TextView | StatTiles | BarChart | PagePreview
 MainLayout = Literal["tabs", "row"]
 
 

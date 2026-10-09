@@ -6,7 +6,7 @@ from typing import Any
 
 from staffroom.core.codeinput import code_from_inputs
 from staffroom.core.export import export, house_style_from, to_text
-from staffroom.core.panel import PanelSpec
+from staffroom.core.panel import PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.tools.parsons import logic
 from staffroom.tools.parsons.panel import panel_spec
@@ -57,9 +57,10 @@ class ParsonsPlugin:
             style=house_style_from(ctx.config),
         )
         ctx.progress(1.0, "Done")
-        preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
+        sheet_text, key_text = to_text(doc.sheet()), to_text(doc.key())
         return RunResult(
-            texts={"preview": preview},
+            texts={"preview": sheet_text + "\n\n" + key_text},  # the CLI's --preview
+            pages={"pages": pages_from(files, sheet_text=sheet_text, key_text=key_text)},
             files=files,
             summary=f"Wrote {', '.join(f.name for f in files)} to {ctx.output_dir}",
             outcome=(

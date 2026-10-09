@@ -44,7 +44,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--preset", help="choose this preset in the tool's options form (for --screenshot)"
     )
+    parser.add_argument(
+        "--option",
+        action="append",
+        default=[],
+        metavar="FIELD=VALUE",
+        help="set a field of the tool's options form, e.g. formats=docx (for --screenshot)",
+    )
     parser.add_argument("--run", action="store_true", help="run the tool before --screenshot")
+    parser.add_argument(
+        "--tab", help="after --run, show the output tab whose title starts with this"
+    )
     parser.add_argument(
         "--expand",
         action="store_true",
@@ -83,6 +93,12 @@ def build_window(args: argparse.Namespace) -> MainWindow:
     if args.preset and args.tool:
         for form in window.panel_for(args.tool).forms.values():
             form.apply_preset(args.preset)
+    if args.option and args.tool:
+        for item in args.option:
+            name, _, value = item.partition("=")
+            for form in window.panel_for(args.tool).forms.values():
+                if name in form.widgets:
+                    form.set_field(name, int(value) if value.isdigit() else value)
     if args.resource is not None:
         window.show_library()
         if args.resource:
@@ -97,6 +113,17 @@ def _select_row(panel: ToolPanel, row: int) -> None:
     for link in panel.line_links.values():
         link.table.selectRow(row - 1)
         return
+
+
+def _show_tab(panel: ToolPanel, title: str) -> None:
+    """Bring the output tab whose title starts with ``title`` to the front."""
+    tabs = panel.results.tabs
+    if tabs is None:
+        return
+    for index in range(tabs.count()):
+        if tabs.isTabVisible(index) and tabs.tabText(index).startswith(title):
+            tabs.setCurrentIndex(index)
+            return
 
 
 def _expand(panel: ToolPanel) -> None:
@@ -140,9 +167,11 @@ def main(argv: list[str] | None = None) -> int:
             if args.select_row:
                 row = args.select_row
                 panel.run_finished.connect(lambda _ok: _select_row(panel, row))
+            if args.tab:
+                panel.run_finished.connect(lambda _ok: _show_tab(panel, args.tab))
             panel.run_finished.connect(
                 lambda _ok: QTimer.singleShot(
-                    200, lambda: _save_screenshot(app, window, args.screenshot)
+                    200, lambda: _save_when_drawn(app, window, panel, args.screenshot)
                 )
             )
             QTimer.singleShot(200, panel.start_run)
@@ -153,6 +182,20 @@ def main(argv: list[str] | None = None) -> int:
     window.show()
     log.info("launcher started")
     return app.exec()
+
+
+SETTLE_TRIES = 40  # x 100 ms: how long a screenshot waits for page thumbnails
+
+
+def _save_when_drawn(
+    app: QApplication, window: MainWindow, panel: ToolPanel, path: Path, tries: int = SETTLE_TRIES
+) -> None:
+    """Save once the panel's page previews have drawn their thumbnails (they
+    render in a thread), or after :data:`SETTLE_TRIES` tries."""
+    if tries > 0 and panel.results.busy():
+        QTimer.singleShot(100, lambda: _save_when_drawn(app, window, panel, path, tries - 1))
+        return
+    QTimer.singleShot(150, lambda: _save_screenshot(app, window, path))  # the large page too
 
 
 def _save_screenshot(app: QApplication, window: MainWindow, path: Path) -> None:
