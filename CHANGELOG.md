@@ -33,6 +33,15 @@ with every change; `just release <part>` turns it into a version.
   them is listed under **Other**. The app now uses the brand type, bundled
   under the SIL OFL with their licences: Source Sans 3 for text, Fraunces for
   titles, IBM Plex Mono for code and logs.
+- The docs home page leads with what a teacher gets (#90): a headline, the
+  pinned two-line install, and a fan of real first pages (worksheet, trace
+  table, Parsons) above the fold at 1240×780 in both colour schemes; a
+  three-column privacy strip (stored / never stored / check it yourself) whose
+  every claim is tested against the Privacy page; and a *What comes out*
+  gallery with one real output per tool. The pages are rendered from the
+  example files by `just screenshots`. The site nav puts the teachers' pages
+  first (Install, Tools, Privacy, Guides, as header tabs) and moves Process,
+  Roadmap, Phases and the audits under one *Contributing* section at the end.
 - CI and the release workflow run on Linux instead of macOS, which uses a tenth of the
   Actions allowance on a private repo. macOS-only packaging tests skip there.
 

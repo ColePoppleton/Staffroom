@@ -89,13 +89,46 @@ uv run staff marks run examples/marks_10x_max.csv --out "$home/out/marks" >/dev/
 cp "$home/out/marks/marks_10x_max_distribution.png" docs/marks-chart.png
 echo "saved docs/marks-chart.png"
 
+# The pages the tools print, for the home page's fan and its "What comes out"
+# gallery: page 1 of each PDF, made from the example files by the same
+# commands a teacher would type. The date in each page's header is today's.
+page() {
+    local pdf="$1" name="$2" dpi="${3:-90}"
+    if command -v pdftoppm >/dev/null; then
+        pdftoppm -png -r "$dpi" -f 1 -l 1 -singlefile "$pdf" "docs/$name"
+    else
+        # macOS fallback (lower resolution): `brew install poppler` for pdftoppm.
+        sips -s format png "$pdf" --out "docs/$name.png" >/dev/null
+    fi
+    echo "saved docs/$name.png"
+}
+first_pdf() { ls "$1"/*.pdf | grep -v -i key | head -1; }
+
 uv run staff worksheet make --topic truth_tables --difficulty hard --board ocr --seed 1 \
     --format pdf --out "$home/out/worksheet" --no-preview >/dev/null
-sheet="$(ls "$home/out/worksheet"/*.pdf | grep -v -i key | head -1)"
-if command -v pdftoppm >/dev/null; then
-    pdftoppm -png -r 110 -f 1 -l 1 -singlefile "$sheet" docs/worksheet-sample
-else
-    # macOS fallback (lower resolution): `brew install poppler` for pdftoppm.
-    sips -s format png "$sheet" --out docs/worksheet-sample.png >/dev/null
-fi
-echo "saved docs/worksheet-sample.png"
+page "$(first_pdf "$home/out/worksheet")" worksheet-sample 110
+
+uv run staff worksheet make --topic binary --difficulty medium --board ocr --seed 1 --count 8 \
+    --format pdf --out "$home/out/binary" --no-preview >/dev/null
+page "$(first_pdf "$home/out/binary")" output-worksheet
+
+uv run staff parsons make examples/year9.py --seed 1 --format pdf \
+    --out "$home/out/parsons" --no-preview >/dev/null
+page "$(first_pdf "$home/out/parsons")" output-parsons
+
+uv run staff trace make examples/year9.py --format pdf --out "$home/out/trace" --no-preview >/dev/null
+page "$(first_pdf "$home/out/trace")" output-trace
+
+uv run staff bugs make examples/year9.py --seed 1 --format pdf --out "$home/out/bugs" >/dev/null
+page "$(first_pdf "$home/out/bugs")" output-bugs
+
+uv run staff fade make examples/year9.py --format pdf --out "$home/out/fade" --no-preview >/dev/null
+page "$(first_pdf "$home/out/fade")" output-fade
+
+uv run staff quiz export --bank examples/question_bank.md --format donow --seed 1 \
+    --out "$home/out/quiz" >/dev/null
+page "$(first_pdf "$home/out/quiz")" output-quiz
+
+# Pseudocode writes text, not a page: keep the translation itself.
+uv run staff pseudocode to-ocr examples/year9.py 2>/dev/null > docs/output-pseudocode-ocr.txt
+echo "saved docs/output-pseudocode-ocr.txt"

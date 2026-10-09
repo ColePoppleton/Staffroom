@@ -20,6 +20,8 @@ it, a tool or the Library. (`hello`, the developers' reference tool, is not in
 the list; `staff hello` still works from the terminal.) A tool someone adds
 without a group is listed under **Other**, at the end.
 
+![The launcher with the marks tool open](../launcher-dark.png)
+
 The very first start shows a card asking for the resources folder; choose
 one or skip it and set it later in Settings.
 

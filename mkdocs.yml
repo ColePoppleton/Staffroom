@@ -14,6 +14,9 @@ theme:
   # Sans 3 for body) so Material does not also load Roboto.
   font: false
   features:
+    # Top-level nav entries become tabs in the header (Home, Install, Tools,
+    # Privacy, Guides, Contributing), so the home page can hide the sidebar.
+    - navigation.tabs
     - navigation.sections
     - navigation.top
     - content.code.copy
@@ -46,43 +49,56 @@ extra_css:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - def_list
+  - md_in_html
   - tables
   - toc:
       permalink: true
   - pymdownx.superfences
+  # The home page includes a real pseudocode translation written by
+  # scripts/screenshots.sh; a missing file fails the build.
+  - pymdownx.snippets:
+      base_path: [docs]
+      check_paths: true
   - pymdownx.tabbed:
       alternate_style: true
 
 nav:
+  # Teachers' pages first; everything about building Staffroom is under
+  # Contributing, last.
   - Home: index.md
   - Install: guide/install.md
-  - Using the launcher: guide/launcher.md
-  - Privacy: guide/privacy.md
-  - Running pupil code: guide/running-code.md
-  - Outputs: guide/outputs.md
-  - Updating: guide/updating.md
   - Tools:
+      # The app's sidebar order (#89): Lessons, Sheets & quizzes, From a
+      # program, After a test.
+      - Using the launcher: guide/launcher.md
+      - Resource Library: tools/library.md
       - Classroom: tools/classroom.md
-      - Marks: tools/marks.md
       - Worksheet: tools/worksheet.md
+      - Quiz: tools/quiz.md
       - Parsons: tools/parsons.md
       - Trace: tools/trace.md
       - Bugs: tools/bugs.md
       - Fade: tools/fade.md
       - Pseudocode: tools/pseudocode.md
-      - Quiz: tools/quiz.md
-      - Resource Library: tools/library.md
-  - Formats:
-      - Question banks: guide/question-banks.md
-      - Marks files: guide/marks-files.md
-      - House style: guide/house-style.md
-  - Glossary: guide/glossary.md
+      - Marks: tools/marks.md
+  - Privacy: guide/privacy.md
+  - Guides:
+      - Outputs: guide/outputs.md
+      - Running pupil code: guide/running-code.md
+      - Updating: guide/updating.md
+      - Glossary: guide/glossary.md
+      - Formats:
+          - Question banks: guide/question-banks.md
+          - Marks files: guide/marks-files.md
+          - House style: guide/house-style.md
+      - Changelog: changelog.md
   - Contributing:
       - Process: process.md
       - Adding a tool: adding-a-tool.md
       - Roadmap: ROADMAP.md
-  - Audits:
-      - 2026-10-09: audits/2026-10-09.md
-      - 2026-10-08: audits/2026-10-08.md
-  - Changelog: changelog.md
+      - Phases: PHASES.md
+      - Audits:
+          - 2026-10-09: audits/2026-10-09.md
+          - 2026-10-08: audits/2026-10-08.md
