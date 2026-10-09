@@ -6,7 +6,7 @@ same two rules, so once you know them for one you know them for all.
 ## Where files go
 
 The output folder is decided before you press Run, in this order, and the
-run bar names it:
+line under the Run button names it:
 
 1. **The folder set in Settings** (*Settings › Output folder*), if you set
    one. Every tool then writes there.
@@ -20,9 +20,10 @@ run bar names it:
    `~/TeachingSessions/outputs/worksheet/` and a Parsons sheet made from a
    library resource in `~/TeachingSessions/outputs/parsons/`.
 
-Never the folder the app happened to be started from. **Open output
-folder** on the run bar works before and after a run; the log line at the
-end of a run repeats the folder. From the terminal, `--out <folder>` on
+Never the folder the app happened to be started from. Before the first run
+the result strip offers **Open output folder**; after a run its **Folder**
+button opens where the files went, and each file has a button of its own.
+The log line at the end of a run (under *Details*) repeats the folder. From the terminal, `--out <folder>` on
 any `make`, `run` or `export` command overrides all three.
 
 A second run with the same input and settings overwrites the previous

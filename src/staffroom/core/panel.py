@@ -44,11 +44,17 @@ detail table), stacked under the main view. :func:`top_outputs`,
 :func:`main_outputs` and :func:`below_outputs` decide, from each widget's
 optional ``place`` hint: ``StatTiles`` defaults to top, ``ActionTable`` to
 below, everything else to main, and a panel with no main view promotes its
-first output. ``LogArea`` is none of these; the shell keeps it at the foot of
-the output pane.
+first output. ``LogArea`` is none of these: the run log sits behind a
+one-line *Details* toggle at the foot of the output pane (every panel has one;
+listing ``LogArea`` is optional and changes nothing).
 
-At the foot of the inputs, the run bar says where the next run will write:
-the shared output folder (``Config.output_dir_for``) unless the panel sets
+How a run went is not a widget a tool declares: the shell's result strip, on
+top of the output pane, shows ``RunResult.outcome`` (or ``summary``), one
+button per file in ``RunResult.files`` and the warnings raised with
+``RunContext.warn``.
+
+Under the run button, the shell says where the next run will write: the
+shared output folder (``Config.output_dir_for``) unless the panel sets
 ``writes_to`` to a :class:`WritesTo` naming its own destination.
 
 If a new tool needs a widget that is not here, add it here and to the shell's
@@ -443,6 +449,9 @@ class ActionTable:
 
 @dataclass(frozen=True)
 class LogArea:
+    """The run log. Always behind the output pane's *Details* toggle; kept in
+    the vocabulary so panels that list it stay valid."""
+
     key: str = "log"
     label: str = "Log"
 
@@ -499,8 +508,9 @@ class WritesTo:
     ``folder(inputs, config)`` returns the folder the next run will write to,
     from the same ``inputs`` dict ``plugin.run`` gets. It only computes a path:
     no file access, it must not raise, and it is called on every input change.
-    The shell shows ``"<verb> <folder>"`` beside the Run button and a link
-    labelled ``open_label`` that opens the folder (creating it if need be)."""
+    The shell shows ``"<verb> <folder>"`` under the Run button and, until the
+    first run, a chip labelled ``open_label`` in the result strip that opens
+    the folder (creating it if need be)."""
 
     folder: Callable[[Mapping[str, Any], Config], Path]
     verb: str = DEFAULT_WRITES_VERB

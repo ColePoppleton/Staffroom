@@ -7,6 +7,17 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Changed
+- A run's result is one strip along the top of the output pane (#84): a tick or a
+  cross, a short outcome ("10 questions · seed 42", or the failure in plain words),
+  one button per file written (*PDF Sheet*, *PDF Key*, *DOCX Sheet* …; click opens
+  it in its app, right-click shows it in Finder) and a *Folder* button. Warnings
+  (marks, quiz, bugs, pseudocode) show as "3 warnings ▸" that opens the list. The
+  per-panel Log card is gone: the run log sits behind a one-line *Details ▸* footer,
+  closed by default and remembered per tool for the session. The foot of the inputs
+  is the Run button and where it writes; the truncated status line and the second
+  "Writes to" label are gone. Tools say what they made with `RunResult.outcome`,
+  may name a file's button with `RunResult.labels`, and raise warnings with
+  `ctx.warn()`; `staffroom --expand` opens the warnings for a screenshot.
 - Every tool is now a workbench (#83): the inputs in a 390 px column on the left
   with the run button pinned at its foot (⌘↵ runs it from anywhere in the
   window), the results filling the right, tabbed when a tool has more than one

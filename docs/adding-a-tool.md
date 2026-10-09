@@ -117,7 +117,18 @@ Outputs are *main* views, shown as tabs in spec order, or sit *below* them.
 An `ActionTable` goes below by default and everything else is a main view; set
 `place="below"` on a secondary output (notes, a view-only table) or
 `place="main"` on a list that is the point of the tool, as classroom's
-sessions are. The `LogArea` stays at the foot of the output pane.
+sessions are. The run log sits behind a one-line *Details* toggle at the foot
+of the output pane in every panel; listing `LogArea()` is optional.
+
+How the run went is not an output you declare. The result strip on top of the
+output pane shows a tick or a cross, `RunResult.outcome` (a short line such as
+`"10 questions · seed 42"`; the part before ` · ` is the headline; without it
+the strip shows `summary`), one button per file in `RunResult.files` and a
+*Folder* button. A file's button is named from its file name (`stem` / `stem_key`
+become *Sheet* / *Key*); name one yourself with `RunResult.labels`
+(`labels={chart: "Chart"}`). Raise anything the teacher should act on with
+`ctx.warn("…")` rather than `ctx.log`: it is logged as `Warning: …` and the strip
+counts it ("3 warnings ▸").
 
 For a tool whose result is a report rather than one view, `tools/marks` is
 the reference:

@@ -66,6 +66,8 @@ class FadePlugin:
             texts={"preview": to_text(doc.sheet()) + "\n\n" + to_text(doc.key())},
             files=files,
             summary=f"Wrote {', '.join(f.name for f in files)} to {ctx.output_dir}",
+            outcome=f"{len(versions)} versions · blanks "
+            + ", ".join(str(logic.blank_count(v)) for v in versions),
         )
 
 

@@ -3,8 +3,8 @@ a RunResult.
 
 Top to bottom:
 
-* ``strip_slot``: an empty layout on the pane's top edge, kept for the result
-  strip (#84) that will say what the run did and which files it wrote.
+* ``strip_slot`` holding the :class:`ResultStrip`: how the last run went, the
+  files it wrote as buttons, its warnings.
 * Headline views (``place="top"``, e.g. :class:`StatTilesWidget`), shown once
   filled.
 * The main view: one tab per main output (see :func:`core.panel.main_outputs`).
@@ -15,7 +15,10 @@ Top to bottom:
   too narrow for them.
 * Secondary outputs (ActionTable lists, notes) as sections under the main view;
   a ``collapsed`` table folds under a one-line heading the user opens.
-* The run log, until the result strip replaces it (#84).
+* The *Details* footer: one line (the toggle and the latest log line) that
+  opens the run log above it. Closed by default; open or closed is remembered
+  per tool for the session. Every panel has it, whether or not its spec lists
+  a ``LogArea``.
 
 The pane scrolls as a whole only when the secondary sections do not fit; the
 main view always starts at the top, so a result never lands below the fold.
@@ -46,7 +49,6 @@ from staffroom.core.panel import (
     ActionTable,
     BarChart,
     ImageView,
-    LogArea,
     MainLayout,
     OutputWidget,
     ResultsTable,
@@ -62,8 +64,10 @@ from staffroom.core.plugin import RunResult
 from staffroom.shell.widgets.action_table import ActionTableWidget
 from staffroom.shell.widgets.bar_chart import BarChartWidget
 from staffroom.shell.widgets.card import make_label
+from staffroom.shell.widgets.elided_label import ElidedLabel
 from staffroom.shell.widgets.image_view import ImageViewWidget
 from staffroom.shell.widgets.input_group import eyebrow
+from staffroom.shell.widgets.result_strip import ResultStrip
 from staffroom.shell.widgets.stat_tiles import StatTilesWidget
 from staffroom.shell.widgets.table_view import TableModel, TableWidget
 from staffroom.shell.widgets.text_view import TextViewWidget
@@ -71,7 +75,7 @@ from staffroom.shell.widgets.text_view import TextViewWidget
 MAIN_MIN_HEIGHT = 300  # the main view never shrinks below this; the pane scrolls instead
 MAIN_SHARE = 0.6  # ...nor below this share of the visible height
 BELOW_TABLE_ROWS = 8
-LOG_HEIGHT = 96
+LOG_HEIGHT = 180  # the run log when Details is open
 BELOW_TEXT_MIN, BELOW_TEXT_MAX = 72, 240
 ROW_TABLE_ROWS = 40  # a report's table shows its rows; the pane scrolls past this
 ROW_SPACING = 12
@@ -79,6 +83,10 @@ COMPACT_COLUMN = 40  # narrowest column of a hinted (report) table
 CARD_PADDING = 10
 FOLD_CLOSED, FOLD_OPEN = "▸", "▾"
 QWIDGETSIZE_MAX = 16777215
+DETAILS_CLOSED, DETAILS_OPEN = "Details ▸", "Details ▾"
+
+# Details open or closed, per tool, for as long as the app runs.
+_details_open: dict[str, bool] = {}
 
 
 def _copy_text(view: QPlainTextEdit) -> None:
@@ -192,10 +200,13 @@ class OutputPane(QWidget):
         *,
         empty_text: str = "Results appear here after a run.",
         main_layout: MainLayout = "tabs",
+        open_label: str = "Folder",
+        details_key: str = "",
     ) -> None:
         super().__init__(parent)
         self.setObjectName("OutputPane")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        self.details_key = details_key
         self.tables: dict[str, tuple[TableModel, TableWidget, QLabel]] = {}
         self.action_tables: dict[str, ActionTableWidget] = {}
         self.text_views: dict[str, TextViewWidget] = {}
@@ -206,7 +217,6 @@ class OutputPane(QWidget):
         self.corner_buttons: dict[str, QPushButton] = {}  # per main view, shown with its tab
         self.cards: dict[str, ReportCard] = {}
         self.folds: dict[str, QPushButton] = {}  # collapsed below sections: their toggles
-        self.log_view: QPlainTextEdit | None = None
         # Each view's container: its tab page or card (main), or its section.
         self.sections: dict[str, QWidget] = {}
         self.empty_text = empty_text
@@ -223,9 +233,11 @@ class OutputPane(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
-        # The pane's top edge: kept free for the result strip (#84).
+        # The pane's top edge: the result strip.
         self.strip_slot = QVBoxLayout()
         self.strip_slot.setContentsMargins(0, 0, 0, 0)
+        self.strip = ResultStrip(open_label=open_label)
+        self.strip_slot.addWidget(self.strip)
         root.addLayout(self.strip_slot)
 
         self.scroll_area = QScrollArea()
@@ -253,11 +265,10 @@ class OutputPane(QWidget):
 
         for spec in below_outputs(outputs):
             self.body_layout.addWidget(self._below_section(spec))
-
-        for log_spec in (o for o in outputs if isinstance(o, LogArea)):
-            self.body_layout.addWidget(self._log_section(log_spec, fill=not main))
         if not main or main_layout == "row":
             self.body_layout.addStretch(1)
+
+        root.addWidget(self._details(fill=not main), 0 if main else 1)
 
     def _build_tabs(self, main: list[ViewWidget]) -> None:
         tabs = QTabWidget()
@@ -451,13 +462,15 @@ class OutputPane(QWidget):
         section.setVisible(spec.key not in self._below_hidden)
         return section
 
-    def _log_section(self, spec: LogArea, *, fill: bool) -> QWidget:
-        section = QWidget()
-        section.setObjectName("OutputSection")
-        layout = QVBoxLayout(section)
+    def _details(self, *, fill: bool) -> QWidget:
+        """The run log behind a one-line toggle at the pane's foot. A panel
+        with no view of its own (only a log) opens it and lets it fill."""
+        details = QWidget()
+        details.setObjectName("Details")
+        details.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        layout = QVBoxLayout(details)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-        layout.addWidget(eyebrow(spec.label))
+        layout.setSpacing(0)
         self.log_view = QPlainTextEdit()
         self.log_view.setObjectName("LogView")
         self.log_view.setReadOnly(True)
@@ -466,9 +479,45 @@ class OutputPane(QWidget):
             self.log_view.setMinimumHeight(MAIN_MIN_HEIGHT)
         else:
             self.log_view.setFixedHeight(LOG_HEIGHT)
-        layout.addWidget(self.log_view)
-        self.sections[spec.key] = section
-        return section
+        log_box = QWidget()
+        box_layout = QVBoxLayout(log_box)
+        box_layout.setContentsMargins(20, 10, 20, 0)
+        box_layout.addWidget(self.log_view)
+        self.log_box = log_box
+        layout.addWidget(log_box, 1)
+
+        bar = QWidget()
+        bar.setObjectName("DetailsBar")
+        bar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        bar_layout = QHBoxLayout(bar)
+        bar_layout.setContentsMargins(20, 7, 20, 7)
+        bar_layout.setSpacing(14)
+        self.details_toggle = QPushButton(DETAILS_CLOSED)
+        self.details_toggle.setObjectName("DetailsToggle")
+        self.details_toggle.setCheckable(True)
+        self.details_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.details_toggle.setToolTip("Show or hide the run log")
+        self.details_toggle.toggled.connect(self._set_details_open)
+        self.log_tail = ElidedLabel("run log")
+        self.log_tail.setProperty("role", "faint")
+        bar_layout.addWidget(self.details_toggle)
+        bar_layout.addWidget(self.log_tail, 1)
+        layout.addWidget(bar)
+
+        opened = _details_open.get(self.details_key, fill)
+        self.details_toggle.setChecked(opened)
+        self._set_details_open(opened)
+        return details
+
+    def _set_details_open(self, opened: bool) -> None:
+        self.details_toggle.setText(DETAILS_OPEN if opened else DETAILS_CLOSED)
+        self.log_box.setVisible(opened)
+        if self.details_key:
+            _details_open[self.details_key] = opened
+
+    @property
+    def details_open(self) -> bool:
+        return self.details_toggle.isChecked()
 
     def _results_table(self, spec: ResultsTable) -> tuple[TableModel, TableWidget, QLabel]:
         model = TableModel()
@@ -581,12 +630,14 @@ class OutputPane(QWidget):
         for key, chart in self.charts.items():
             chart.set_table(None)
             self._emptied(key)
-        if self.log_view:
-            self.log_view.clear()
+        self.log_view.clear()
+        self.log_tail.setText("run log")
 
     def append_log(self, line: str) -> None:
-        if self.log_view:
-            self.log_view.appendPlainText(line)
+        self.log_view.appendPlainText(line)
+        last = line.strip().splitlines()[-1] if line.strip() else ""
+        if last:
+            self.log_tail.setText(last)
 
     def apply(self, result: RunResult) -> None:
         for key, widget in self.action_tables.items():

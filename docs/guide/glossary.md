@@ -211,5 +211,15 @@ term has a precise meaning in the code, this is that meaning.
   can be set instead.
 
 **Run bar**
-: The foot of a tool's inputs column: the Run button (⌘↵), the folder the
-  tool will write to, *Open output folder* and the one-line result.
+: The foot of a tool's inputs column: the Run button (⌘↵) and the folder the
+  tool will write to.
+
+**Result strip**
+: The line along the top of a tool's results: a tick or a cross, what the run
+  made ("10 questions · seed 42") or why it stopped, one button per file
+  written (click opens it in its app, right-click shows it in Finder), a
+  *Folder* button and any warnings ("3 warnings ▸"). Before the first run it
+  offers *Open output folder*.
+
+**Details**
+: The one-line footer under a tool's results that opens that run's log.

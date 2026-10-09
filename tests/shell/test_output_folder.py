@@ -12,7 +12,6 @@ from pytestqt.qtbot import QtBot
 from staffroom.core.config import load_config
 from staffroom.shell.app import build_window, parse_args
 from staffroom.shell.main_window import MainWindow
-from staffroom.shell.widgets import run_bar
 from staffroom.shell.widgets.run_bar import abbreviate_path
 
 
@@ -26,12 +25,15 @@ def test_run_bar_shows_the_folder_before_the_run(qtbot: QtBot, tmp_path: Path) -
     panel = window.panel_for("worksheet")
     expected = tmp_path / "sessions" / "outputs" / "worksheet"
     assert panel.run_bar._folder == expected
-    assert panel.run_bar.folder.isVisibleTo(panel) and panel.run_bar.open_folder.isVisibleTo(panel)
+    assert panel.run_bar.folder.isVisibleTo(panel)
     assert panel.run_bar.folder.text().startswith("Writes to ")
     assert panel.run_bar.folder.toolTip() == str(expected)
-    # While running the link stays, so the folder can be opened at any time.
-    panel.run_bar.set_running(True)
-    assert panel.run_bar.open_folder.isVisibleTo(panel)
+    # Before the first run the strip offers the same folder as a chip.
+    assert panel.strip.folder_chip.isVisibleTo(panel)
+    assert panel.strip.folder_chip.toolTip() == str(expected)
+    # While running the chip stays, so the folder can be opened at any time.
+    panel.strip.set_running()
+    assert panel.strip.folder_chip.isVisibleTo(panel)
 
 
 def test_run_bar_follows_the_chosen_input(
@@ -87,20 +89,19 @@ def test_classroom_run_bar_names_the_sessions_folder(
     bar = panel.run_bar
     assert bar._folder == today
     assert bar.folder.text().startswith("Copies to ")
-    assert bar.open_folder.text() == "Open sessions folder"
+    assert panel.strip.folder_chip.text() == "Open sessions folder"
     # Typing the label moves the folder to where the copy will actually go.
     panel.set_text("label", "P3 Y9 loops")
     assert bar._folder == today / "P3 Y9 loops"
     assert bar.folder.toolTip() == str(today / "P3 Y9 loops")
     assert bar.folder.text().endswith("P3 Y9 loops")
     assert not (tmp_path / "sessions").exists()  # nothing created until asked
-    opened: list[str] = []
-    monkeypatch.setattr(
-        run_bar.QDesktopServices, "openUrl", lambda url: opened.append(url.toLocalFile())
-    )
-    bar.open_folder.click()
+    assert panel.strip.folder_chip.toolTip() == str(today / "P3 Y9 loops")
+    opened: list[Path] = []
+    monkeypatch.setattr(window.library, "open_externally", opened.append)
+    panel.strip.folder_chip.click()
     assert (today / "P3 Y9 loops").is_dir()  # created on demand, then opened
-    assert opened == [str(today / "P3 Y9 loops")]
+    assert opened == [today / "P3 Y9 loops"]
 
 
 def test_every_other_tool_still_names_the_output_folder(qtbot: QtBot, tmp_path: Path) -> None:
@@ -117,4 +118,4 @@ def test_every_other_tool_still_names_the_output_folder(qtbot: QtBot, tmp_path: 
         bar = panel.run_bar
         assert bar._folder == panel.output_dir(panel.collect_inputs()), name
         assert bar.folder.text().startswith("Writes to "), name
-        assert bar.open_folder.text() == "Open output folder", name
+        assert panel.strip.folder_chip.text() == "Open output folder", name

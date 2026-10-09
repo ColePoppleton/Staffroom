@@ -73,6 +73,10 @@ class ParsonsPlugin:
             texts={"preview": preview},
             files=files,
             summary=f"Wrote {', '.join(f.name for f in files)} to {ctx.output_dir}",
+            outcome=(
+                f"{len(problem.solution)} blocks · "
+                f"{len(problem.distractor_numbers())} distractors, seed {problem.seed}"
+            ),
         )
 
 

@@ -76,7 +76,7 @@ def test_save_preset_from_the_grid(window: MainWindow) -> None:
     grid.add_preset("Custom A", grid.value().rows)
     grid.preset_saved.emit("Custom A", grid.value())
     assert "Custom A" in load_config().tool("marks")["presets"]
-    assert "Saved preset" in panel.run_bar.status.text()
+    assert "Saved preset" in panel.strip.text()
 
 
 def test_file_chip_and_load_summary_instead_of_a_preview_table(

@@ -55,7 +55,10 @@ The run log warns, before you trust the numbers, when:
 Nothing in the list stops the run. `examples/marks_messy.csv` makes every
 warning fire if you want to see them.
 
-![Marks run on the messy example: every warning in the log](../marks-warnings-light.png)
+The result strip counts them ("3 warnings ▸"); click the count for the list.
+Each is also in the run log under *Details*.
+
+![Marks run on the messy example: the warnings, counted in the result strip](../marks-warnings-light.png)
 
 ## Boundaries
 

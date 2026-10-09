@@ -32,7 +32,7 @@ def run_tool(window: MainWindow, qtbot: QtBot, name: str) -> ToolPanel:
     panel.set_text("pasted", PROGRAM)
     with qtbot.waitSignal(panel.run_finished, timeout=60000) as blocker:
         panel.start_run()
-    assert blocker.args == [True], panel.run_bar.status.text()
+    assert blocker.args == [True], panel.strip.text()
     return panel
 
 

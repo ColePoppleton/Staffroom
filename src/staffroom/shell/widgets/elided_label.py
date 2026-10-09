@@ -1,7 +1,8 @@
 """A label that never grows past a few lines: longer text is cut with an
 ellipsis (at the end, or in the middle for paths) and shown in full in the
 tooltip. ``text()`` still returns the whole string, so callers (and tests)
-read what was set, not what fits."""
+read what was set, not what fits. With ``whole_words`` the cut falls between
+words, never inside one (a sentence reads better short than broken)."""
 
 from __future__ import annotations
 
@@ -21,10 +22,12 @@ class ElidedLabel(QLabel):
         max_lines: int = 1,
         mode: Qt.TextElideMode = Qt.TextElideMode.ElideRight,
         auto_tooltip: bool = True,
+        whole_words: bool = False,
     ) -> None:
         super().__init__(parent)
         self.max_lines = max(1, max_lines)
         self.mode = mode
+        self.whole_words = whole_words
         self.auto_tooltip = auto_tooltip  # False: the caller sets its own tooltip
         self._full = ""
         self.setWordWrap(False)  # lines are broken by _elide, exactly
@@ -63,9 +66,8 @@ class ElidedLabel(QLabel):
         """The text broken into at most ``max_lines`` lines of ``width``, the
         last one elided. Lines are laid out here (breaking a long path
         anywhere if it must) rather than by QLabel, so the count is exact."""
-        metrics = self.fontMetrics()
         if self.max_lines == 1 or not text:
-            return metrics.elidedText(text, self.mode, width)
+            return self._elide_line(text, width)
         layout = QTextLayout(text, self.font())
         option = QTextOption()
         option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
@@ -84,5 +86,19 @@ class ElidedLabel(QLabel):
         if len(lines) <= self.max_lines:
             return "\n".join(lines)
         rest = text[starts[self.max_lines - 1] :].strip()
-        last = metrics.elidedText(rest, self.mode, width)
+        last = self._elide_line(rest, width)
         return "\n".join([*lines[: self.max_lines - 1], last])
+
+    def _elide_line(self, text: str, width: int) -> str:
+        metrics = self.fontMetrics()
+        cut = metrics.elidedText(text, self.mode, width)
+        if not self.whole_words or cut == text or self.mode != Qt.TextElideMode.ElideRight:
+            return cut
+        # Back off to the last whole word that fits with the ellipsis.
+        words = text.split(" ")
+        while len(words) > 1:
+            words.pop()
+            candidate = " ".join(words).rstrip(" ,;:·→") + " …"
+            if metrics.horizontalAdvance(candidate) <= width:
+                return candidate
+        return cut  # a single word wider than the line: nothing better to do

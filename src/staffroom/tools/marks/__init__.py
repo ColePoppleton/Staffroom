@@ -54,7 +54,7 @@ class MarksPlugin:
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
         for warning in analysis.warnings:
-            ctx.log("Warning: " + warning)
+            ctx.warn(warning)
         ctx.log(
             f"{len(analysis.grades)} scripts, paper total {analysis.total_max:g} "
             f"({', '.join(f'{q}={m:g}' for q, m in analysis.max_marks.items())})"
@@ -87,6 +87,8 @@ class MarksPlugin:
             texts={"distribution": boundary_caption(boundaries, options, ctx)},
             files=[dist_csv, q_csv, chart],
             summary=f"{len(analysis.grades)} scripts graded; {caveat}aggregates saved to {out}",
+            outcome=f"{len(analysis.grades)} scripts graded · out of {analysis.total_max:g}",
+            labels={chart: "Chart"},
         )
 
     def act(self, name: str, row: Mapping[str, Any], ctx: RunContext) -> RunResult:

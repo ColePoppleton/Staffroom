@@ -29,7 +29,7 @@ def test_translate_and_copy(window: MainWindow, qtbot: QtBot) -> None:
     panel.set_text("pasted", "total = 0\nfor i in range(3):\n    total += i\nprint(total)\n")
     with qtbot.waitSignal(panel.run_finished, timeout=20000) as blocker:
         panel.start_run()
-    assert blocker.args == [True], panel.run_bar.status.text()
+    assert blocker.args == [True], panel.strip.text()
     out = panel.results.text_views["output"].toPlainText()
     assert "for i = 0 to 2" in out and "next i" in out
     assert "Everything translated" in panel.results.text_views["report"].toPlainText()

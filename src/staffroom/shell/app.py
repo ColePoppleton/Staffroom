@@ -24,6 +24,7 @@ from staffroom import __version__
 from staffroom.core.config import load_config
 from staffroom.core.log import get_logger, setup_logging
 from staffroom.shell.main_window import MainWindow
+from staffroom.shell.tool_panel import ToolPanel
 
 log = get_logger(__name__)
 
@@ -44,6 +45,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--preset", help="choose this preset in the tool's options form (for --screenshot)"
     )
     parser.add_argument("--run", action="store_true", help="run the tool before --screenshot")
+    parser.add_argument(
+        "--expand",
+        action="store_true",
+        help="after --run, open the strip's warnings list (for --screenshot)",
+    )
     parser.add_argument("--screenshot", type=Path, help="render, save a PNG, and exit")
     parser.add_argument("--size", default="1240x780", help="window size for --screenshot, WxH")
     parser.add_argument("--version", action="version", version=__version__)
@@ -79,6 +85,12 @@ def build_window(args: argparse.Namespace) -> MainWindow:
     return window
 
 
+def _expand(panel: ToolPanel) -> None:
+    """Open the warnings list, so a screenshot shows each warning."""
+    if panel.strip.warnings:
+        panel.strip.warning_toggle.setChecked(True)
+
+
 def screenshot_output_dir() -> str:
     """A fresh temporary output folder, removed when the process exits."""
     folder = tempfile.mkdtemp(prefix="staffroom-screenshot-")
@@ -109,6 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         window.show()
         if args.run and args.tool:
             panel = window.panel_for(args.tool)
+            if args.expand:
+                panel.run_finished.connect(lambda _ok: _expand(panel))
             panel.run_finished.connect(
                 lambda _ok: QTimer.singleShot(
                     200, lambda: _save_screenshot(app, window, args.screenshot)

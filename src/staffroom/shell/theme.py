@@ -360,6 +360,48 @@ QLineEdit#GridValue {{
 }}
 QLineEdit#GridValue:focus {{ border: none; border-bottom: 2px solid {p.accent}; }}
 
+/* the result strip (top of the output pane) and the Details footer */
+QWidget#ResultStrip {{ background: {p.surface}; border-bottom: 1px solid {p.border}; }}
+QLabel#StripIcon {{
+    border-radius: 10px; font-size: 12px; font-weight: 700;
+    border: 1px solid {p.border_strong}; color: {p.text_faint}; background: transparent;
+}}
+QLabel#StripIcon[state="success"] {{
+    background: {p.success}; border-color: {p.success}; color: {p.window};
+}}
+QLabel#StripIcon[state="danger"] {{
+    background: {p.danger}; border-color: {p.danger}; color: {p.window};
+}}
+QLabel#StripHeadline {{ font-weight: 600; font-size: 14px; padding-top: 1px; }}
+QLabel#StripMessage {{ font-size: 14px; padding-top: 1px; }}
+QLabel#StripMessage[role="outcome"] {{ font-weight: 600; }}
+QLabel#StripMessage[role="muted"] {{ color: {p.text_muted}; }}
+QLabel#StripMessage[role="danger"] {{ color: {p.danger}; font-weight: 600; }}
+QPushButton#ResultChip {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: 9px;
+    padding: 0px; min-height: 0px;
+}}
+QPushButton#ResultChip:hover {{ border-color: {p.text_faint}; background: {p.surface}; }}
+QPushButton#ResultChip:pressed {{ background: {p.selection}; }}
+QLabel#ChipKind {{
+    color: {p.text_muted}; font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+    background: transparent;
+}}
+QLabel#ChipLabel {{ font-size: 12px; background: transparent; }}
+QPushButton#WarningToggle {{
+    background: transparent; border: none; color: {p.warning}; font-weight: 600;
+    padding: 2px 4px; min-height: 0px;
+}}
+QPushButton#WarningToggle:hover {{ text-decoration: underline; }}
+QLabel#WarningList {{ color: {p.warning}; padding-left: 30px; }}
+QWidget#Details {{ background: {p.surface_alt}; }}
+QWidget#DetailsBar {{ background: {p.surface}; border-top: 1px solid {p.border}; }}
+QPushButton#DetailsToggle {{
+    background: transparent; border: none; color: {p.text_muted}; font-weight: 600;
+    font-size: 12px; padding: 0px; min-height: 0px;
+}}
+QPushButton#DetailsToggle:hover {{ color: {p.text}; }}
+
 /* ---------------------------------------------------------- buttons */
 QPushButton {{
     background: {p.surface_alt}; color: {p.text};

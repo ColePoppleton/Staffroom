@@ -44,7 +44,7 @@ class PseudocodePlugin:
         except SyntaxError as exc:
             raise ToolError(f"That is not valid Python: {exc.msg} (line {exc.lineno})") from exc
         for d in result.dropped:
-            ctx.log("Could not translate " + d)
+            ctx.warn("Could not translate " + d)
         for n in result.notes:
             ctx.log("Note: " + n)
         files = []
@@ -64,8 +64,14 @@ class PseudocodePlugin:
             summary += f"; input guessed as {logic.LANGUAGE_LABELS[src]}"
         if files:
             summary += f"; wrote {files[0].name}"
+        outcome = f"{logic.LANGUAGE_LABELS[dst]} · {status}"
+        if guessed:
+            outcome += f", input read as {logic.LANGUAGE_LABELS[src]}"
         return RunResult(
-            texts={"output": result.text, "report": result.report()}, files=files, summary=summary
+            texts={"output": result.text, "report": result.report()},
+            files=files,
+            summary=summary,
+            outcome=outcome,
         )
 
 

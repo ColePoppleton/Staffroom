@@ -80,7 +80,7 @@ def run(panel: ToolPanel, qtbot: QtBot) -> None:
         panel.set_text("label", "P3 loops")
     with qtbot.waitSignal(panel.run_finished, timeout=60000) as blocker:
         panel.start_run()
-    assert blocker.args == [True], panel.run_bar.status.text()
+    assert blocker.args == [True], panel.strip.text()
     QApplication.processEvents()
 
 
@@ -256,7 +256,8 @@ def test_output_pane_waits_with_a_hint_then_shows_the_result(
     assert panel.results.empty_text.startswith("Press Make worksheet")
     run(panel, qtbot)
     assert view.isVisible()
-    assert panel.results.strip_slot.count() == 0  # the top edge is free for #84
+    # The top edge holds the result strip (#84).
+    assert panel.results.strip_slot.itemAt(0).widget() is panel.strip
 
 
 def test_classroom_lists_sessions_first_and_the_diff_below(window: MainWindow) -> None:

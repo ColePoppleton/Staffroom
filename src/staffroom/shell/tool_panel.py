@@ -6,9 +6,10 @@ Below a one-line header (title and description), two panes side by side:
   at the window's minimum width) with its own scroll. Each input widget is a
   hairline-separated :class:`InputGroup`, and the run button sits at the
   pane's foot (:class:`RunBar`, ⌘↵ from anywhere in the window) with where the
-  run will write.
-* the **output pane** filling the rest (:class:`OutputPane`): the main
-  output(s) as tabs, secondary outputs under them, the log at the foot.
+  next run will write.
+* the **output pane** filling the rest (:class:`OutputPane`): the result strip
+  on top (how the run went, the files it wrote as buttons), the main output(s)
+  as tabs, secondary outputs under them, the run log behind *Details*.
 
 Results never push the inputs away and nothing scrolls on its own: changing
 one option and running again is one click (or ⌘↵) with both sides in view.
@@ -19,8 +20,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeySequence, QResizeEvent, QShortcut, QShowEvent
+from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QKeySequence, QResizeEvent, QShortcut, QShowEvent
 from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
 from staffroom.core.config import Config
@@ -28,6 +29,7 @@ from staffroom.core.csvio import read_table
 from staffroom.core.library.service import ResourceService
 from staffroom.core.log import get_logger
 from staffroom.core.panel import (
+    DEFAULT_OPEN_LABEL,
     Choice,
     EditableTable,
     FilePicker,
@@ -92,7 +94,6 @@ class ToolPanel(QWidget):
         self.text_areas: dict[str, TextAreaWidget] = {}
         self._refreshed = False
         self._quiet = False
-        self._action = False
         self.forms: dict[str, OptionsFormWidget] = {}
         self.grids: dict[str, EditableTableWidget | CompactTableWidget] = {}
         self.choices: dict[str, ChoiceWidget] = {}
@@ -137,7 +138,7 @@ class ToolPanel(QWidget):
 
         writes_to = self.spec.writes_to
         self.run_bar = (
-            RunBar(self.spec.run_label, verb=writes_to.verb, open_label=writes_to.open_label)
+            RunBar(self.spec.run_label, verb=writes_to.verb)
             if writes_to
             else RunBar(self.spec.run_label)
         )
@@ -151,8 +152,14 @@ class ToolPanel(QWidget):
             empty_text=f"Press {self.spec.run_label} ({RUN_SHORTCUT_TEXT}) "
             "and the result appears here.",
             main_layout=self.spec.main_layout,
+            open_label=writes_to.open_label if writes_to else DEFAULT_OPEN_LABEL,
+            details_key=plugin.name,
         )
         self.results.action_requested.connect(self.start_action)
+        self.strip = self.results.strip
+        self.strip.open_requested.connect(self.open_file)
+        self.strip.reveal_requested.connect(self.reveal_file)
+        self.strip.folder_requested.connect(self.open_folder)
         panes.addWidget(self.results, 1)
 
         # ⌘↵ runs the tool on show; a hidden panel's shortcut stays inactive.
@@ -362,8 +369,32 @@ class ToolPanel(QWidget):
         return self.output_dir(inputs)
 
     def _show_output_folder(self, *_: object) -> None:
-        """Tell the run bar where the next run will write, before it starts."""
-        self.run_bar.set_output_folder(self.destination(self.collect_inputs()))
+        """Say where the next run will write, before it starts: under the run
+        button, and as the strip's folder chip until the first run."""
+        folder = self.destination(self.collect_inputs())
+        self.run_bar.set_output_folder(folder)
+        self.strip.set_destination(folder)
+
+    # -- the strip's chips -------------------------------------------------
+    def open_file(self, path: Path) -> None:
+        """Hand a written file to its own app (Office files are never parsed)."""
+        if self.resources is not None:
+            self.resources.open_externally(path)
+        else:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
+    def reveal_file(self, path: Path) -> None:
+        reveal = getattr(self.resources, "reveal", None)
+        if callable(reveal):
+            reveal(path)
+        else:
+            self.open_folder(path.parent)
+
+    def open_folder(self, folder: Path) -> None:
+        # The default folder may not exist until the first write; make it so
+        # the chip works before the first run too.
+        folder.mkdir(parents=True, exist_ok=True)
+        self.open_file(folder)
 
     # -- running ---------------------------------------------------------
     def start_run(self) -> None:
@@ -372,7 +403,7 @@ class ToolPanel(QWidget):
         inputs = self.collect_inputs()
         missing = self.missing_inputs(inputs)
         if missing:
-            self.run_bar.set_status(f"Fill in: {', '.join(missing)}", "danger")
+            self.strip.show_failure(f"Fill in: {', '.join(missing)}")
             return
         self.results.clear()
         log.info("running %s", self.plugin.name)
@@ -384,7 +415,7 @@ class ToolPanel(QWidget):
     def start_action(self, name: str, row: dict[str, Any]) -> None:
         """A row action from an ActionTable, run off the GUI thread."""
         if not isinstance(self.plugin, SupportsActions):
-            self.run_bar.set_status(f"{self.plugin.name} has no actions", "danger")
+            self.strip.show_failure(f"{self.plugin.name} has no actions")
             return
         if self.worker is not None and self.worker.isRunning():
             return
@@ -399,7 +430,7 @@ class ToolPanel(QWidget):
             resources=self.resources,
             job=lambda ctx: plugin.act(name, row, ctx),
         )
-        self._launch(worker, quiet=name in self.spec.refresh_actions(), action=True)
+        self._launch(worker, quiet=name in self.spec.refresh_actions())
 
     def _save_preset(self, action: str, name: str, table: Any) -> None:
         """Persist a preset through the plugin, synchronously (it is a config write)."""
@@ -413,9 +444,12 @@ class ToolPanel(QWidget):
         try:
             result = self.plugin.act(action, {"name": name, "table": table}, ctx)
         except Exception as exc:
-            self.run_bar.set_status(f"Could not save preset: {exc}", "danger")
+            self.strip.show_failure(f"Could not save preset: {exc}")
             return
-        self.run_bar.set_status(result.summary or f"Saved preset {name}", "success")
+        if not (result.outcome or result.summary):
+            result.summary = f"Saved preset {name}"
+        self.strip.show_result(result)
+        self.results.append_log(result.summary or result.outcome)
 
     def refresh_tables(self) -> None:
         """Run the refresh actions synchronously; they are cheap listings."""
@@ -434,18 +468,26 @@ class ToolPanel(QWidget):
                 log.warning("%s refresh %s failed: %s", plugin.name, name, exc)
                 self.results.append_log(f"Could not refresh: {exc}")
 
-    def _launch(self, worker: RunWorker, *, quiet: bool = False, action: bool = False) -> None:
+    def _launch(self, worker: RunWorker, *, quiet: bool = False) -> None:
         self._quiet = quiet
-        self._action = action
         self.run_bar.set_running(True)
+        if not quiet:
+            self.strip.set_running()
         self.run_started.emit()
-        worker.progress.connect(self.run_bar.set_progress)
+        worker.progress.connect(self._on_progress)
         worker.log.connect(self.results.append_log)
+        if not quiet:
+            worker.warned.connect(self.strip.add_warning)
         worker.succeeded.connect(self._on_success)
         worker.failed.connect(self._on_failure)
         worker.finished.connect(self._on_worker_finished)
         self.worker = worker
         worker.start()
+
+    def _on_progress(self, fraction: float, message: str) -> None:
+        self.run_bar.set_progress(fraction)
+        if not self._quiet:
+            self.strip.set_progress(message)
 
     def _on_worker_finished(self) -> None:
         """Runs on the GUI thread once the worker's run() has returned. Waiting
@@ -470,19 +512,16 @@ class ToolPanel(QWidget):
     def _on_success(self, result: RunResult) -> None:
         self.last_result = result
         self.results.apply(result)
-        self.run_bar.set_progress(1.0, "")
-        self.run_bar.set_status(result.summary or "Done", "success")
-        # The run bar describes the Run button, so only a run moves its folder;
-        # a row action (classroom's Promote) writes somewhere else entirely.
-        if result.files and not self._action:
-            self.run_bar.set_output_folder(result.files[0].parent)
+        self.run_bar.set_progress(1.0)
+        if not self._quiet:
+            self.strip.show_result(result)
         log.info("%s finished: %s", self.plugin.name, result.summary)
         self._last_ok = True
 
     def _on_failure(self, message: str, is_bug: bool) -> None:
         self.last_result = None
         headline = message.strip().splitlines()[-1] if is_bug else message
-        self.run_bar.set_status(headline, "danger")
+        self.strip.show_failure(headline)
         self.results.append_log(message)
         (log.error if is_bug else log.warning)("%s failed: %s", self.plugin.name, headline)
         self._last_ok = False

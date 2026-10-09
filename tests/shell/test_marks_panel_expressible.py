@@ -116,4 +116,4 @@ def test_marks_panel_renders_and_runs(qtbot: QtBot, tmp_path: Path, example_mark
     assert panel.results.tables["questions"][0].rowCount() == 1
     image = panel.results.images["distribution"]
     assert image.pixmap() is not None and not image.pixmap().isNull()
-    assert "6 boundaries" in panel.run_bar.status.text()
+    assert "6 boundaries" in panel.strip.text()

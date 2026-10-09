@@ -45,13 +45,21 @@ Pick a tool, fill in the inputs down the left, press the button at their foot
 (or ⌘↵). Results appear on the right, beside the inputs, so you can change one
 setting and run again without scrolling; a tool with more than one result shows
 them as tabs (Trace: the completed table and the sheet preview). Files are
-written to the output folder, which the run bar names before you press Run:
+written to the output folder, named under the Run button before you press it:
 next to the input by default,
 `~/TeachingSessions/outputs/<tool>/` for tools with no input file, or
 wherever Settings says ([Outputs](outputs.md) has the rule and every tool's
-file names). **Open output folder** works before and after the run. The log
-at the foot of the results says exactly what happened in that run; the
-log drawer (⌘L) and the log file hold the app-wide log, described in
+file names).
+
+After a run, the strip along the top of the results says how it went: a tick
+and what was made ("10 questions · seed 42"), or a cross and why it stopped.
+Each file written is a button beside it (*PDF Sheet*, *PDF Key*, *DOCX Sheet*
+…): click to open it in its app, right-click to show it in Finder. *Folder*
+opens the output folder (before the first run, *Open output folder* does).
+Warnings show as a count ("3 warnings ▸") that opens the list. **Details ▸**
+at the foot of the results opens the log of that run, exactly what happened;
+it stays open or closed per tool until you quit. The log drawer (⌘L) and the
+log file hold the app-wide log, described in
 [Privacy](privacy.md#what-the-log-contains).
 
 ## Shortcuts

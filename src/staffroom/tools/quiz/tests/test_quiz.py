@@ -469,7 +469,7 @@ def test_a_repeat_run_says_which_files_it_replaced(tmp_path: Path) -> None:
     assert [p.name for p in tmp_path.iterdir()] == ["question_bank_forms_s1.txt"]
     assert second.summary.endswith("; replaced question_bank_forms_s1.txt")
     assert (
-        "Replaced the earlier file(s) of the same name: question_bank_forms_s1.txt. "
+        "Warning: Replaced the earlier file(s) of the same name: question_bank_forms_s1.txt. "
         "Change the seed to keep both."
     ) in logged
     # Any other file already in the folder is left alone and not mentioned.

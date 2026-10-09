@@ -104,7 +104,7 @@ def test_run_requires_a_file(window: MainWindow) -> None:
     panel = window.panel_for("hello")
     panel.start_run()
     assert panel.worker is None
-    assert "Fill in" in panel.run_bar.status.text()
+    assert "Fill in" in panel.strip.text()
 
 
 def test_run_hello_end_to_end(
@@ -120,7 +120,8 @@ def test_run_hello_end_to_end(
     assert model.headerData(6, Qt.Orientation.Horizontal) == "Total"
     assert "10 rows" in caption.text()
     assert (tmp_path / "out" / "marks_10x_totals.csv").exists()
-    assert panel.run_bar.open_folder.isVisible()
+    assert panel.strip.folder_chip.isVisible()
+    assert [c.path for c in panel.strip.files] == [tmp_path / "out" / "marks_10x_totals.csv"]
 
 
 def test_run_failure_is_reported_not_raised(
@@ -133,7 +134,7 @@ def test_run_failure_is_reported_not_raised(
     with qtbot.waitSignal(panel.run_finished, timeout=5000) as blocker:
         panel.start_run()
     assert blocker.args == [False]
-    assert "No question columns" in panel.run_bar.status.text()
+    assert "No question columns" in panel.strip.text()
 
 
 def test_preview_drops_identifier_columns(window: MainWindow, tmp_path: Path) -> None:

@@ -130,6 +130,8 @@ class TracePlugin:
                 + (f"; ended with {result.error}" if result.error else "")
                 + f"; wrote {', '.join(f.name for f in files)} to {ctx.output_dir}"
             ),
+            outcome=f"{len(steps)} rows · {preset}"
+            + (f", ended with {result.error}" if result.error else ""),
         )
 
 

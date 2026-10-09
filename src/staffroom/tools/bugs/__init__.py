@@ -68,7 +68,9 @@ class BugsPlugin:
         if not variants:
             raise ToolError("No suitable lines for the chosen error classes.")
         if len(variants) < options.count:
-            ctx.log(f"Only {len(variants)} distinct mutations possible; asked for {options.count}.")
+            ctx.warn(
+                f"Only {len(variants)} distinct mutations possible; asked for {options.count}."
+            )
 
         ctx.progress(0.3, "Running the original")
         baseline = run_source(source, stdin=stdin, timeout=TIMEOUT)
@@ -119,6 +121,8 @@ class BugsPlugin:
             texts={"preview": to_text(doc.sheet()) + "\n\n" + to_text(doc.key())},
             files=files,
             summary=f"{len(variants)} variants written to {out}",
+            outcome=f"{len(variants)} buggy versions · lines "
+            + ", ".join(str(v.mutation.line) for v in variants),
         )
 
 

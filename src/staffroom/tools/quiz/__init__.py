@@ -69,6 +69,9 @@ def _as_of(text: str) -> date:
         ) from None
 
 
+FORMAT_NAMES = {"kahoot": "Kahoot", "forms": "Forms", "donow": "do now"}
+
+
 class QuizPlugin:
     name = "quiz"
     description = (
@@ -92,7 +95,7 @@ class QuizPlugin:
             raise ToolError("Choose a question bank first.")
         bank = load_bank(source)
         for err in bank.errors:
-            ctx.log("Bank: " + err)
+            ctx.warn("Bank: " + err)
         pool = logic.filter_questions(bank.questions, options.topics, options.spec)
         ctx.log(f"{len(bank.questions)} questions in the bank, {len(pool)} after filters")
 
@@ -151,11 +154,11 @@ class QuizPlugin:
             doc = donow_document(chosen, options.title)
             preview = to_text(doc.sheet()) + "\n\n" + to_text(doc.key())
         for n in notes:
-            ctx.log("Note: " + n)
+            ctx.warn(n)
         summary = f"{count_phrase} → {', '.join(f.name for f in files)} in {ctx.output_dir}"
         replaced = [f.name for f in files if f.name in existing]
         if replaced:
-            ctx.log(
+            ctx.warn(
                 "Replaced the earlier file(s) of the same name: "
                 + ", ".join(replaced)
                 + ". Change the seed to keep both."
@@ -167,6 +170,10 @@ class QuizPlugin:
             texts={"preview": preview},
             files=files,
             summary=summary,
+            outcome=(
+                f"{len(written)} question{'s' if len(written) != 1 else ''} · "
+                f"{FORMAT_NAMES.get(options.fmt, options.fmt)}, seed {options.seed}"
+            ),
         )
 
 

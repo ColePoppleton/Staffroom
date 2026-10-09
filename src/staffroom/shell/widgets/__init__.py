@@ -15,6 +15,7 @@ from staffroom.shell.widgets.options_form import OptionsFormWidget
 from staffroom.shell.widgets.output_pane import OutputPane
 from staffroom.shell.widgets.path_picker import PathPickerWidget
 from staffroom.shell.widgets.resource_picker import ResourcePickerWidget
+from staffroom.shell.widgets.result_strip import ResultStrip
 from staffroom.shell.widgets.run_bar import RunBar
 from staffroom.shell.widgets.stat_tiles import StatTilesWidget
 from staffroom.shell.widgets.string_list import StringListEditor
@@ -44,6 +45,7 @@ __all__ = [
     "OutputPane",
     "PathPickerWidget",
     "ResourcePickerWidget",
+    "ResultStrip",
     "RunBar",
     "StatTilesWidget",
     "StringListEditor",

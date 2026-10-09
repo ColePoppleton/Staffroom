@@ -70,7 +70,7 @@ footer light
 # Tool panels
 shot classroom-dark            --tool classroom --open "$fixtures/Python/Year 9/average.py" --theme dark
 shot marks-dark                --tool marks --open examples/marks_10x_max.csv --run --theme dark
-shot marks-warnings-light      --tool marks --open examples/marks_messy.csv --run --theme light
+shot marks-warnings-light      --tool marks --open examples/marks_messy.csv --run --expand --theme light
 shot worksheet-light           --tool worksheet --run --theme light
 shot parsons-dark              --tool parsons --open examples/year9.py --run --theme dark
 shot quiz-light                --tool quiz --open examples/question_bank.md --run --theme light

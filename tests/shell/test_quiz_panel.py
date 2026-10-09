@@ -29,7 +29,7 @@ def test_quiz_panel_exports_kahoot(window: MainWindow, qtbot: QtBot, tmp_path: P
     panel.set_input_path("source", examples_dir() / "question_bank.md")
     with qtbot.waitSignal(panel.run_finished, timeout=20000) as blocker:
         panel.start_run()
-    assert blocker.args == [True], panel.run_bar.status.text()
+    assert blocker.args == [True], panel.strip.text()
     assert panel.results.tables["chosen"][0].rowCount() == 10
     assert "Question - max 120 characters" in panel.results.text_views["preview"].toPlainText()
     assert (tmp_path / "out" / "question_bank_kahoot_s1.xlsx").exists()

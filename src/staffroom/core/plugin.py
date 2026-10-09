@@ -27,25 +27,45 @@ class ToolError(Exception):
 
 @dataclass
 class RunResult:
-    """What a run produced. Keys match the panel's output widgets."""
+    """What a run produced. Keys match the panel's output widgets.
+
+    ``summary`` is the one line the CLI prints and the run log keeps.
+    ``outcome`` is the shorter line the shell's result strip shows ("10
+    questions · seed 42"): what was made, not where it went, because the strip
+    shows the files as buttons beside it. Text before the first `` · `` is the
+    headline. Empty: the strip shows ``summary``.
+
+    ``labels`` optionally names a file's button (``{chart: "Chart"}``); a file
+    without one is named from its file name (see :mod:`staffroom.core.outcome`).
+    """
 
     tables: dict[str, Table] = field(default_factory=dict)
     images: dict[str, Path] = field(default_factory=dict)
     texts: dict[str, str] = field(default_factory=dict)
     files: list[Path] = field(default_factory=list)
     summary: str = ""
+    outcome: str = ""
+    labels: dict[Path, str] = field(default_factory=dict)
 
 
 @dataclass
 class RunContext:
     """Services the host gives a running tool. ``progress`` takes a fraction in
-    [0, 1] and a short message; ``log`` sends a line to the log area."""
+    [0, 1] and a short message; ``log`` sends a line to the run log. Call
+    :meth:`warn` (not ``log``) for something the teacher should act on: it is
+    logged as ``Warning: …`` and the shell counts it in the result strip."""
 
     config: Config
     output_dir: Path
     progress: Callable[[float, str], None] = lambda _f, _m: None
     log: Callable[[str], None] = lambda _m: None
     resources: ResourceService | None = None  # the Resource Library, when the host has one
+    warned: Callable[[str], None] = lambda _m: None  # the host's hook; tools call warn()
+
+    def warn(self, message: str) -> None:
+        """Log ``Warning: <message>`` and tell the host there is one more warning."""
+        self.log("Warning: " + message)
+        self.warned(message)
 
     def note_run(self, tool: str) -> None:
         """Record that ``tool`` ran (for the usage review). Hosts call this;

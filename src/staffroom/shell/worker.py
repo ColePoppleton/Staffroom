@@ -19,6 +19,7 @@ Job = Callable[[RunContext], RunResult]
 class RunWorker(QThread):
     progress = Signal(float, str)
     log = Signal(str)
+    warned = Signal(str)  # a ctx.warn() message (also logged)
     succeeded = Signal(object)  # RunResult
     failed = Signal(str, bool)  # message, is_bug
 
@@ -46,6 +47,7 @@ class RunWorker(QThread):
             output_dir=self.output_dir,
             progress=lambda f, m: self.progress.emit(f, m),
             log=lambda m: self.log.emit(m),
+            warned=lambda m: self.warned.emit(m),
             resources=self.resources,
         )
         try:
