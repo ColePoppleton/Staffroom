@@ -32,13 +32,6 @@ def panel_spec() -> PanelSpec:
                 filter_ext=".md",
                 help="From the library or anywhere. See examples/question_bank.md for the format.",
             ),
-            FilePicker(
-                key="taught_log",
-                label="Taught log (.csv) for retrieval mode",
-                filters=("CSV files (*.csv)", "All files (*)"),
-                help="Columns date,topic. Topic and date only: never a class or a pupil.",
-                required=False,
-            ),
             OptionsForm(
                 key="options",
                 schema=Options,
@@ -50,7 +43,18 @@ def panel_spec() -> PanelSpec:
                 choice_labels={"fmt": FORMAT_LABELS},
                 switches=("fmt",),
             ),
+            # Under the form, so ticking Retrieval mode opens it below the
+            # tick rather than pushing the form down (#123).
+            FilePicker(
+                key="taught_log",
+                label="Taught log (.csv)",
+                filters=("CSV files (*.csv)", "All files (*)"),
+                help="Columns date,topic. Topic and date only: never a class or a pupil.",
+            ),
         ),
+        # The log is read only in retrieval mode: hidden otherwise, and not
+        # handed to the tool (#123).
+        shown_when={"taught_log": shown_when("options.retrieval", True)},
         outputs=(
             ResultsTable(key="chosen", label="Chosen questions"),
             PagePreview(key="pages", label="Do-now"),

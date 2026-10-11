@@ -281,6 +281,15 @@ to four short labels. The command line keeps the values. All of it lives in
 `panel.py`; `core.panel` refuses a field name, a value or a loop that cannot
 work when the spec is built.
 
+A whole input can hide the same way, when it only matters for one setting:
+`PanelSpec(shown_when={"taught_log": shown_when("options.retrieval", True)})`
+shows quiz's taught-log picker only while the options form's *Retrieval mode*
+is ticked. `on` names a form field as `"<form key>.<field>"`, or the key of a
+`Choice`. The shell hides the group with the hairline over it; while hidden,
+`run()` gets the input's empty value (no file, no text, the choice's default)
+and a required input is not asked for. Put such an input after the setting it
+follows, so ticking the box opens it below rather than pushing the form down.
+
 ## Presets for an options form
 
 `OptionsForm(..., presets=(preset("Year 9", top_level_only=True), ...))` puts

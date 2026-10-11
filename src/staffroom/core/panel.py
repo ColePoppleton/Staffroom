@@ -69,7 +69,10 @@ shared output folder (``Config.output_dir_for``) unless the panel sets
 
 An ``OptionsForm`` can hide fields that do not apply (``shown_when``), name
 its choices in words (``choice_labels``) and draw a short choice as a
-segmented switch (``switches``); see :class:`OptionsForm`.
+segmented switch (``switches``); see :class:`OptionsForm`. A whole input can
+hide the same way: ``PanelSpec.shown_when`` maps an input's key to the
+condition under which it applies, read from a field of an options form
+(``"options.retrieval"``) or a ``Choice``; see :class:`PanelSpec`.
 
 A panel's ``suggest`` lets a choice follow the code or file picked (e.g.
 pseudocode's *From* shows the language it guessed): a pure function from the
@@ -293,14 +296,19 @@ OUTPUT_FORMAT_LABELS: Mapping[str, str] = {"both": "Word + PDF", "docx": "Word",
 @dataclass(frozen=True)
 class ShownWhen:
     """Show an :class:`OptionsForm` field only while the field ``on`` holds one
-    of ``values`` (and is itself shown). Build one with :func:`shown_when`."""
+    of ``values`` (and is itself shown). Build one with :func:`shown_when`.
+
+    In ``PanelSpec.shown_when`` (a whole input) ``on`` names what the
+    condition reads across the panel: ``"<form key>.<field>"`` for a field of
+    one of its options forms, or the key of a :class:`Choice`."""
 
     on: str
     values: tuple[Any, ...]
 
 
 def shown_when(on: str, *values: Any) -> ShownWhen:
-    """``shown_when("topic", "truth_tables")``: a :class:`ShownWhen`."""
+    """``shown_when("topic", "truth_tables")``: a :class:`ShownWhen`. For a
+    whole input, ``shown_when("options.retrieval", True)``."""
     if not values:
         msg = f"shown_when({on!r}) needs at least one value"
         raise ValueError(msg)
@@ -520,6 +528,30 @@ InputWidget = (
     | EditableTable
     | TablePreview
 )
+
+
+def empty_values(widget: InputWidget) -> dict[str, Any]:
+    """What ``widget`` hands the tool before the teacher touches it, by key:
+    no file, no text, a choice's initial value, a form's dataclass defaults,
+    a grid's own rows. A hidden input hands over this (see
+    ``PanelSpec.shown_when``); a :class:`TablePreview` hands over nothing."""
+    if isinstance(widget, FilePicker | FolderPicker | ResourcePicker):
+        return {widget.key: None}
+    if isinstance(widget, TextField | TextArea):
+        return {widget.key: ""}
+    if isinstance(widget, Choice):
+        return {widget.key: widget.initial}
+    if isinstance(widget, OptionsForm):
+        return {widget.key: widget.schema()}
+    if isinstance(widget, CodeSource | EditableTable):
+        value: Any = (
+            CodeValue(None, "")
+            if isinstance(widget, CodeSource)
+            else Table([c.name for c in widget.columns], [list(r) for r in widget.rows])
+        )
+        inner = {} if widget.choice is None else {widget.choice.key: widget.choice.initial}
+        return {widget.key: value, **inner}
+    return {}
 
 
 # ---------------------------------------------------------------- outputs
@@ -833,6 +865,23 @@ class WritesTo:
 # ---------------------------------------------------------------- the panel
 @dataclass(frozen=True)
 class PanelSpec:
+    """A tool's whole UI as data (see the module doc).
+
+    ``shown_when`` hides a whole input group while it does not apply, as
+    ``OptionsForm.shown_when`` hides a field: ``{"taught_log":
+    shown_when("options.retrieval", True)}`` shows quiz's taught-log picker
+    only while the options form's *Retrieval mode* is ticked. ``on`` reads a
+    field of one of the panel's options forms (``"<form key>.<field>"``) or a
+    :class:`Choice` (its key, inner choices included). An input whose
+    condition reads something hidden (a form field its form hides, or an input
+    hidden in turn) is hidden too.
+
+    A hidden input keeps what the teacher put in it, so it comes back
+    unchanged, but the tool is handed its empty value (:func:`empty_values`,
+    :meth:`passed`), and a required one is not asked for: what the teacher
+    cannot see never reaches, or blocks, a run. Unknown keys, a value the
+    field can never hold and loops are refused when the spec is built."""
+
     title: str
     description: str = ""
     inputs: tuple[InputWidget, ...] = ()
@@ -842,6 +891,8 @@ class PanelSpec:
     main_layout: MainLayout = "tabs"  # "row": main views side by side, not tabs
     # Pure: the current inputs -> new values for Choice keys (see the module doc).
     suggest: Callable[[Mapping[str, Any]], Mapping[str, str]] | None = None
+    # Input key -> the condition under which the input applies (see the class doc).
+    shown_when: Mapping[str, ShownWhen] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         keys = [w.key for w in self.inputs] + [w.key for w in self.outputs]
@@ -891,6 +942,109 @@ class PanelSpec:
                             f"{unknown} that {w.schema.__name__} does not have"
                         )
                         raise ValueError(msg)
+        self._check_shown_when()
+
+    def _condition_source(self, on: str) -> tuple[str, OptionsForm | Choice, str] | None:
+        """What a panel-level condition reads: the input that holds it (the
+        form, the choice, or the input a choice sits inside), the form or
+        choice itself, and the form field's name ("" for a choice)."""
+        form_key, dot, name = on.partition(".")
+        for w in self.inputs:
+            if dot and isinstance(w, OptionsForm) and w.key == form_key:
+                return w.key, w, name
+            if not dot and isinstance(w, Choice) and w.key == on:
+                return w.key, w, ""
+            if (
+                not dot
+                and isinstance(w, EditableTable | CodeSource)
+                and w.choice is not None
+                and w.choice.key == on
+            ):
+                return w.key, w.choice, ""
+        return None
+
+    def _check_shown_when(self) -> None:
+        by_key = {w.key: w for w in self.inputs}
+        for key, cond in self.shown_when.items():
+            where = f"panel {self.title!r}: shown_when[{key!r}]"
+            widget = by_key.get(key)
+            if widget is None:
+                msg = f"{where} names no input of the panel"
+                raise ValueError(msg)
+            if isinstance(widget, TablePreview) and widget.compact:
+                msg = f"{where}: a compact TablePreview shows and hides with its FilePicker"
+                raise ValueError(msg)
+            source = self._condition_source(cond.on)
+            if source is None:
+                msg = (
+                    f"{where} reads {cond.on!r}, which is neither '<form key>.<field>' of an "
+                    "OptionsForm nor the key of a Choice"
+                )
+                raise ValueError(msg)
+            _owner, control, name = source
+            allowed: tuple[Any, ...] | None
+            if isinstance(control, OptionsForm):
+                if not dataclasses.is_dataclass(control.schema):
+                    continue  # the shell says so when it builds the form
+                in_form = control.fields or tuple(
+                    f.name for f in dataclasses.fields(control.schema)
+                )
+                if name not in in_form:
+                    msg = f"{where} reads {cond.on!r}: {name!r} is not a field of its form"
+                    raise ValueError(msg)
+                allowed = choice_values(control.schema, name)
+            else:
+                allowed = tuple(v for v, _ in control.choices)
+            wrong = [v for v in cond.values if allowed is not None and v not in allowed]
+            if wrong:
+                msg = f"{where}: {cond.on!r} can never be {wrong}"
+                raise ValueError(msg)
+        for key in self.shown_when:  # an input may not depend on itself, even by a loop
+            seen = [key]
+            while (step := self.shown_when.get(seen[-1])) is not None:
+                source = self._condition_source(step.on)
+                owner = source[0] if source is not None else step.on
+                if owner in seen:
+                    msg = f"panel {self.title!r}: shown_when loops: {[*seen, owner]}"
+                    raise ValueError(msg)
+                seen.append(owner)
+
+    def hidden_inputs(self, values: Mapping[str, Any]) -> frozenset[str]:
+        """The inputs that do not apply to ``values`` (the ``inputs`` dict, by
+        key; a missing value counts as the input's empty one)."""
+
+        def hidden(key: str) -> bool:
+            cond = self.shown_when.get(key)
+            if cond is None:
+                return False
+            source = self._condition_source(cond.on)
+            if source is None:  # pragma: no cover - refused when the spec is built
+                return False
+            owner, control, name = source
+            if hidden(owner):
+                return True
+            if isinstance(control, OptionsForm):
+                options = values.get(control.key)
+                if options is None:
+                    options = control.schema()
+                if name in control.hidden(options):
+                    return True
+                current = getattr(options, name)
+            else:
+                current = values.get(control.key, control.initial)
+            return current not in cond.values
+
+        return frozenset(key for key in self.shown_when if hidden(key))
+
+    def passed(self, values: Mapping[str, Any]) -> dict[str, Any]:
+        """``values`` as handed to the tool: every hidden input at its empty
+        value (:func:`empty_values`)."""
+        out = dict(values)
+        hidden = self.hidden_inputs(values)
+        for w in self.inputs:
+            if w.key in hidden:
+                out.update(empty_values(w))
+        return out
 
     def _inner_choice_keys(self) -> list[str]:
         """Keys of the choices that live inside another input's group."""

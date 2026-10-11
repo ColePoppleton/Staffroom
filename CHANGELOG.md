@@ -7,6 +7,13 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Added
+- Quiz shows the *Taught log* picker only while *Retrieval mode* is ticked, under
+  the options it follows, and a hidden log is never handed to the run (#123).
+  Any panel can do the same: `PanelSpec.shown_when` hides a whole input while a
+  field of an options form (`"options.retrieval"`) or a `Choice` does not hold
+  the given values; a hidden input passes its empty value and is not asked for,
+  and `core.panel` refuses unknown keys, impossible values and loops when the
+  spec is built.
 - The Library's column has a **Tags ▾** filter beside *All types* (#111). Its menu
   lists the tags on the files the Library shows, each with how many carry it;
   choosing one narrows the tree (opened all the way down) and the search results
