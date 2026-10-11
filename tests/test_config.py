@@ -145,3 +145,20 @@ def test_saving_keeps_the_config_file_mode(isolated_home: Path) -> None:
     assert config.save() is None
     assert stat.S_IMODE(config.path.stat().st_mode) == 0o600
     assert load_config().general.board == "aqa"
+
+
+def test_screenshot_day_is_never_read_from_or_written_to_the_file(isolated_home: Path) -> None:
+    """Only ``staffroom --screenshot --today`` sets it, for one process: a
+    config file can never pin the day a teacher's launcher shows."""
+    from datetime import date
+
+    paths.config_file().parent.mkdir(parents=True)
+    paths.config_file().write_text(
+        'screenshot_day = "2001-01-01"\n[general]\nscreenshot_day = "2001-01-01"\n'
+    )
+    cfg = load_config()
+    assert cfg.screenshot_day is None
+    cfg.screenshot_day = date(2026, 10, 9)
+    assert cfg.save() is None  # written, through the atomic writer (#125)
+    assert "screenshot_day" not in cfg.path.read_text()
+    assert load_config().screenshot_day is None

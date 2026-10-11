@@ -48,5 +48,11 @@ checklist, the areas it touches (`core/export`, `tools/marks`, …), a size and 
   `scripts/screenshots.sh outputs` redoes only the rendered pages. The script sets
   `STAFFROOM_DATE=YYYY-MM-DD`, which every exported sheet prints in its header instead of today's
   date, so the renders are the same bytes on any day; leave it unset for real use.
+  It also passes the same day to the launcher as `staffroom --screenshot … --today YYYY-MM-DD`,
+  which pins the day Classroom's run bar shows (`Copies to …/sessions/<day>/…`). This is a
+  separate flag on purpose, not `STAFFROOM_DATE`: the session folder decides where real lesson
+  copies are written, so the pinned day is display-only (`Config.screenshot_day`, never saved),
+  the launcher refuses `--today` without `--screenshot`, and *Open for class* always copies into
+  today's folder.
 - The hard rules in `CLAUDE.md` still hold (no pupil data; tools never import Qt; logic never does I/O).
 - Anything noticed but out of scope became a new issue, not a bigger PR.

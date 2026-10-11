@@ -14,6 +14,7 @@ import os
 import shutil
 import sys
 import tempfile
+from datetime import date
 from pathlib import Path
 
 from PySide6.QtCore import QTimer
@@ -69,8 +70,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--screenshot", type=Path, help="render, save a PNG, and exit")
     parser.add_argument("--size", default="1240x780", help="window size for --screenshot, WxH")
+    parser.add_argument(
+        "--today",
+        type=_day,
+        metavar="YYYY-MM-DD",
+        help="the day panels show, e.g. Classroom's session folder (for --screenshot only; "
+        "a run still copies into today's folder)",
+    )
     parser.add_argument("--version", action="version", version=__version__)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.today and not args.screenshot:
+        parser.error("--today only works with --screenshot")
+    return args
+
+
+def _day(text: str) -> date:
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        msg = f"not a date like 2026-10-09: {text!r}"
+        raise argparse.ArgumentTypeError(msg) from None
 
 
 def build_window(args: argparse.Namespace) -> MainWindow:
@@ -82,6 +101,7 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         # A screenshot run must not leave files next to the example input or
         # in the checkout: send its outputs to a folder that dies with it.
         config.general.output_dir = screenshot_output_dir()
+        config.screenshot_day = args.today
     window = MainWindow(config, first_run=True if args.first_run else None)
     if args.tool:
         window.go_to_tool(args.tool)

@@ -35,6 +35,14 @@ with every change; `just release <part>` turns it into a version.
   the lines I list*; Parsons, Trace, Bugs and Pseudocode get readable output
   choices. A hidden field keeps what was set in it, but the tool is handed its
   default, so a value the teacher cannot see never changes or breaks a run.
+- `docs/classroom-dark.png` no longer changes every day (#116): the launcher's
+  screenshot mode takes `--today YYYY-MM-DD`, which pins only the day Classroom's
+  run bar shows (`Copies to …/sessions/<day>`), and `scripts/screenshots.sh` passes
+  it `STAFFROOM_DATE`. It is a separate, display-only flag because the session
+  folder decides where real lesson copies go: the launcher refuses it without
+  `--screenshot`, it is never saved, and *Open for class* always copies into
+  today's folder.
+
 ### Fixed
 - Bugs aims for a mix of outcomes (#118): at the defaults all four `year9.py`
   versions crashed, two of them with SyntaxErrors. With two or more versions the

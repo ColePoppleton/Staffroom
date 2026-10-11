@@ -10,6 +10,7 @@ import errno
 import logging
 import tomllib
 from dataclasses import asdict, dataclass, field, fields
+from datetime import date
 from pathlib import Path
 from typing import Any, Literal
 
@@ -75,6 +76,10 @@ class Config:
     tools: dict[str, dict[str, Any]] = field(default_factory=dict)
     path: Path = field(default_factory=paths.config_file)
     read_only: bool = False  # set for one-off runs (screenshots) that must not persist
+    # The day panels *show* (e.g. Classroom's "Copies to …/<day>"), pinned by
+    # ``staffroom --screenshot --today`` so docs renders do not change daily.
+    # Never loaded or saved, never where a run writes: None means today.
+    screenshot_day: date | None = None
     # One log warning per session when saving fails, however many settings change.
     _save_warned: bool = field(default=False, init=False, repr=False, compare=False)
 

@@ -6,6 +6,9 @@ set ``STAFFROOM_DATE=YYYY-MM-DD`` and every sheet carries that day instead.
 
 This is the only place the variable is read. Sheet builders take the date as
 an argument and fall back to :func:`sheet_date`; tool logic never sees it.
+It is only what a sheet prints, never where a file goes: the day Classroom's
+session folder is named after is today, and a screenshot pins only the day the
+panel *shows* with ``staffroom --screenshot --today`` (#116).
 """
 
 from __future__ import annotations

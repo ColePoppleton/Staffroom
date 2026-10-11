@@ -68,6 +68,33 @@ def test_screenshot_mode_writes_to_a_throwaway_folder(
     assert window.config.read_only
 
 
+def test_screenshot_today_pins_the_day_the_classroom_run_bar_shows(
+    qtbot: QtBot, tmp_path: Path
+) -> None:
+    """``--today`` makes the docs shot of Classroom the same bytes on any day
+    (#116). It only changes what the run bar says; see classroom's tests for
+    the copy itself, which always goes into today's folder."""
+    args = parse_args(
+        ["--tool", "classroom", "--today", "2026-10-09", "--screenshot", str(tmp_path / "s.png")]
+    )
+    window = build_window(args)
+    qtbot.addWidget(window)
+    assert window.config.screenshot_day == date(2026, 10, 9)
+    bar = window.panel_for("classroom").run_bar
+    assert bar._folder is not None and bar._folder.name == "2026-10-09"
+    assert bar.folder.text().endswith("2026-10-09")
+
+
+def test_today_is_refused_outside_screenshot_mode(capsys: pytest.CaptureFixture[str]) -> None:
+    """The launcher a teacher opens never takes a pinned day."""
+    with pytest.raises(SystemExit):
+        parse_args(["--tool", "classroom", "--today", "2026-10-09"])
+    assert "--today only works with --screenshot" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        parse_args(["--today", "9/10/2026", "--screenshot", "s.png"])
+    assert parse_args([]).today is None
+
+
 def test_abbreviate_path() -> None:
     assert abbreviate_path(Path.home() / "TeachingSessions") == "~/TeachingSessions"
     long = Path("/Volumes/" + "a" * 60 + "/outputs/worksheet")

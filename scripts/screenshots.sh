@@ -14,6 +14,13 @@
 # at the day the committed renders show; a teacher's own runs never set it and
 # print today's date.
 #
+# The launcher shots also pass `--today` with the same day, so the Classroom
+# run bar's "Copies to …/sessions/<day>" is pinned too (#116). That is a
+# separate, screenshot-only flag on purpose: STAFFROOM_DATE never decides
+# where a lesson copy goes, and `--today` only changes what the run bar says
+# (the launcher refuses it without --screenshot; a run still copies into
+# today's folder).
+#
 #   scripts/screenshots.sh           every screenshot (what `just screenshots` runs)
 #   scripts/screenshots.sh outputs   only the rendered files ("Rendered files" below)
 set -euo pipefail
@@ -55,7 +62,7 @@ uv run staff library index >/dev/null
 
 shot() {
     local name="$1"; shift
-    uv run staffroom --size "$size" "$@" --screenshot "docs/$name.png"
+    uv run staffroom --size "$size" --today "$STAFFROOM_DATE" "$@" --screenshot "docs/$name.png"
 }
 
 # Launcher and the first-run card
@@ -67,7 +74,7 @@ shot settings       --settings --theme dark
 # a full launcher render so it always matches the real window.
 footer() {
     local theme="$1"
-    uv run staffroom --size "$size" --tool marks --theme "$theme" \
+    uv run staffroom --size "$size" --today "$STAFFROOM_DATE" --tool marks --theme "$theme" \
         --screenshot "$home/launcher-$theme.png" >/dev/null
     uv run python - "$home/launcher-$theme.png" "docs/sidebar-footer-$theme.png" "${size%x*}" <<'PY'
 import sys
