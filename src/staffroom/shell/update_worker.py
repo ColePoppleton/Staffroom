@@ -18,6 +18,15 @@ class UpdateWorker(QThread):
         self.done.emit(update.status(fetch=self.fetch))
 
 
+class ReleaseWorker(QThread):
+    """Ask GitHub for the newest release (an installed copy, #11). Never git."""
+
+    done = Signal(object)  # ReleaseCheck
+
+    def run(self) -> None:
+        self.done.emit(update.check_latest_release())
+
+
 class ApplyWorker(QThread):
     done = Signal(str, bool)
 

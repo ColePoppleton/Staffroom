@@ -156,6 +156,11 @@ QLabel[role="chip"] {{
     background: {p.surface_alt}; color: {p.text_muted}; border: 1px solid {p.border};
     border-radius: 9px; padding: 0px 8px; font-size: 11px; font-weight: 600;
 }}
+QLabel[role="strong"] {{ font-weight: 600; color: {p.text}; }}
+QLabel[role="chip-new"] {{
+    background: {p.accent_soft}; color: {p.text};
+    border-radius: 9px; padding: 0px 8px; font-size: 11px; font-weight: 600;
+}}
 QLabel[role="danger"] {{ color: {p.danger}; }}
 QLabel[role="success"] {{ color: {p.success}; }}
 QLabel[role="empty"] {{
@@ -312,6 +317,15 @@ QPushButton#UseTool {{ font-size: 13px; font-weight: 600; padding: 6px 9px; }}
 QLabel#UseStatus {{ font-size: 13px; }}
 QFrame#ExternalCard {{
     background: {p.surface_alt}; border: 1px dashed {p.border_strong}; border-radius: {RADIUS_SM}px;
+}}
+/* Settings > Updates (#11): the command to paste, and the release notes. */
+QFrame#CommandBox {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
+}}
+QLabel#CommandText {{ font-family: {MONO_FAMILY}; font-size: 14px; color: {p.text}; }}
+QTextBrowser#ReleaseNotes {{
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+    padding: 4px 8px;
 }}
 QPlainTextEdit#CodeView {{
     font-family: {MONO_FAMILY}; font-size: 12.5px; color: {p.text};

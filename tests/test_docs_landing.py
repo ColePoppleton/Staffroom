@@ -34,10 +34,15 @@ CLAIMS = {
     "only class-level aggregates are saved": "Only aggregates are ever written",
     "No log holds a value from your files.": "neither holds a value from your files",
     "No account and no server": "There is no account and no server",
-    "the only network call is the update check, when the app runs from a git checkout": (
-        "Run from its own git checkout (the macOS launcher app), Staffroom asks that "
-        "checkout's git remote whether a release is out, when it starts and when you press "
-        "*Check for updates*; that is the only network call it makes."
+    "the only network call asks GitHub which release is newest": (
+        "Its one network call asks GitHub which release is newest"
+    ),
+    "when you press *Check again* and at most once a day when Staffroom opens": (
+        "made when you press *Check again* in Settings › Updates and, at most once a day, "
+        "when Staffroom opens"
+    ),
+    "(untick it in Settings › Updates)": (
+        "untick *Look for a new release when Staffroom opens* there"
     ),
     "Removing every trace is deleting a short list of folders.": (
         "removing the app's traces is a\nmatter of deleting folders"
@@ -82,17 +87,25 @@ def test_privacy_strip_claims_match_the_privacy_page() -> None:
         )
 
 
-def test_privacy_page_says_an_installed_copy_makes_no_network_call() -> None:
-    """The home page's "when the app runs from a git checkout" is only true
-    while an installed copy stays offline and runs no git (#9)."""
+def test_privacy_page_states_the_release_check_as_built() -> None:
+    """The Privacy page's network sentence stays true (#9, #11): an installed
+    copy runs no git, and its one call is the address, timeout-bound HTTPS
+    request and tick box the code actually has."""
+    from staffroom.core import install, update
+    from staffroom.shell.updates_card import InstalledUpdatesCard
+
     privacy = _flat(PRIVACY.read_text(encoding="utf-8"))
-    assert (
-        _flat(
-            "An installed copy (`uv tool install`, a wheel) makes no network calls "
-            "and never runs git"
-        )
-        in privacy
-    )
+    assert _flat("An installed copy (`uv tool install`, a wheel) never runs git.") in privacy
+    assert f"`{update.RELEASES_API}`" in privacy
+    assert update.RELEASES_API.startswith("https://")
+    assert "at most once a day" in privacy and update.CHECK_EVERY.days == 1
+    assert f"`{install.UV_UPGRADE_COMMAND}`" in privacy
+    assert f"`~/.config/staffroom/{update.RELEASE_CACHE}`" in privacy
+    card = (ROOT / "src" / "staffroom" / "shell" / "updates_card.py").read_text(encoding="utf-8")
+    assert '"Look for a new release when Staffroom opens"' in card
+    assert "*Look for a new release when Staffroom opens*" in privacy
+    assert '"Check again"' in card and "*Check again*" in privacy
+    assert InstalledUpdatesCard.__doc__
 
 
 def test_home_page_links_into_privacy_land_on_headings() -> None:

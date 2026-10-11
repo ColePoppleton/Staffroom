@@ -9,10 +9,11 @@
 .github/workflows/release.yml, which builds the wheel and sdist and creates
 the GitHub Release with the notes.
 
-``bump`` also re-pins the documented install line
-(``git+https://github.com/ColePoppleton/Staffroom@vX.Y.Z``) and the wheel
-filename in README.md and docs/ to the new version (#100), so the release
-commit never leaves colleagues installing the previous one.
+``bump`` also re-pins the wheel filename the Install guide names
+(``staffroom-X.Y.Z-py3-none-any.whl``) in README.md and docs/ to the new
+version (#100), so the release commit never points colleagues at the
+previous wheel. The git install line follows ``@main`` since #11 (so
+``uv tool upgrade staffroom`` updates a copy) and is left alone.
 """
 
 from __future__ import annotations
@@ -30,9 +31,8 @@ README = ROOT / "README.md"
 DOCS = ROOT / "docs"
 UNRELEASED = "## [Unreleased]"
 
-# The documented install pin and the wheel the Install guide names. Same
-# shapes as tests/test_install_docs.py checks.
-GIT_PIN = re.compile(r"(git\+https://github\.com/ColePoppleton/Staffroom@v)\d+\.\d+\.\d+\b")
+# The wheel the Install guide names. Same shape as tests/test_install_docs.py
+# checks. The git line installs from @main (#11) and has no version to pin.
 WHEEL = re.compile(r"(staffroom-)\d+\.\d+\.\d+(-py3-none-any\.whl)")
 
 
@@ -97,13 +97,12 @@ def install_pages() -> list[Path]:
 
 
 def pin_install_docs(version: str) -> list[Path]:
-    """Point every install pin and wheel filename at ``version``. Returns the
-    pages that changed."""
+    """Point every wheel filename at ``version``; the ``@main`` install line
+    is left as it is. Returns the pages that changed."""
     changed = []
     for path in install_pages():
         text = path.read_text(encoding="utf-8")
-        new = GIT_PIN.sub(rf"\g<1>{version}", text)
-        new = WHEEL.sub(rf"\g<1>{version}\g<2>", new)
+        new = WHEEL.sub(rf"\g<1>{version}\g<2>", text)
         if new != text:
             path.write_text(new, encoding="utf-8")
             changed.append(path)
@@ -124,7 +123,7 @@ def tag() -> str:
     pinned = [
         str(path.relative_to(ROOT))
         for path in install_pages()
-        if any(rx.search(path.read_text(encoding="utf-8")) for rx in (GIT_PIN, WHEEL))
+        if WHEEL.search(path.read_text(encoding="utf-8"))
     ]
     subprocess.run(
         ["git", "add", "pyproject.toml", "CHANGELOG.md", "uv.lock", *pinned], check=True, cwd=ROOT

@@ -20,10 +20,15 @@ import tomllib
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 PROJECT_NAME = "staffroom"
 UV_RECEIPT = "uv-receipt.toml"  # uv writes this at the root of every tool environment
 UV_UPGRADE_COMMAND = "uv tool upgrade staffroom"
+DEFAULT_BRANCH = "main"
+# The documented install line (#11): it follows ``main``, so the upgrade
+# command above moves it to the newest release.
+INSTALL_LINE = "uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main"
 _INSTALLED_DIRS = {"site-packages", "dist-packages"}
 
 
@@ -38,6 +43,11 @@ class Installation:
     kind: InstallKind
     package_dir: Path  # the ``staffroom`` package folder that is running
     root: Path | None = None  # the checkout's root; None for an installed copy
+    # A uv tool that ``uv tool upgrade`` can move: installed from the git
+    # repository's ``main`` (or with no revision). False when uv's receipt
+    # pins a tag (the install line before #11) or a wheel file: ``upgrade``
+    # says "Nothing to upgrade" for those, so the install line is the command.
+    tracks_main: bool = True
 
     @property
     def is_checkout(self) -> bool:
@@ -47,12 +57,21 @@ class Installation:
     def update_command(self) -> str:
         """The command that updates this copy, or ``""`` when there is no one
         command (a checkout updates itself; anything else is updated the way
-        it was installed)."""
-        return UV_UPGRADE_COMMAND if self.kind is InstallKind.UV_TOOL else ""
+        it was installed). A uv tool pinned to a tag or a wheel gets the
+        install line, which moves it onto ``main`` once; after that the
+        upgrade command is enough."""
+        if self.kind is not InstallKind.UV_TOOL:
+            return ""
+        return UV_UPGRADE_COMMAND if self.tracks_main else INSTALL_LINE
 
     def update_hint(self) -> str:
         """One plain line on how to update an installed copy; ``""`` for a
         checkout, which updates itself."""
+        if self.kind is InstallKind.UV_TOOL and not self.tracks_main:
+            return (
+                "This copy was installed from a fixed release and never updates itself. "
+                f"To update it, quit Staffroom and run: {INSTALL_LINE}"
+            )
         if self.kind is InstallKind.UV_TOOL:
             return (
                 "This copy was installed with uv and never updates itself. "
@@ -92,13 +111,43 @@ def detect(package_dir: Path | None = None) -> Installation:
     if installed_in is not None:
         # <env>/lib/pythonX.Y/site-packages/staffroom; on Windows <env>/Lib/site-packages.
         env_candidates = (installed_in.parents[2], installed_in.parents[1])
-        if any((env / UV_RECEIPT).is_file() for env in env_candidates):
-            return Installation(InstallKind.UV_TOOL, here)
+        receipt = next(
+            (env / UV_RECEIPT for env in env_candidates if (env / UV_RECEIPT).is_file()), None
+        )
+        if receipt is not None:
+            return Installation(InstallKind.UV_TOOL, here, tracks_main=_tracks_main(receipt))
         return Installation(InstallKind.OTHER, here)
     root = here.parents[1] if here.parent.name == "src" else None
     if root is not None and _is_this_project(root) and (root / ".git").exists():
         return Installation(InstallKind.CHECKOUT, here, root)
     return Installation(InstallKind.OTHER, here)
+
+
+def _tracks_main(receipt: Path) -> bool:
+    """Whether uv's receipt says ``uv tool upgrade`` can move this tool: its
+    ``staffroom`` requirement is a git URL on ``main`` or with no revision.
+    A tag or commit (``?rev=v0.8.1``) or a local wheel (``path = …``) cannot
+    move. An unreadable or unfamiliar receipt counts as movable, so the card
+    shows the short command rather than guessing."""
+    try:
+        with receipt.open("rb") as fh:
+            data = tomllib.load(fh)
+    except (OSError, tomllib.TOMLDecodeError):
+        return True
+    tool = data.get("tool")
+    requirements = tool.get("requirements") if isinstance(tool, dict) else None
+    if not isinstance(requirements, list):
+        return True
+    for req in requirements:
+        if not isinstance(req, dict) or req.get("name") != PROJECT_NAME:
+            continue
+        if "path" in req:
+            return False
+        git = req.get("git")
+        if isinstance(git, str):
+            rev = parse_qs(urlsplit(git).query).get("rev", [""])[0]
+            return rev in ("", DEFAULT_BRANCH)
+    return True
 
 
 def _is_this_project(root: Path) -> bool:

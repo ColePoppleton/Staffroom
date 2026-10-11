@@ -12,6 +12,19 @@ with every change; `just release <part>` turns it into a version.
   (real marks, names, class lists) is attached; reports are labelled
   `status:triage` instead of going straight onto the board, blank issues are
   off, and `SECURITY.md` says how to report a privacy problem privately (#15).
+
+### Changed
+- Settings › Updates for an installed copy shows the version you have, the newest release
+  with its date and *What changed* (the release notes, and a link to the release), and the
+  one command to update, `uv tool upgrade staffroom`, with a *Copy* button; the sidebar
+  footer reads `v0.8.1 · 0.9.0 out` while a newer release is out. The newest release comes
+  from GitHub's public Releases API over HTTPS, when you press *Check again* and at most
+  once a day when Staffroom opens (a tick box turns that off); a failed check says so in
+  one sentence and never claims "up to date". The app still never runs git or installs
+  anything itself. The install line now follows `@main`, so that one command updates:
+  `uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main`.
+  A copy installed from a release tag or a wheel is shown that line once instead (#11).
+
 ### Fixed
 - An installed copy (`uv tool install`, a wheel) never runs git: no fetch at start, and
   `staff update` and Settings › Updates say it was installed with uv and show

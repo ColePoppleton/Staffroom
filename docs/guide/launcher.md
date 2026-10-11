@@ -12,8 +12,8 @@ One line per tool with a small glyph; hover a tool for what it does and its
 shortcut. The red accent marks only where you are. Above the list, the gear
 opens Settings and the search field searches the library (typing carries on
 in the Library's own search box). At the foot: the running version (with
-*up to date* or an *update* link once the app has checked) and **Activity
-log**, which opens the log drawer.
+*up to date*, or a link such as *0.9.0 out* that opens Settings › Updates,
+once the app has checked) and **Activity log**, which opens the log drawer.
 
 A fresh install opens on Classroom; after that the app opens where you left
 it, a tool or the Library. (`hello`, the developers' reference tool, is not in
@@ -97,7 +97,7 @@ log file hold the app-wide log, described in
 | Exam board | OCR J277 or AQA 8525: the grade preset Marks starts with, and the gates a GCSE truth-table worksheet may use |
 | Header / footer text | printed on every worksheet and key |
 | Logging | the level of the app log (`INFO` by default), and buttons to reveal the config file and the log |
-| Updates | check for and apply an update when running from a checkout |
+| Updates | an installed copy: this version, the newest release and what changed, and the one command to paste (`uv tool upgrade staffroom`) with *Copy*; from a checkout: check for and apply an update. See [Updating](updating.md) |
 
 Everything is saved to `~/.config/staffroom/config.toml` as you change it.
 Words the panels use without explaining (seed, facility, ERL, do-now…) are

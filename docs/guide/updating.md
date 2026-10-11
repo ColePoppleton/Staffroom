@@ -2,35 +2,56 @@
 
 ## Installed with `uv tool install`
 
-The install line pins a release tag, so `uv tool upgrade staffroom` has
-nothing to move to and says *Nothing to upgrade*. To update, run the install
-line again with the newer tag from the
-[Releases](https://github.com/ColePoppleton/Staffroom/releases) page; uv
-replaces the old version:
+Quit Staffroom, then run this in Terminal and open Staffroom again:
 
 ```bash
-uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.1
+uv tool upgrade staffroom
 ```
 
-(Swap the tag for the one you want. The same works to go back a version.)
+The install line follows `main`, the branch that only ever holds released
+versions, so this one command moves you to the newest release. Staffroom
+never updates itself and never runs git; it tells you when there is
+something to update:
 
-An installed copy never updates itself and never runs git. Settings ›
-Updates and `staff update` say so and show `uv tool upgrade staffroom`, which
-updates a copy installed from `@main`; a copy installed from a release tag,
-as above, is updated by running the install line again.
+- **Settings › Updates** shows *This copy* (the version you are running),
+  the *Newest release* with its date and *What changed ▸* (the release
+  notes, and a link to the release on GitHub), and the command above with a
+  *Copy* button. *Check again* asks GitHub straight away.
+- **The foot of the sidebar** reads `v0.8.1 · 0.9.0 out` while a newer
+  release is out; click it to open Settings › Updates.
+
+To learn about a release, Staffroom asks GitHub's public Releases API which
+release is newest: when you press *Check again*, and at most once a day when
+it opens while *Look for a new release when Staffroom opens* is ticked (it
+is by default; untick it to stop). Nothing about you or your files is sent;
+the [Privacy](privacy.md#where-things-live) page has the details. If GitHub
+cannot be reached (no network, a school filter), the card says so in one
+sentence and never claims you are up to date; the command still works
+whenever you can reach GitHub.
+
+!!! note "Installed before 0.9, from a release tag?"
+    Copies installed with a line ending in `@v0.8.1` (or another tag), or from
+    a `.whl` file, are pinned: `uv tool upgrade staffroom` answers *Nothing to
+    upgrade*. Run the install line once more and later updates are the one
+    command above. Settings › Updates shows this line for a pinned copy.
+
+    ```bash
+    uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main
+    ```
 
 ## Which version am I running?
 
 The foot of the sidebar shows it, for example `v0.6.0 · up to date` once the
-app has checked for a release (just `v0.6.0` before, when it cannot check, and
-always for an installed copy, which does not check).
+app has checked for a release (just `v0.6.0` before it has, and when it
+cannot check).
 
 ![The sidebar footer with the version, dark theme](../sidebar-footer-dark.png)
 ![The sidebar footer with the version, light theme](../sidebar-footer-light.png)
 
-Settings › Updates says the same at the top of the card. On a release tag it
-is just the version (`Running Staffroom 0.5.0`); anywhere else it adds the
-branch and the short commit (`Running Staffroom 0.5.0 (dev, a1b2c3d)`), which
+Settings › Updates says the same: *This copy* for an installed copy; in a
+checkout, the top line of the card. On a release tag it is just the version
+(`Running Staffroom 0.5.0`); anywhere else it adds the branch and the short
+commit (`Running Staffroom 0.5.0 (dev, a1b2c3d)`), which
 is what to quote when reporting a problem. From the terminal:
 `staffroom --version` or `staff version`.
 

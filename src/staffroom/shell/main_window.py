@@ -140,6 +140,8 @@ class MainWindow(QMainWindow):
         self.settings.resources_root_changed.connect(self.set_resources_root)
         self.settings.library_exclude_changed.connect(self.set_library_exclude)
         self.settings.update_available.connect(self.sidebar.set_update_available)
+        self.sidebar.updates_requested.connect(self.show_updates)
+        self.settings.announce_update_state()  # an installed copy's last check
         res = self.resources
         res.search_changed.connect(self._on_search)
         res.kind_changed.connect(self._on_kind_changed)
@@ -197,6 +199,9 @@ class MainWindow(QMainWindow):
         this when it closes; screenshot runs and test fixtures call it before
         tearing the window down. Returns True when every worker has stopped."""
         stopped = self.library_page.stop_index(timeout_ms)
+        if not self.settings.wait_for_workers(timeout_ms):
+            log.error("the release check did not stop within %d ms", timeout_ms)
+            stopped = False
         for panel in self.panels.values():
             worker = panel.worker
             if worker is not None and worker.isRunning() and not worker.wait(timeout_ms):
@@ -252,6 +257,11 @@ class MainWindow(QMainWindow):
 
     def show_settings(self) -> None:
         self._show(self.settings, SETTINGS)
+
+    def show_updates(self) -> None:
+        """Settings, scrolled to the Updates card (the footer's link)."""
+        self.show_settings()
+        self.settings.show_updates()
 
     # -- first run -------------------------------------------------------
     def _on_first_run_folder(self, root: str) -> None:

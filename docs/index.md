@@ -32,7 +32,7 @@ pupil data.
 <p class="sr-install__label">Two lines in Terminal (<a href="https://docs.astral.sh/uv/">uv</a> first)</p>
 
 ```bash
-uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.1
+uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main
 staffroom
 ```
 
@@ -82,9 +82,10 @@ log holds a value from your files.
 
 <p class="sr-privacy__title"><span aria-hidden="true">⌕</span> Check it yourself</p>
 
-No account and no server: the only network call is the update check, when
-the app runs from a git checkout. Removing every trace is deleting a short
-list of folders. [Which ones](guide/privacy.md#deleting-everything).
+No account and no server: the only network call asks GitHub which release is
+newest, when you press *Check again* and at most once a day when Staffroom
+opens (untick it in Settings › Updates). Removing every trace is deleting a
+short list of folders. [Which ones](guide/privacy.md#deleting-everything).
 
 </div>
 

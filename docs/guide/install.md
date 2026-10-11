@@ -4,16 +4,16 @@
 
 Staffroom is a Python package. Installing it as a tool gives you the
 `staff` and `staffroom` commands without touching any other Python on the machine.
-It is **not on PyPI**, so install it straight from the GitHub repository,
-pinned to a release tag.
+It is **not on PyPI**, so install it straight from the GitHub repository's
+`main` branch, which only ever holds released versions.
 
 1. Install [uv](https://docs.astral.sh/uv/) if you don't have it:
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-2. Install the tools (this is the latest release, v0.6.0):
+2. Install the tools (the newest release):
    ```bash
-   uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.1
+   uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main
    ```
 3. Start the launcher:
    ```bash
@@ -42,9 +42,9 @@ with "the current Python version does not satisfy Python>=3.12".
     someone registers it. The short form will appear here only once Staffroom
     is published there.
 
-To upgrade, run the same line with the newer tag from the
-[Releases](https://github.com/ColePoppleton/Staffroom/releases) page; see
-[Updating](updating.md).
+To update later, quit Staffroom and run `uv tool upgrade staffroom`.
+Settings › Updates says when a new release is out and shows the same
+command with a *Copy* button; see [Updating](updating.md).
 
 ## macOS: a Dock icon
 

@@ -33,7 +33,8 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-PIN = "git+https://github.com/ColePoppleton/Staffroom@v"
+LINE = "uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main"
+WHEEL_LINE = "uv tool install --python 3.12 ./staffroom-{}-py3-none-any.whl"
 REAL_ROOT = SCRIPT.parents[1]
 
 
@@ -58,32 +59,29 @@ def test_bump_parts(project: Path) -> None:
         release.bump("huge")
 
 
-def test_bump_repins_install_lines_and_wheel(project: Path) -> None:
-    (project / "README.md").write_text(f"    uv tool install --python 3.12 {PIN}0.1.0\n")
+def test_bump_repins_the_wheel_and_leaves_the_main_line_alone(project: Path) -> None:
+    """The git line follows @main since #11, so ``uv tool upgrade`` updates a
+    copy; only the wheel filename carries a version (#100)."""
+    (project / "README.md").write_text(f"    {LINE}\n")
     guide = project / "docs" / "guide"
     guide.mkdir()
     (guide / "install.md").write_text(
-        f"uv tool install --python 3.12 {PIN}0.1.0\n"
-        "or `uv tool install --python 3.12 ./staffroom-0.1.0-py3-none-any.whl`.\n"
-        "Stay on `v0.1.0`? Fine.\n"
+        f"{LINE}\nor `{WHEEL_LINE.format('0.1.0')}`.\nStay on `v0.1.0`? Fine.\n"
     )
     (project / "docs" / "index.md").write_text("no install line here\n")
     audit = project / "docs" / "audits" / "2026-10-01"
     audit.mkdir(parents=True)
-    old = f"quoted: {PIN}0.0.9\n"
+    old = f"quoted: {WHEEL_LINE.format('0.0.9')}\n"
     (audit / "report.md").write_text(old)
     (project / "docs" / "changelog.md").write_text(old)
 
     changed = release.pin_install_docs("0.2.0")
 
-    assert sorted(p.relative_to(project).as_posix() for p in changed) == [
-        "README.md",
-        "docs/guide/install.md",
-    ]
-    assert (project / "README.md").read_text() == f"    uv tool install --python 3.12 {PIN}0.2.0\n"
+    assert [p.relative_to(project).as_posix() for p in changed] == ["docs/guide/install.md"]
+    assert (project / "README.md").read_text() == f"    {LINE}\n"  # @main untouched
     text = (guide / "install.md").read_text()
-    assert f"{PIN}0.2.0\n" in text
-    assert "./staffroom-0.2.0-py3-none-any.whl" in text
+    assert f"{LINE}\n" in text
+    assert WHEEL_LINE.format("0.2.0") in text
     assert "Stay on `v0.1.0`" in text  # prose is not a pin
     assert (audit / "report.md").read_text() == old  # dated record
     assert (project / "docs" / "changelog.md").read_text() == old  # build copy
@@ -93,16 +91,16 @@ def test_bump_repins_install_lines_and_wheel(project: Path) -> None:
 def test_bump_command_repins_in_the_same_step(
     project: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    (project / "README.md").write_text(f"{PIN}0.1.0\n")
+    (project / "README.md").write_text(f"{LINE}\n{WHEEL_LINE.format('0.1.0')}\n")
     release.main(["release.py", "bump", "minor"])
     assert capsys.readouterr().out.strip() == "0.2.0"
-    assert (project / "README.md").read_text() == f"{PIN}0.2.0\n"
+    assert (project / "README.md").read_text() == f"{LINE}\n{WHEEL_LINE.format('0.2.0')}\n"
 
 
 def test_tag_stages_the_repinned_pages(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (project / "README.md").write_text(f"{PIN}0.1.0\n")
-    (project / "docs" / "index.md").write_text(f"{PIN}0.1.0\n")
-    (project / "docs" / "other.md").write_text("nothing pinned\n")
+    (project / "README.md").write_text(f"{WHEEL_LINE.format('0.1.0')}\n")
+    (project / "docs" / "index.md").write_text(f"{WHEEL_LINE.format('0.1.0')}\n")
+    (project / "docs" / "other.md").write_text(f"{LINE}\n")  # nothing to re-pin
     calls: list[list[str]] = []
     monkeypatch.setattr(subprocess, "run", lambda args, **_: calls.append(args))
     assert release.tag() == "v0.1.0"
@@ -116,27 +114,38 @@ def test_tag_stages_the_repinned_pages(project: Path, monkeypatch: pytest.Monkey
 def test_bump_on_a_copy_of_the_real_docs_leaves_no_stale_pin(
     project: Path,
 ) -> None:
-    """Every pin tests/test_install_docs.py checks is one bump rewrites."""
+    """Every wheel tests/test_install_docs.py checks is one bump rewrites, and
+    the @main lines come through unchanged."""
     shutil.copy(REAL_ROOT / "README.md", project / "README.md")
     shutil.rmtree(project / "docs")
     shutil.copytree(REAL_ROOT / "docs", project / "docs")
     audits_before = {
         p: p.read_bytes() for p in (project / "docs" / "audits").rglob("*") if p.is_file()
     }
+    main_lines_before = {
+        page: page.read_text(encoding="utf-8").count("Staffroom@main")
+        for page in release.install_pages()
+    }
 
     release.pin_install_docs("98.76.54")
 
-    pin = re.compile(r"Staffroom@v(\d+\.\d+\.\d+)")
     wheel = re.compile(r"staffroom-(\d+\.\d+\.\d+)-py3-none-any\.whl")
     found = {
         (m, page.relative_to(project).as_posix())
         for page in release.install_pages()
-        for rx in (pin, wheel)
-        for m in rx.findall(page.read_text(encoding="utf-8"))
+        for m in wheel.findall(page.read_text(encoding="utf-8"))
     }
-    names = {name for _, name in found}
-    assert {"README.md", "docs/index.md", "docs/guide/install.md"} <= names
+    assert "docs/guide/install.md" in {name for _, name in found}
     assert {version for version, _ in found} == {"98.76.54"}, sorted(found)
+    assert not any(
+        re.search(r"Staffroom@v\d", page.read_text(encoding="utf-8"))
+        for page in release.install_pages()
+    )
+    assert main_lines_before == {
+        page: page.read_text(encoding="utf-8").count("Staffroom@main")
+        for page in release.install_pages()
+    }
+    assert sum(main_lines_before.values()) >= 3  # README, home page, Install
     assert audits_before == {
         p: p.read_bytes() for p in (project / "docs" / "audits").rglob("*") if p.is_file()
     }
