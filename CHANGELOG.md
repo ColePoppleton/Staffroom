@@ -6,6 +6,8 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+
+## [0.8.0] - 2026-10-11
 ### Added
 - Quiz shows the *Taught log* picker only while *Retrieval mode* is ticked, under
   the options it follows, and a hidden log is never handed to the run (#123).

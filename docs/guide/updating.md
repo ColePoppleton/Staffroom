@@ -9,7 +9,7 @@ line again with the newer tag from the
 replaces the old version:
 
 ```bash
-uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.7.0
+uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.0
 ```
 
 (Swap the tag for the one you want. The same works to go back a version.)
