@@ -64,6 +64,12 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
+# Planning notes stay in the repository but are not part of the site.
+exclude_docs: |
+  audits/
+  ROADMAP.md
+  PHASES.md
+
 nav:
   # Teachers' pages first; everything about building Staffroom is under
   # Contributing, last.
@@ -95,10 +101,5 @@ nav:
           - House style: guide/house-style.md
       - Changelog: changelog.md
   - Contributing:
-      - Process: process.md
+      - How to contribute: contributing.md
       - Adding a tool: adding-a-tool.md
-      - Roadmap: ROADMAP.md
-      - Phases: PHASES.md
-      - Audits:
-          - 2026-10-09: audits/2026-10-09.md
-          - 2026-10-08: audits/2026-10-08.md

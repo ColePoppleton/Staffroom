@@ -11,9 +11,8 @@ Staffroom is not on PyPI. Install the latest release straight from GitHub with
     uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.0
     staffroom
 
-The repository is private for now, so this works only for a GitHub account that
-can see it. See [Install](https://colepoppleton.github.io/Staffroom/guide/install/)
-for the details.
+No GitHub account is needed. See [Install](https://colepoppleton.github.io/Staffroom/guide/install/)
+for the details and the alternatives.
 
 ## Develop
 
@@ -36,5 +35,6 @@ library search, ⌘O open for class, ⌘1–9 tools in sidebar order, ⌘L log,
 Documentation: https://colepoppleton.github.io/Staffroom/ (built from
 `docs/` by MkDocs). MIT licensed.
 
-See `CLAUDE.md` for the conventions and `docs/adding-a-tool.md` for how to add
+See the [contributing guide](https://colepoppleton.github.io/Staffroom/contributing/) for the rules
+and `docs/adding-a-tool.md` for how to add
 a tool.

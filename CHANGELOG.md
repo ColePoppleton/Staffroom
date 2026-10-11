@@ -7,6 +7,10 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Changed
+- The documentation site covers using Staffroom and contributing to it; planning
+  notes stay in the repository and are not published.
+- The repository is public: the install docs no longer ask colleagues for access,
+  and the wheel on each GitHub Release is the fallback when git is not available.
 - Ready to be public: the first audit no longer names the owner's real folder or
   index counts, and issue claims no longer record the machine's name.
 
@@ -209,8 +213,8 @@ with every change; `just release <part>` turns it into a version.
   every claim is tested against the Privacy page; and a *What comes out*
   gallery with one real output per tool. The pages are rendered from the
   example files by `just screenshots`. The site nav puts the teachers' pages
-  first (Install, Tools, Privacy, Guides, as header tabs) and moves Process,
-  Roadmap, Phases and the audits under one *Contributing* section at the end.
+  first (Install, Tools, Privacy, Guides, as header tabs) and puts the
+  contributor pages in one *Contributing* section at the end.
 - Marks is a one-screen report (#87): after *Analyse*, four headline tiles
   (scripts, mean %, median grade with how many reached grade 4, the questions to
   reteach first), the grade chart with counts and percentages under the bars
@@ -225,13 +229,9 @@ with every change; `just release <part>` turns it into a version.
   tags and folding, `main_layout="row"`, compact `EditableTable` and
   `TablePreview`, `Choice`, `FilePicker(chip=True)`. The CLI prints the same
   headline; the saved chart gains the percentages too.
-- CI and the release workflow run on Linux instead of macOS, which uses a tenth of the
-  Actions allowance on a private repo. macOS-only packaging tests skip there.
-
-### Added
-- Product and design audit 2026-10-09 (`docs/audits/2026-10-09.md`): the first with a
-  design pass over every section, eight redesigns shown as mockups beside today's screens
-  (`docs/audits/2026-10-09/`), and the "Phase 9: The workbench" milestone (#80–#92).
+- CI and the release workflow run on macOS again: the repository is public, so
+  macOS runners are free, and the layout and packaging tests are written for the
+  platform Staffroom targets.
 
 ### Fixed
 - `staffroom --settings` no longer leaves the last tool highlighted beside the
@@ -291,10 +291,6 @@ with every change; `just release <part>` turns it into a version.
   matches after `just install` (#69).
 
 ### Changed
-- The `/audit` skill now has a design pass (task flow, hierarchy, structure, density,
-  consistency per section) that shows any proposed redesign as a rendered mockup beside the
-  current screen, with no cap and no quota on redesigns; `/next-task` treats a redesign
-  issue as a licence for structural change rather than the smallest diff.
 - `classroom` promote compares the copy with the original and with the latest
   promoted version before writing: an unchanged copy makes no new file and
   the message says `Already promoted as year9_v2.py` (or that it matches the
@@ -441,8 +437,6 @@ with every change; `just release <part>` turns it into a version.
   database lives, that the folder is only read, and how to delete the index.
   `StringListEditor` joins the widget kit; `staffroom --settings` opens
   Settings for screenshots.
-- First product audit (`docs/audits/2026-10-08.md`): ten personas, 23 issues
-  on the "Phase 8: Ready for other teachers" milestone, and the not-doing list.
 - `examples/marks_messy.csv`: a fake marks file on which every `marks`
   warning fires, for trying the tool and for the tests.
 
@@ -490,8 +484,7 @@ with every change; `just release <part>` turns it into a version.
   tool's file names; a new *Glossary* covers facility, discrimination, seed,
   ERL, Parsons problem, faded example, do-now, retrieval windows and the rest;
   the launcher page shows the workflow-order shortcuts and the tool pages
-  name their files and link across. The nav puts *Adding a tool* and
-  *Roadmap* back under Contributing.
+  name their files and link across.
 
 ### Fixed
 - Worksheet truth tables never set a degenerate question: every input the
@@ -573,8 +566,6 @@ with every change; `just release <part>` turns it into a version.
   wheel and sdist (`.github/workflows/release.yml`, `scripts/release.py`,
   `just release`). `uv tool install` is the canonical install.
 - MIT licence.
-- Branch model, Issues board, the `/audit`, `/next-task` and `/merge-prs`
-  skills, and CI.
 
 ## [0.1.0] - 2026-10-08
 
@@ -606,9 +597,8 @@ The seven roadmap phases, as built:
   `packaging/tt-gui.spec` (tools, assets, spec files and the tracer are
   collected explicitly because discovery is dynamic).
 - `tt usage`: run counts and last-used dates per tool, recorded by the
-  launcher and nothing else, so the "which tools were actually used in a
-  month" review in PHASES.md can be done from evidence. The review itself
-  is a decision for after a month of use.
+  launcher and nothing else, so "which tools were actually used this
+  month" can be answered from evidence.
 
 ### Phase 6 — quiz (2026-10-08)
 
@@ -631,7 +621,7 @@ The seven roadmap phases, as built:
   `tt quiz retrieval --bank B --log L --date D`, `tt quiz list`,
   `tt quiz check`, `tt quiz spec ocr|aqa`.
 - Examples: `question_bank.md` (13 invented questions) and `taught_log.csv`.
-- Manual check still owed, as PHASES.md says: import `question_bank_kahoot.xlsx`
+- Manual check still owed: import `question_bank_kahoot.xlsx`
   into Kahoot once and confirm it accepts the columns.
 - Banks are Markdown (and could be TOML) rather than YAML, to avoid a
   dependency.
@@ -806,4 +796,3 @@ The seven roadmap phases, as built:
   adds a Total column.
 - Guard rails: import-linter contracts, boundary tests, pre-commit hook
   refusing CSV/XLSX files without `# FAKE DATA`.
-- Docs: CLAUDE.md with the hard rules verbatim, docs/adding-a-tool.md.

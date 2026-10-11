@@ -11,7 +11,7 @@ separate. Users produce evidence; the meeting produces decisions.
 ## 0. Ground yourself (read, do not skip)
 
 1. `docs/ROADMAP.md` (the brief and hard rules), `docs/PHASES.md`, `CLAUDE.md`, `CHANGELOG.md`,
-   `docs/process.md`, and the most recent file in `docs/audits/` if any.
+   `.claude/process.md`, and the most recent file in `docs/audits/` if any.
 2. The purpose, in one line you keep in front of you: *a UK secondary computing teacher's
    weekly workflow, on their own machine, outputs carried into school by hand, with no pupil
    data anywhere.* Everything is judged against that.

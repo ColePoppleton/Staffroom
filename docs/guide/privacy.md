@@ -139,8 +139,8 @@ log.
 
 ## Where things live
 
-The table the 2026-10-08 audit built by listing the disk after a full
-session (`docs/audits/2026-10-08.md` §2.3), with today's paths.
+Everything Staffroom writes to your Mac, found by listing the disk after a
+full session of using every tool.
 
 | Store | Path | Holds |
 | --- | --- | --- |
