@@ -13,7 +13,7 @@ pinned to a release tag.
    ```
 2. Install the tools (this is the latest release, v0.6.0):
    ```bash
-   uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.0
+   uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.1
    ```
 3. Start the launcher:
    ```bash
@@ -34,7 +34,7 @@ with "the current Python version does not satisfy Python>=3.12".
     blocks it, download the `.whl` file from the latest
     [GitHub Release](https://github.com/ColePoppleton/Staffroom/releases) and
     install that instead:
-    `uv tool install --python 3.12 ./staffroom-0.8.0-py3-none-any.whl`.
+    `uv tool install --python 3.12 ./staffroom-0.8.1-py3-none-any.whl`.
 
 !!! note "Why not `uv tool install` with just the name?"
     There is no Staffroom package on PyPI, and the name is not reserved, so

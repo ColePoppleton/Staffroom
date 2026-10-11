@@ -32,7 +32,7 @@ pupil data.
 <p class="sr-install__label">Two lines in Terminal (<a href="https://docs.astral.sh/uv/">uv</a> first)</p>
 
 ```bash
-uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.0
+uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.1
 staffroom
 ```
 
