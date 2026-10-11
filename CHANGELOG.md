@@ -6,6 +6,12 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Fixed
+- An installed copy (`uv tool install`, a wheel) never runs git: no fetch at start, and
+  `staff update` and Settings › Updates say it was installed with uv and show
+  `uv tool upgrade staffroom` instead of fetching, or fast-forwarding, whatever repository
+  encloses the tool folder. One function, `core.install.detect`, decides checkout or
+  installed copy; the sidebar footer no longer says "up to date" after a failed check (#9).
 
 ## [0.8.1] - 2026-10-11
 ### Changed

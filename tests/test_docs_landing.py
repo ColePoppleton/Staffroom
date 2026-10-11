@@ -35,8 +35,9 @@ CLAIMS = {
     "No log holds a value from your files.": "neither holds a value from your files",
     "No account and no server": "There is no account and no server",
     "the only network call is the update check, when the app runs from a git checkout": (
-        "The app checks its git remote for updates when started from a checkout, "
-        "and that is the only network call it makes."
+        "Run from its own git checkout (the macOS launcher app), Staffroom asks that "
+        "checkout's git remote whether a release is out, when it starts and when you press "
+        "*Check for updates*; that is the only network call it makes."
     ),
     "Removing every trace is deleting a short list of folders.": (
         "removing the app's traces is a\nmatter of deleting folders"
@@ -79,6 +80,19 @@ def test_privacy_strip_claims_match_the_privacy_page() -> None:
             f"guide/privacy.md no longer says {source!r}, which backs the home page's "
             f"claim {claim!r}: update both together"
         )
+
+
+def test_privacy_page_says_an_installed_copy_makes_no_network_call() -> None:
+    """The home page's "when the app runs from a git checkout" is only true
+    while an installed copy stays offline and runs no git (#9)."""
+    privacy = _flat(PRIVACY.read_text(encoding="utf-8"))
+    assert (
+        _flat(
+            "An installed copy (`uv tool install`, a wheel) makes no network calls "
+            "and never runs git"
+        )
+        in privacy
+    )
 
 
 def test_home_page_links_into_privacy_land_on_headings() -> None:

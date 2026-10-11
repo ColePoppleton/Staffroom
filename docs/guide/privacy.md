@@ -164,8 +164,12 @@ for a lesson, not a class, and cannot check what you wrote.
     `.teaching-tools/tags.json` sidecar (or `ignore` file) in the resources
     folder is still read; the next edit writes `.staffroom/tags.json`.
 
-Nothing leaves the machine. The app checks its git remote for updates when
-started from a checkout, and that is the only network call it makes.
+Nothing leaves the machine. An installed copy (`uv tool install`, a wheel)
+makes no network calls and never runs git; you update it yourself with
+`uv tool upgrade staffroom`. Run from its own git checkout (the macOS launcher
+app), Staffroom asks that checkout's git remote whether a release is out, when
+it starts and when you press *Check for updates*; that is the only network
+call it makes.
 
 ## Deleting everything
 

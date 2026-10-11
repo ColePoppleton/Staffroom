@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from staffroom import __version__
-from staffroom.core import paths
+from staffroom.core import install, paths
 from staffroom.core.config import Config, NotSaved
 from staffroom.core.launch import EDITOR_PRESETS, preset_for
 from staffroom.core.library.exclude import IGNORE_FILE
@@ -40,7 +40,9 @@ class SettingsPage(QWidget):
     theme_changed = Signal(str)
     resources_root_changed = Signal(str)
     library_exclude_changed = Signal(object)  # list[str]
-    update_available = Signal(bool)
+    # True / False after a check; None for an installed copy or a failed check,
+    # so the sidebar never says "up to date" without having checked.
+    update_available = Signal(object)
 
     def __init__(self, config: Config, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -190,13 +192,21 @@ class SettingsPage(QWidget):
         layout.addWidget(house)
 
         release = config.general.release_branch or "main"
-        updates = Card(
-            "Updates",
-            f"The app runs straight from the git checkout and follows the released "
-            f"branch ({release}). An update is a fast-forward pull plus a dependency "
-            f"sync; nothing is pulled while the checkout is on another branch, has local "
-            f"edits or has diverged. Restart afterwards.",
-        )
+        self.installation = install.detect()
+        if self.installation.is_checkout:
+            updates_help = (
+                f"The app runs straight from the git checkout and follows the released "
+                f"branch ({release}). An update is a fast-forward pull plus a dependency "
+                f"sync; nothing is pulled while the checkout is on another branch, has local "
+                f"edits or has diverged. Restart afterwards."
+            )
+        else:
+            # Minimal until the Updates card for installed copies (#11) lands.
+            updates_help = (
+                "This copy is installed, not a git checkout: Staffroom never rewrites its "
+                "own files and does not check for updates."
+            )
+        updates = Card("Updates", updates_help)
         self.version_label = make_label(self._version_text(__version__))
         self.version_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         updates.body.addWidget(self.version_label)
@@ -214,6 +224,8 @@ class SettingsPage(QWidget):
         update_row.addWidget(self.update_button)
         updates.body.addLayout(update_row)
         layout.addWidget(updates)
+        if not self.installation.is_checkout:
+            self._show_installed()
 
         logging_card = Card("Logging")
         log_form = QFormLayout()
@@ -280,6 +292,9 @@ class SettingsPage(QWidget):
     def check_updates(self, *, fetch: bool = True) -> None:
         from staffroom.shell.update_worker import UpdateWorker
 
+        if not self.installation.is_checkout:
+            self._show_installed()  # an installed copy never runs git (#9)
+            return
         self.check_button.setEnabled(False)
         self.update_status.setText("Checking…")
         worker = UpdateWorker(fetch=fetch)
@@ -292,6 +307,9 @@ class SettingsPage(QWidget):
         from staffroom.core.update import UpdateStatus
 
         assert isinstance(status, UpdateStatus)
+        if status.installed:
+            self._show_installed(status.installed)
+            return
         self.check_button.setEnabled(True)
         self.version_label.setText(self._version_text(status.running_version(__version__)))
         self.update_status.setText(status.describe())
@@ -308,7 +326,20 @@ class SettingsPage(QWidget):
             self.update_button.setToolTip(f"Not updating: {why}.")
         else:
             self.update_button.setToolTip("")
-        self.update_available.emit(status.available)
+        self.update_available.emit(None if status.error else status.available)
+
+    def _show_installed(self, line: str = "") -> None:
+        """An installed copy: say how to update it, offer no check or pull,
+        and leave the sidebar showing just the version."""
+        self.update_status.setText(line or self.installation.update_hint())
+        self.update_status.setWordWrap(True)
+        self.update_status.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.update_status.setProperty("role", "muted")
+        self.update_status.style().unpolish(self.update_status)
+        self.update_status.style().polish(self.update_status)
+        self.check_button.hide()
+        self.update_button.hide()
+        self.update_available.emit(None)
 
     @staticmethod
     def _version_text(running: str) -> str:
