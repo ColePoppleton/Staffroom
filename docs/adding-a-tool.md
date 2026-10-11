@@ -148,6 +148,17 @@ the reference:
   row under its first cell (the column itself is not shown), and moves
   columns into the row's tooltip. `collapsed=True` on a `place="below"` table
   folds it under its label until opened.
+- A wide table that must fit the screen: `ResultsTable(..., compact=True,
+  lift_constants=True, mark_changes=True, pin_last=True)` sizes columns to
+  their values, lifts a value that never changes into one line above the
+  table, makes a changed value bold and a carried one grey, and keeps the
+  last column at the right edge (trace's completed table). Only the screen
+  changes: the table the tool returns, and what it prints, keep every column.
+- `CardList(key, title="Version {Version}", details=("line {Line}", "{Bug}"),
+  badge="What happens", tone_column="Outcome", tones=(("crash", "danger"),),
+  code_lines=(("was", "Original"), ("now", "Changed to")))` shows one card per
+  row of `tables[key]`, its badge always whole at the right (bugs' key).
+  `title` and `details` are format strings over the row's columns.
 
 On the input side, `FilePicker(..., chip=True)` shows the chosen file as a
 chip; `TablePreview(..., summary=fn, flag="MAX", compact=True)` replaces the
@@ -164,7 +175,8 @@ turn it into source text with `core.codeinput.code_from_inputs(inputs)`, which
 also accepts the command line's `{"source": Path}` or `{"pasted": str}`.
 `CodeSource(..., choice=Choice(...))` puts a switch about the code between
 the chip and the code. `ResultsTable(..., line_column="Line")` links a table
-whose rows name program lines to the view (trace, bugs), `TextView(...,
+whose rows name program lines to the view (trace), as does a `CardList` with
+`line_column` (bugs), `TextView(...,
 code=True)` shows an output as numbered code (pseudocode), and
 `PanelSpec(suggest=fn)` lets choices follow what was picked or pasted:
 `fn(inputs)` is pure and returns `{choice_key: value}`.

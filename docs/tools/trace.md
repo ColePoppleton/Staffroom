@@ -10,7 +10,17 @@ from the Library or with *Browse…*, or *Paste instead* for code that is in
 no file. It is shown, not edited (Thonny is the editor); save it there and
 the panel shows, and the next run uses, what you saved. **Click a row of the
 table and its line lights up in the program; click a line and the table
-selects every step that ran it.**
+selects every step that ran it.** The arrow keys move through the rows.
+
+On screen the completed table is made to fit the pane, whatever the window
+width. A value that never changes once set, and fills most of the table (the
+list of scores a program starts with), is lifted out into one line above it:
+*Never changes after line 2: `scores = [45, 62, 58, 71, 39]`*. Columns are as
+wide as their values; a value is **bold** on the row where it changed and
+grey where it is carried down from the row above; and *Output*, what the
+program printed, always sits at the right edge. If a program has more
+variables than fit, the others scroll sideways under it. The printed blank
+table and key are not changed by any of this: they keep every column.
 
 Each row is one executed line with every variable's value **after** that
 line and anything it printed. The *Preset* dropdown picks the shape of the
