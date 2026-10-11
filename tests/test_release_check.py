@@ -205,3 +205,10 @@ def test_versions_dates_ages_and_notes() -> None:
     notes = "Intro\n\n![Settings](https://x/y.png)\n<img src='z.png'>\n<!-- hidden -->\n\n\n- one"
     assert update.notes_for_display(notes) == "Intro\n\n- one"
     assert update.notes_for_display("  ") == "This release has no notes."
+    # The release body folds the contributors' list (scripts/release.py).
+    folded = (
+        "Teachers.\n\n<details>\n<summary>For contributors</summary>\n\n### Added\n- a\n</details>"
+    )
+    assert update.notes_for_display(folded) == (
+        "Teachers.\n\n#### For contributors\n\n### Added\n- a"
+    )
