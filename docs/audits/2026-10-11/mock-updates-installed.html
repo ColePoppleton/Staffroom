@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1240">
+<title>Updates: installed copy</title>
+<!-- Audit 2026-10-11 mockup: Updates: installed copy. Open with ?theme=light or ?theme=dark (default dark), window 1240x780.
+     Invented data only. Shared styles in mock.css. -->
+<script>document.documentElement.dataset.theme=(new URLSearchParams(location.search).get('theme')||'dark');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<style>
+.settings{flex:1;overflow:hidden;padding:26px 32px;background:var(--window)}
+.settings h1{font-family:var(--serif);font-weight:600;font-size:27px;margin-bottom:4px}
+.settings>p{color:var(--text-muted);margin-bottom:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:14px}
+.card h2{font-size:15px;font-weight:700;margin-bottom:8px}
+.card p{color:var(--text-muted);font-size:13.5px;line-height:1.45}
+.kv{display:grid;grid-template-columns:150px 1fr auto;gap:8px 14px;align-items:center;margin:12px 0}
+.kv dt{color:var(--text-muted);font-size:13px}
+.kv dd{font-size:14px}
+.kv dd b{font-weight:700}
+.new{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700}
+.cmd{display:flex;align-items:center;gap:10px;margin:6px 0 8px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface-alt);font-family:var(--mono);font-size:13.5px}
+.cmd .copy{margin-left:auto;font-family:var(--sans)}
+.steps{margin:4px 0 0 18px;color:var(--text-muted);font-size:13.5px;line-height:1.6}
+.small{font-size:12.5px!important;color:var(--text-faint)!important;margin-top:10px}
+.check{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--text-muted)}
+.box{width:15px;height:15px;border-radius:4px;background:var(--accent);display:grid;place-items:center;color:var(--on-accent);font-size:11px}
+.dim{opacity:.55}
+.side .foot span b{color:var(--accent);font-weight:700}
+</style></head><body><div class="app"><aside class="side">
+<div class="brand"><span class="mark">S</span><b>Staffroom</b><span class="gear" style="color:var(--accent);border-color:var(--accent);background:var(--accent-soft)" title="Settings ⌘,">⚙</span></div>
+<div class="search">⌕ Search resources<kbd>⌘K</kbd></div>
+<div class="grp">Lessons</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M3 4h4v16H3zM9 4h4v16H9zM15 5l4-1 3 15-4 1z"/></svg></span>Library<small>11</small></div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H4zM8 19h8M12 15v4"/></svg></span>Classroom</div>
+<div class="grp">Sheets &amp; quizzes</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM9 10h7M9 14h7M9 18h4"/></svg></span>Worksheet</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.7M12 17.5v.01"/></svg></span>Quiz</div>
+<div class="grp">From a program</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 5h10v4H4zM8 11h12v4H8zM4 17h8v4H4z"/></svg></span>Parsons</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M4 14h16M10 4v16"/></svg></span>Trace</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM12 9v9M4 12h5M15 12h5M5 6l4 3M19 6l-4 3M5 19l4-3M19 19l-4-3"/></svg></span>Bugs</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h12M4 14h8M4 18h4"/></svg></span>Fade</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></span>Pseudocode</div>
+<div class="grp">After a test</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Marks</div>
+<div class="foot"><span><span>v0.8.1 · <b>0.9.0 out</b></span></span><a>Activity log</a></div>
+</aside><main class="main" style="flex-direction:row"><div class="settings">
+<h1>Settings</h1><p>Shell-wide preferences. Saved as you change them.</p>
+<div class="card dim"><h2>Worksheets</h2><p>Exam board, header and footer text …</p></div>
+<div class="card"><h2>Updates</h2>
+<p>This copy was installed with <b>uv</b>. Staffroom never rewrites its own files: an update is one line in Terminal.</p>
+<dl class="kv"><dt>This copy</dt><dd><b>0.8.1</b></dd><dd></dd>
+<dt>Newest release</dt><dd><b>0.9.0</b> · 14 Oct 2026<span class="new">new</span> &nbsp;<a style="color:var(--accent);font-weight:600;text-decoration:none">What changed ▸</a></dd><dd><span class="btn">Check again</span></dd></dl>
+<p style="color:var(--text)">To update: quit Staffroom, paste this into Terminal, then open Staffroom again.</p>
+<div class="cmd">uv tool upgrade staffroom<span class="btn copy">Copy</span></div>
+<p class="small">Checked 2 minutes ago by asking github.com/ColePoppleton/Staffroom for its release tags. Nothing about you or your files is sent.</p>
+<div class="check"><span class="box">✓</span>Look for a new release when Staffroom opens</div>
+</div>
+<div class="card dim"><h2>Logging</h2><p>Level · Reveal config file · Reveal logs</p></div>
+</div>
+<div class="note" style="left:290px;top:618px;width:300px"><b>Today</b>“Could not check: fatal: not a git repository” in red, while the sidebar says “up to date”. Inside a folder that is a git repo (a home-folder dotfiles repo), it fetches and fast-forwards <i>that</i> repo.</div>
+<div class="note" style="left:640px;top:622px;width:260px;transform:rotate(1deg)"><b>Proposed</b>Knows how it was installed. Never runs git outside its own checkout. Says the one command; the footer says “0.9.0 out”.</div>
+</main></div></body></html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1240">
+<title>Bugs: what each bug does, at a glance</title>
+<!-- Audit 2026-10-11 mockup: Bugs: what each bug does, at a glance. Open with ?theme=light or ?theme=dark (default dark), window 1240x780.
+     Invented data only. Shared styles in mock.css. -->
+<script>document.documentElement.dataset.theme=(new URLSearchParams(location.search).get('theme')||'dark');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<style>
+.out .stage{padding:12px 20px;overflow:hidden}
+.bug{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px 14px;margin-bottom:9px}
+.bug.sel{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.bug .top{display:flex;align-items:center;gap:10px}
+.bug .v{font-weight:700}
+.bug .l{color:var(--text-muted);font-size:13px}
+.bug .kind{font-size:13px}
+.out-badge{margin-left:auto;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.crash{background:var(--accent-soft);color:var(--danger)}
+.wrong{background:rgba(242,184,107,.18);color:var(--code-number)}
+.diff{margin-top:7px;font-family:var(--mono);font-size:12.5px;line-height:1.55}
+.diff div{white-space:pre;padding:0 8px;border-radius:4px}
+.diff .m{color:var(--text-muted)}
+.diff .p{background:var(--surface-alt)}
+.diff .m:before{content:"was  ";color:var(--text-faint)}
+.diff .p:before{content:"now  ";color:var(--text-faint)}
+</style></head><body><div class="app"><aside class="side">
+<div class="brand"><span class="mark">S</span><b>Staffroom</b><span class="gear" title="Settings ⌘,">⚙</span></div>
+<div class="search">⌕ Search resources<kbd>⌘K</kbd></div>
+<div class="grp">Lessons</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M3 4h4v16H3zM9 4h4v16H9zM15 5l4-1 3 15-4 1z"/></svg></span>Library<small>11</small></div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H4zM8 19h8M12 15v4"/></svg></span>Classroom</div>
+<div class="grp">Sheets &amp; quizzes</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM9 10h7M9 14h7M9 18h4"/></svg></span>Worksheet</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.7M12 17.5v.01"/></svg></span>Quiz</div>
+<div class="grp">From a program</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 5h10v4H4zM8 11h12v4H8zM4 17h8v4H4z"/></svg></span>Parsons</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M4 14h16M10 4v16"/></svg></span>Trace</div><div class="nav on"><span class="g"><svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM12 9v9M4 12h5M15 12h5M5 6l4 3M19 6l-4 3M5 19l4-3M19 19l-4-3"/></svg></span>Bugs</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h12M4 14h8M4 18h4"/></svg></span>Fade</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></span>Pseudocode</div>
+<div class="grp">After a test</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Marks</div>
+<div class="foot"><span>v0.8.1 · up to date</span><a>Activity log</a></div>
+</aside><main class="main"><div class="head"><h1>Bugs</h1><p>One controlled error per copy of a working program; the key says what each does.</p></div>
+<div class="panes"><section class="in"><div class="scroll">
+<div class="sec" style="padding-top:2px"><div class="lab">Program <a>Paste instead</a></div>
+<div class="src"><span class="fi">PY</span><b>year9.py</b><span>examples</span><span class="x">Change ▾</span></div>
+<div style="margin-top:8px"><div class="code"><div><span><span class="c"># Average of five test scores</span></span></div><div><span>scores = [<span class="num">45</span>, <span class="num">62</span>, <span class="num">58</span>, <span class="num">71</span>, <span class="num">39</span>]</span></div><div><span>total = <span class="num">0</span></span></div><div><span>count = <span class="num">0</span></span></div><div><span><span class="k">for</span> score <span class="k">in</span> scores:</span></div><div><span>    total = total + score</span></div><div><span>    count = count + <span class="num">1</span></span></div><div><span>average = total / count</span></div><div class="hl"><span><span class="k">if</span> average &gt;= <span class="num">50</span>:</span></div><div><span>    <span class="f">print</span>(<span class="s">"Well done"</span>)</span></div><div><span><span class="k">else</span>:</span></div><div><span>    <span class="f">print</span>(<span class="s">"Keep going"</span>)</span></div><div><span><span class="f">print</span>(<span class="s">"Average:"</span>, average)</span></div></div></div></div></div><div class="go"><span class="primary">Make variants</span><small>⌘↵ · 4 s limit per run</small></div></section>
+<section class="out">
+<div class="strip"><span class="ok">✓</span><span class="msg">4 buggy versions <span>· 2 crash, 2 wrong output</span></span><div class="chips"><span class="chip"><i>PDF</i>Sheet</span><span class="chip"><i>PDF</i>Key</span><span class="chip"><i>PY</i>4 files</span><span class="chip">Folder</span></div></div>
+<div class="tabs"><span class="tab on">What each bug does</span><span class="tab">Sheet<small>2 pages</small></span><span class="tab">Key<small>1 page</small></span></div>
+<div class="stage"><div class="bug"><div class="top"><span class="v">Version 1</span><span class="l">line 7</span><span class="kind">string / integer confusion</span><span class="out-badge crash">crashes: TypeError</span></div><div class="diff"><div class="m">    count = count + 1</div><div class="p">    count = count + "1"</div></div></div><div class="bug sel"><div class="top"><span class="v">Version 2</span><span class="l">line 9</span><span class="kind">wrong variable name</span><span class="out-badge wrong">runs, wrong output</span></div><div class="diff"><div class="m">if average >= 50:</div><div class="p">if count >= 50:</div></div></div><div class="bug"><div class="top"><span class="v">Version 3</span><span class="l">line 5</span><span class="kind">missing colon</span><span class="out-badge crash">crashes: SyntaxError</span></div><div class="diff"><div class="m">for score in scores:</div><div class="p">for score in scores</div></div></div><div class="bug"><div class="top"><span class="v">Version 4</span><span class="l">line 7</span><span class="kind">indentation slip (4 spaces to 0)</span><span class="out-badge wrong">runs, wrong output</span></div><div class="diff"><div class="m">····count = count + 1</div><div class="p">count = count + 1</div></div></div></div><div class="details"><b>Details ▸</b><span>run log</span></div></section></div>
+<div class="note" style="left:350px;top:560px;width:220px"><b>Today</b>A six-column table: at 1240 px <i>Changed to</i> and <i>What happens</i> are off-screen; at 1040 px <i>Original</i> too. The outcome is the column the teacher checks.</div>
+<div class="note" style="left:1000px;top:640px;width:190px;transform:rotate(1.2deg)"><b>Proposed</b>One card per version: outcome first, was/now lines under it. Clicking a card still lights its line.</div>
+</main></div></body></html>
