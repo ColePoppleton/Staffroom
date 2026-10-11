@@ -87,6 +87,13 @@ def sessions_root(configured: str) -> Path:
     return Path(configured or override or DEFAULT_SESSIONS_ROOT).expanduser()
 
 
+def default_sessions_label() -> str:
+    """The default sessions folder as Settings names it: ``~/TeachingSessions``
+    as written (never the expanded home path), or ``$STAFFROOM_SESSIONS``
+    when that is set. Computes nothing on disk."""
+    return os.environ.get(SESSIONS_ENV, "") or DEFAULT_SESSIONS_ROOT
+
+
 OUTPUTS_SUBDIR = "outputs"
 
 

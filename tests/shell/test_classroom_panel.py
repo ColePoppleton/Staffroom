@@ -104,9 +104,11 @@ def test_open_diff_promote_reopen(
     assert runs[-1][-1] == str(copies[0])
 
 
-def test_settings_show_local_sessions_default(window: MainWindow) -> None:
+def test_settings_show_local_sessions_default(window: MainWindow, tmp_path: Path) -> None:
     window.sidebar.settings_button.click()
-    assert "TeachingSessions" in window.settings.sessions_root.edit.placeholderText()
+    # Tests set STAFFROOM_SESSIONS (#37), so Settings names that folder.
+    placeholder = window.settings.sessions_root.edit.placeholderText()
+    assert placeholder == f"{tmp_path / 'sessions'}  (default, local)"
     assert window.settings.editor_preset.currentText() == "Thonny"
     window.settings.editor_preset.setCurrentText("IDLE")
     assert window.config.general.editor_command == "python3 -m idlelib {file}"

@@ -150,7 +150,7 @@ class SettingsPage(QWidget):
             FolderPicker(key="sessions_root", label="Sessions folder")
         )
         self.sessions_root.edit.setPlaceholderText(
-            str(paths.sessions_root("")) + "  (default, local)"
+            paths.default_sessions_label() + "  (default, local)"
         )
         if config.general.sessions_root:
             self.sessions_root.edit.setText(config.general.sessions_root)

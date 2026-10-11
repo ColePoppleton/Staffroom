@@ -44,6 +44,7 @@ def test_without_the_override_the_default_is_unchanged(monkeypatch: pytest.Monke
     monkeypatch.delenv(paths.SESSIONS_ENV)
     assert UNRECORDED_SESSIONS_ROOT("") == Path.home() / "TeachingSessions"
     assert UNRECORDED_SESSIONS_ROOT("/Volumes/USB/Lessons") == Path("/Volumes/USB/Lessons")
+    assert paths.default_sessions_label() == "~/TeachingSessions"  # as written, for Settings
 
 
 def test_subprocesses_inherit_the_override(tmp_path: Path) -> None:
