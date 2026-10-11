@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from staffroom.core.codeinput import code_from_inputs
+from staffroom.core.codeinput import code_from_inputs, count_input_calls
 from staffroom.core.export import export, house_style_from, to_text
 from staffroom.core.panel import PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
@@ -59,6 +59,22 @@ def run_trace(
     return logic.parse_payload(payload)
 
 
+class MissingInputError(ToolError):
+    """The program asked for more input than it was given. The launcher
+    shows the next step in the output pane and marks the Inputs box (#21);
+    the CLI says how to give it with ``--stdin`` (``needed`` lines)."""
+
+    def __init__(self, name: str, source: str, stdin: str, inputs_read: int) -> None:
+        calls = count_input_calls(source)
+        self.needed = logic.lines_needed(calls, inputs_read)
+        super().__init__(
+            logic.missing_input_message(name, stdin, inputs_read),
+            next_step=logic.missing_input_step(name, calls, self.needed),
+            input_key="stdin",
+            input_hint=logic.missing_input_hint(self.needed),
+        )
+
+
 class TracePlugin:
     name = "trace"
     description = "Blank and completed trace tables from a sandboxed run."
@@ -84,7 +100,7 @@ class TracePlugin:
         if result.input_eof:
             # Nothing is written: a one-row sheet for a program that never got
             # its input is not a worksheet, it is a mistake to fix and rerun.
-            raise ToolError(logic.missing_input_message(name, stdin, result.inputs_read))
+            raise MissingInputError(name, source, stdin, result.inputs_read)
         steps = logic.select_steps(
             result, source, options.kinds(), top_level_only=options.top_level_only
         )

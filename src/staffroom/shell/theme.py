@@ -152,6 +152,7 @@ QLabel[role="eyebrow"] {{
     color: {p.text_muted}; font-size: 11px; font-weight: 700; letter-spacing: 1px;
 }}
 QLabel[role="placeholder"] {{ color: {p.text_faint}; font-size: 14px; padding: 24px; }}
+QLabel[role="next-step"] {{ color: {p.text_muted}; font-size: 14px; padding: 24px; }}
 QLabel[role="chip"] {{
     background: {p.surface_alt}; color: {p.text_muted}; border: 1px solid {p.border};
     border-radius: 9px; padding: 0px 8px; font-size: 11px; font-weight: 600;
@@ -602,6 +603,12 @@ QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QPlainTe
     border: 1px solid {p.accent};
 }}
 QLineEdit:read-only {{ color: {p.text_muted}; }}
+/* The input a failed run points at (ToolError.input_key, #21). */
+QLineEdit[flagged="true"], QPlainTextEdit[flagged="true"],
+QPlainTextEdit#CodeView[flagged="true"], QPlainTextEdit#TextView[flagged="true"] {{
+    border: 1px solid {p.danger};
+}}
+QLabel[role="flag"] {{ color: {p.danger}; font-size: 12px; font-weight: 600; }}
 QLineEdit::placeholder {{ color: {p.text_faint}; }}
 QSpinBox::up-button, QSpinBox::down-button,
 QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{

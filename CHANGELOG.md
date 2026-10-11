@@ -92,6 +92,15 @@ later entries refer to this repository's issues.
   are never changed, and no distractor reads `+ 0`; the key adds a *What is wrong*
   column. Sheets for programs that had such distractors (including `year9.py`) change
   for the same seed; the rest are as before.
+- After a failed run the output pane says what to do next, or stays empty, instead
+  of "Press Trace and the result appears here" (#21). A Trace run that ran out of
+  input says *temperature.py calls input() once. Type 1 line in the Inputs box, then
+  press Trace again.*, and the Inputs box is outlined with *Needs 1 line, one per
+  input() call.* under it until you type in it or run again. Trace and Bugs' Inputs
+  box says how many `input()` calls the program has before you run (*2 input() calls:
+  one line each*; *At least 1 input() call (in a loop)*), and `staff trace make` says
+  to give the lines with `--stdin`. For tools: `ToolError(message, next_step=...,
+  input_key=..., input_hint=...)` and `Inspection.placeholders`.
 
 ## [0.8.1] - 2026-10-11
 

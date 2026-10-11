@@ -6,6 +6,7 @@ import ast
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from staffroom.core.codeinput import InputCalls, input_calls_phrase
 from staffroom.core.panel import OptionsPreset, matching_preset, preset
 from staffroom.core.table import Row, Table
 
@@ -152,17 +153,53 @@ def program_label(name: str) -> str:
 
 
 def missing_input_message(name: str, stdin: str, inputs_read: int) -> str:
-    """The teacher-facing sentence for a run that hit ``input()`` with nothing
-    left to read. ``stdin`` is what the Inputs box held."""
+    """What went wrong in a run that hit ``input()`` with nothing left to
+    read, in words for the strip and the CLI alike (where to type the inputs
+    differs, so it is the next step's job: :func:`missing_input_step`,
+    :func:`stdin_option_step`). ``stdin`` is what the run was given."""
     given = len(stdin.splitlines())
-    fix = "add one line per input() call."
     if given == 0:
-        return f"{program_label(name)} asked for input but the Inputs box is empty: {fix}"
-    lines = "line" if given == 1 else "lines"
+        return f"{program_label(name)} asked for input, but none was given."
     return (
-        f"{program_label(name)} asked for a {_ordinal(inputs_read + 1)} input but the "
-        f"Inputs box has only {given} {lines}: {fix}"
+        f"{program_label(name)} asked for a {_ordinal(inputs_read + 1)} input, "
+        f"but was given only {_lines(given)}."
     )
+
+
+def lines_needed(calls: InputCalls | None, inputs_read: int) -> str:
+    """How many lines of input the program needs, as far as its code and the
+    run show: "1 line", "2 lines", or "at least 3 lines" when a call can
+    repeat or the run asked for more than the code's count."""
+    asked = inputs_read + 1
+    if calls is None or calls.at_least or calls.count < asked:
+        return "at least " + _lines(max(asked, calls.count if calls else 0))
+    return _lines(calls.count)
+
+
+def missing_input_step(name: str, calls: InputCalls | None, needed: str) -> str:
+    """The launcher's next step after a missing input, shown in the output
+    pane: how often the code asks, and what to type where."""
+    step = f"Type {needed} in the Inputs box, then press Trace again."
+    if calls is None or not calls.count:
+        return step
+    return f"{program_label(name)} calls input() {input_calls_phrase(calls)}. {step}"
+
+
+def missing_input_hint(needed: str) -> str:
+    """The line under the marked Inputs box."""
+    return f"Needs {needed}, one per input() call."
+
+
+def stdin_option_step(needed: str) -> str:
+    """The CLI's next step after a missing input: it names ``--stdin``."""
+    return (
+        f"Give it {needed} with --stdin, one per input() call; "
+        'separate lines with \\n, as in --stdin "12\\n7".'
+    )
+
+
+def _lines(n: int) -> str:
+    return "1 line" if n == 1 else f"{n} lines"
 
 
 def _ordinal(n: int) -> str:

@@ -207,6 +207,10 @@ class ToolPanel(QWidget):
             rpicker.changed.connect(self._suggest)
         if self.spec.inspect is not None:
             self._connect_inspect()
+        for key, area in self.text_areas.items():  # a marked box is fixed by typing in it
+            area.textChanged.connect(lambda k=key: self._clear_flag(k))
+        for key, text_field in self.text_fields.items():
+            text_field.edit.textChanged.connect(lambda _t, k=key: self._clear_flag(k))
         if writes_to:  # a tool's own destination may follow a typed input, e.g. a label
             for text_field in self.text_fields.values():
                 text_field.edit.textChanged.connect(self._show_output_folder)
@@ -427,6 +431,12 @@ class ToolPanel(QWidget):
                 found = inspection.found.get(key)
                 chips.set_notes(found.notes if found is not None else ())
             self.run_bar.set_label(inspection.run_label or self.spec.run_label)
+            for key, area in self.text_areas.items():
+                area.setPlaceholderText(inspection.placeholders.get(key, area.spec.placeholder))
+            for key, text_field in self.text_fields.items():
+                text_field.edit.setPlaceholderText(
+                    inspection.placeholders.get(key, text_field.spec.placeholder)
+                )
         finally:
             self._inspecting = False
 
@@ -554,6 +564,26 @@ class ToolPanel(QWidget):
         self.run_bar.set_output_folder(folder)
         self.strip.set_destination(folder)
 
+    # -- the input a failure points at ------------------------------------
+    def flag_input(self, key: str, hint: str = "") -> None:
+        """Mark the input a failed run points at (``ToolError.input_key``) and
+        bring it into view; editing it, or the next run, clears the mark."""
+        group = self.groups.get(key)
+        if group is None or not group.isVisibleTo(self):
+            log.warning("%s pointed at input %r, which is not shown", self.plugin.name, key)
+            return
+        group.set_flag(hint)
+        self.inputs_scroll.ensureWidgetVisible(group)
+
+    def _clear_flag(self, key: str) -> None:
+        group = self.groups.get(key)
+        if group is not None:
+            group.clear_flag()
+
+    def clear_flags(self, *_: object) -> None:
+        for group in self.groups.values():
+            group.clear_flag()
+
     # -- the strip's chips -------------------------------------------------
     def open_file(self, path: Path) -> None:
         """Hand a written file to its own app (Office files are never parsed)."""
@@ -586,6 +616,7 @@ class ToolPanel(QWidget):
         if missing:
             self.strip.show_failure(f"Fill in: {', '.join(missing)}")
             return
+        self.clear_flags()
         self.results.clear()
         log.info("running %s", self.plugin.name)
         worker = RunWorker(
@@ -704,10 +735,16 @@ class ToolPanel(QWidget):
         log.info("%s finished: %s", self.plugin.name, result.summary)
         self._last_ok = True
 
-    def _on_failure(self, message: str, is_bug: bool) -> None:
+    def _on_failure(self, message: str, is_bug: bool, error: ToolError | None = None) -> None:
         self.last_result = None
         headline = message.strip().splitlines()[-1] if is_bug else message
         self.strip.show_failure(headline)
         self.results.append_log(message)
+        if self._is_run:
+            # The views stand empty (the run cleared them): what to do next,
+            # or nothing, never "Press Run" (#21).
+            self.results.show_next_step(error.next_step if error is not None else "")
+        if error is not None and error.input_key:
+            self.flag_input(error.input_key, error.input_hint)
         (log.error if is_bug else log.warning)("%s failed: %s", self.plugin.name, headline)
         self._last_ok = False

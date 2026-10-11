@@ -38,13 +38,17 @@ sheet says when it was hit.
 ![Trace options with the Year 9 preset chosen](../trace-preset-dark.png)
 
 Programs that read input take it from
-the *Inputs* box, one line per `input()`. If the program asks for more
-input than the box holds, the run stops with a message that says so and
-nothing is written: fill in the box and run again. A program that ends with
+the *Inputs* box, one line per `input()`. The box says how many `input()`
+calls the program has (*2 input() calls: one line each*), or *at least* that
+many when one is in a loop or a function. If the program asks for more
+input than the box holds, the run stops and nothing is written: the result
+strip says what happened, the result pane says how many lines to type, and
+the Inputs box is outlined until you type in it. Fill it in and run again
+(on the command line, give the lines with `--stdin`). A program that ends with
 any other error still gets its sheet; the key and the result strip say which
 error.
 
-![Trace stopped: the program asked for input but the Inputs box is empty](../trace-missing-input-dark.png)
+![Trace stopped: the program asked for input but none was given, and the Inputs box is outlined](../trace-missing-input-dark.png)
 
 Files: `<stem>_trace.docx` / `.pdf` is the blank table, `<stem>_trace_key`
 the completed one ([Outputs](../guide/outputs.md)).

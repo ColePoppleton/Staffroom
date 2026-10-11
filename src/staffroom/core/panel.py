@@ -64,7 +64,10 @@ listing ``LogArea`` is optional and changes nothing).
 How a run went is not a widget a tool declares: the shell's result strip, on
 top of the output pane, shows ``RunResult.outcome`` (or ``summary``), one
 button per file in ``RunResult.files`` and the warnings raised with
-``RunContext.warn``.
+``RunContext.warn``. A failed run shows the ``ToolError``'s message there; the
+error's ``next_step`` takes the output pane's place (else the pane is empty),
+and its ``input_key`` marks the input to fix, with ``input_hint`` under it
+(see :class:`staffroom.core.plugin.ToolError`).
 
 Under the run button, the shell says where the next run will write: the
 shared output folder (``Config.output_dir_for``) unless the panel sets
@@ -1136,11 +1139,15 @@ class Found:
 
 @dataclass(frozen=True)
 class Inspection:
-    """What ``PanelSpec.inspect`` returns: a :class:`Found` per input key, and
-    the run button's text for these inputs ("" keeps ``run_label``)."""
+    """What ``PanelSpec.inspect`` returns: a :class:`Found` per input key,
+    the run button's text for these inputs ("" keeps ``run_label``), and a
+    new placeholder per :class:`TextArea` or :class:`TextField` key (a key
+    left out keeps the spec's own), e.g. an Inputs box that says how many
+    ``input()`` calls the program has (#21)."""
 
     found: Mapping[str, Found] = field(default_factory=dict)
     run_label: str = ""
+    placeholders: Mapping[str, str] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------- the panel

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from staffroom.core.codeinput import INPUTS_PLACEHOLDER, inspect_inputs_box
 from staffroom.core.panel import (
     OUTPUT_FORMAT_LABELS,
     CodeSource,
@@ -30,7 +31,7 @@ def panel_spec() -> PanelSpec:
                 label="Inputs",
                 rows=3,
                 monospace=True,
-                placeholder="One line per input() call",
+                placeholder=INPUTS_PLACEHOLDER,
                 help="What the program reads from input(), one line each.",
             ),
             OptionsForm(
@@ -61,4 +62,6 @@ def panel_spec() -> PanelSpec:
             LogArea(),
         ),
         run_label="Trace",
+        # The Inputs box says how many input() calls the program has (#21).
+        inspect=inspect_inputs_box,
     )
