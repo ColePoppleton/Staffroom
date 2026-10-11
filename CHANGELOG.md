@@ -19,6 +19,8 @@ later entries refer to this repository's issues.
   off, and `SECURITY.md` says how to report a privacy problem privately (#15).
 
 ### Changed
+- Settings › Updates › What changed shows the release's short summary for teachers;
+  the full list stays on the release page.
 - The README, the repository's front page on GitHub, is written for a teacher: what
   Staffroom makes in one paragraph, the Marks report and four real first pages, the whole
   install (uv's line and Staffroom's) with the update command, what it does with your data
