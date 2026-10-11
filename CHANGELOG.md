@@ -21,6 +21,12 @@ with every change; `just release <part>` turns it into a version.
   contributing in two lines ("please never attach a real marks file"). The developer
   commands now live only in the contributing guide; a test keeps the README's pictures,
   privacy wording and links in step with the docs site (#13).
+- `staff new` scaffolds a tool that keeps the no-pupil-data rule from its first commit: it
+  shows and saves one row per question (never a row per script), writes to the output folder
+  (Settings, else `<sessions root>/outputs/<tool>/`) instead of beside its input, so a try-out on
+  `examples/marks_10x.csv` leaves nothing in the repository, and passes ruff and its own tests
+  as generated. *Adding a tool* opens with the rules and its worked examples follow them: no
+  `_graded.csv`, no "pupils" for rows, the chip picker and result strip instead of `LogArea` (#18).
 - Settings › Updates for an installed copy shows the version you have, the newest release
   with its date and *What changed* (the release notes, and a link to the release), and the
   one command to update, `uv tool upgrade staffroom`, with a *Copy* button; the sidebar

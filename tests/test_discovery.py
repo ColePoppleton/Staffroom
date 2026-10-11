@@ -134,7 +134,10 @@ def test_every_shipped_tool_declares_a_known_group_and_a_glyph() -> None:
         ("Sheets & quizzes", ["worksheet", "quiz"]),
         ("From a program", ["parsons", "trace", "bugs", "fade", "pseudocode"]),
         ("After a test", ["marks"]),
-    ]
+    ], (
+        "A new tool? Give it a group, a glyph and an order (docs/adding-a-tool.md, "
+        "'Where it sits in the sidebar') and add it to this list."
+    )
     assert all(plugin_glyph(p) for p in visible_plugins())
 
 
