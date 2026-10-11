@@ -9,30 +9,43 @@ from staffroom.core.export import Code, Document, PageBreak, Paragraph, TableBlo
 from staffroom.tools.bugs.logic import Variant
 
 PER_PAGE = 2  # variants per printed page; a page break only between pairs
+SILENT_HINT = "this version may run the same: read the code"
 
 
 def build_document(
-    name: str, source: str, variants: list[Variant], today: date | None = None
+    name: str,
+    source: str,
+    variants: list[Variant],
+    today: date | None = None,
+    seed: int | None = None,
 ) -> Document:
+    count = f"{len(variants)} versions, one bug each"
     doc = Document(
         title=f"Find the bug: {name}",
         topic="Python",
         date=today or date.today(),
-        subtitle=f"{len(variants)} versions, one bug each",
+        subtitle=count if seed is None else f"seed {seed} · {count}",
     )
     sheet = doc.section()
+    # Silent versions are only there when the teacher asked for them, and each
+    # is flagged; otherwise every bug shows when the program runs.
+    outcomes = (
+        "crash, wrong output, or nothing visible"
+        if any(v.silent for v in variants)
+        else "crash or wrong output"
+    )
     sheet.add(
         Paragraph(
             "Each version of the program has exactly one bug. Find the line, say what is "
-            "wrong, and predict what happens when it runs "
-            "(crash, wrong output, or nothing visible).",
+            f"wrong, and predict what happens when it runs ({outcomes}).",
             style="instruction",
         )
     )
     for i, v in enumerate(variants):
         if i and i % PER_PAGE == 0:
             sheet.add(PageBreak())
-        sheet.add(Code(numbered_listing(v.source), caption=f"Version {v.number}"))
+        caption = f"Version {v.number}" + (f" ({SILENT_HINT})" if v.silent else "")
+        sheet.add(Code(numbered_listing(v.source), caption=caption))
         sheet.add(
             Paragraph(
                 "Line: ______   What is wrong: ____________________________   "

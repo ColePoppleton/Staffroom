@@ -6,6 +6,7 @@ from __future__ import annotations
 import ast
 import random
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -44,6 +45,16 @@ _OP_TEXT = {
 class Options:
     count: int = field(default=4, metadata={"label": "Variants", "min": 1, "max": 20})
     seed: int = field(default=1, metadata={"label": "Seed", "min": 0, "max": 999_999})
+    silent: int = field(
+        default=0,
+        metadata={
+            "label": "Silent bugs allowed",
+            "min": 0,
+            "max": 20,
+            "help": "Bugs that leave the output unchanged. At 0 they are swapped for bugs "
+            "pupils can see by running the code; raise it for a read-the-code discussion.",
+        },
+    )
     comparison_flip: bool = field(default=True, metadata={"label": "Comparison flipped"})
     off_by_one: bool = field(default=True, metadata={"label": "Off by one"})
     missing_colon: bool = field(default=True, metadata={"label": "Missing colon"})
@@ -76,6 +87,7 @@ class Variant:
     mutation: Mutation
     source: str
     outcome: str = ""  # filled by the plugin after a sandbox run
+    silent: bool = False  # runs exactly like the original; the sheet says so
 
 
 # ---------------------------------------------------------------- candidates
@@ -250,9 +262,23 @@ def _bump(lines: list[str], const: ast.Constant, where: str) -> Mutation:
 
 
 # ---------------------------------------------------------------- choosing and applying
-def choose(source: str, count: int, kinds: list[Kind], seed: int) -> list[Mutation]:
+def choose(
+    source: str,
+    count: int,
+    kinds: list[Kind],
+    seed: int,
+    changes_behaviour: Callable[[Mutation], bool] | None = None,
+    silent: int = 0,
+) -> list[Mutation]:
     """Pick up to ``count`` mutations of the enabled kinds, spreading across
-    kinds and lines, deterministically for a seed."""
+    kinds and lines, deterministically for a seed.
+
+    ``changes_behaviour`` (supplied by the caller, which runs the variant in
+    the sandbox) says whether a mutation is visible when the program runs.
+    Candidates are tried in the seed's order; a silent one is taken only
+    while fewer than ``silent`` have been kept, otherwise the next candidate
+    is tried instead. Without the callback every candidate counts as visible.
+    Fewer than ``count`` come back when the candidates run out."""
     rng = random.Random(seed)
     pool = [m for m in candidates(source) if m.kind in kinds]
     rng.shuffle(pool)
@@ -260,21 +286,36 @@ def choose(source: str, count: int, kinds: list[Kind], seed: int) -> list[Mutati
     rng.shuffle(kind_order)
     chosen: list[Mutation] = []
     used_lines: set[int] = set()
+    verdicts: dict[Mutation, bool] = {}
+    silent_left = silent
+
+    def accept(m: Mutation) -> bool:
+        nonlocal silent_left
+        if changes_behaviour is None:
+            return True
+        if m not in verdicts:
+            verdicts[m] = changes_behaviour(m)
+        if verdicts[m]:
+            return True
+        if silent_left > 0:
+            silent_left -= 1
+            return True
+        return False
+
     # One per kind first, on a fresh line where possible; then fill up.
     for kind in kind_order:
         if len(chosen) >= count:
             break
         of_kind = [m for m in pool if m.kind == kind and m not in chosen]
-        pick = next((m for m in of_kind if m.line not in used_lines), None) or (
-            of_kind[0] if of_kind else None
-        )
+        fresh_first = sorted(of_kind, key=lambda m: m.line in used_lines)  # stable
+        pick = next((m for m in fresh_first if accept(m)), None)
         if pick is not None:
             chosen.append(pick)
             used_lines.add(pick.line)
     for m in pool:
         if len(chosen) >= count:
             break
-        if m not in chosen:
+        if m not in chosen and accept(m):
             chosen.append(m)
     return chosen
 
@@ -288,8 +329,15 @@ def apply(source: str, mutation: Mutation) -> str:
     return "".join(lines)
 
 
-def make_variants(source: str, options: Options) -> list[Variant]:
-    chosen = choose(source, options.count, options.kinds(), options.seed)
+def make_variants(
+    source: str,
+    options: Options,
+    changes_behaviour: Callable[[Mutation], bool] | None = None,
+) -> list[Variant]:
+    """The variants for ``options``; see :func:`choose` for ``changes_behaviour``."""
+    chosen = choose(
+        source, options.count, options.kinds(), options.seed, changes_behaviour, options.silent
+    )
     return [Variant(i, m, apply(source, m)) for i, m in enumerate(chosen, 1)]
 
 

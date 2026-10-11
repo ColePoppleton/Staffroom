@@ -16,6 +16,15 @@ with every change; `just release <part>` turns it into a version.
   filename in README.md and docs/ to the new version in the release commit, so
   the docs no longer go on installing the previous release (#100). The pins now
   point at v0.7.0, and a test holds them equal to the package version.
+- Bugs no longer fills a find-the-bug sheet with versions that run exactly like
+  the original (#92): at the defaults two of the four `year9.py` variants did.
+  Each candidate is run while choosing and a silent one is swapped for the next
+  bug in the seed's order, so the same seed still gives the same sheet. *Silent
+  bugs allowed* (`--silent N`, default 0) keeps up to N for a read-the-code
+  lesson; the key says *silent* and the pupil sheet marks each one *this version
+  may run the same: read the code*. When fewer visible bugs exist than asked
+  for, a warning and the result strip say so. The seed is now in the sheet's
+  header.
 
 ## [0.7.0] - 2026-10-09
 ### Changed
