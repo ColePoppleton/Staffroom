@@ -466,7 +466,7 @@ def test_year9_seed1_key_shows_the_indentation_slip(tmp_path: Path) -> None:
     result, _, _ = _run(tmp_path, Options(seed=1, formats="both"))
     slips = [row for row in result.tables["key"].rows if "indentation" in str(row[2])]
     assert len(slips) == 1
-    _, line, bug, old, new, _ = slips[0]
+    _, line, bug, old, new, *_ = slips[0]
     assert bug == "indentation slip (4 spaces to 0)"
     assert line == 7 and (old, new) == ("····count = count + 1", "count = count + 1")
     assert old != new and str(old).replace("·", "") == new  # differ only in the visible indent

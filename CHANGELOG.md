@@ -25,6 +25,16 @@ with every change; `just release <part>` turns it into a version.
   `uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main`.
   A copy installed from a release tag or a wheel is shown that line once instead (#11).
 
+### Changed
+- Trace's completed table and the bugs key fit the screen (#16). Trace lifts a value
+  that never changes (*Never changes after line 2: scores = […]*) above the table,
+  sizes columns to their values, makes a changed value bold and a carried one grey,
+  and keeps *Output* at the right edge: all 7 columns of `year9.py` show at 1240 and
+  1040 px wide (5 and 3 before). Bugs shows one card per version with its outcome as
+  a badge, in view at both widths (none before). Rows and cards still light their
+  line in the program, and back; the printed sheets and keys are unchanged. Any tool
+  can ask for the same: `ResultsTable(compact=…, lift_constants=…, mark_changes=…,
+  pin_last=…)` and the new `CardList` output.
 ### Fixed
 - An installed copy (`uv tool install`, a wheel) never runs git: no fetch at start, and
   `staff update` and Settings › Updates say it was installed with uv and show

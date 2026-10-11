@@ -31,6 +31,7 @@ from staffroom.core.library.service import ResourceService
 from staffroom.core.log import get_logger
 from staffroom.core.panel import (
     DEFAULT_OPEN_LABEL,
+    CardList,
     Choice,
     CodeSource,
     CodeValue,
@@ -47,6 +48,7 @@ from staffroom.core.panel import (
 )
 from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolError, ToolPlugin
 from staffroom.shell.widgets import (
+    CardListWidget,
     ChoiceWidget,
     CodeSourceWidget,
     CompactTableWidget,
@@ -61,6 +63,7 @@ from staffroom.shell.widgets import (
     ResourcePickerWidget,
     RunBar,
     TablePreviewWidget,
+    TableWidget,
     TextAreaWidget,
     TextFieldWidget,
     make_label,
@@ -327,16 +330,22 @@ class ToolPanel(QWidget):
             first = first and not shown
 
     def _link_lines(self) -> None:
-        """Results tables whose rows name lines of the program (trace steps,
-        bug variants) light those lines in its code view, and back."""
+        """Results tables and card lists whose rows name lines of the program
+        (trace steps, bug variants) light those lines in its code view, and back."""
         for spec in self.spec.outputs:
-            if not (isinstance(spec, ResultsTable) and spec.line_column):
+            if not (isinstance(spec, ResultsTable | CardList) and spec.line_column):
                 continue
             code = self.code_sources.get(spec.line_source)
-            if code is None or spec.key not in self.results.tables:
+            if code is None:
                 continue
-            _model, view, _caption = self.results.tables[spec.key]
-            self.line_links[spec.key] = LineLink(view, spec.line_column, code.view)
+            rows: TableWidget | CardListWidget
+            if spec.key in self.results.tables:
+                rows = self.results.tables[spec.key][1]
+            elif spec.key in self.results.card_lists:
+                rows = self.results.card_lists[spec.key]
+            else:
+                continue
+            self.line_links[spec.key] = LineLink(rows, spec.line_column, code.view)
 
     def _suggest(self, *_: object) -> None:
         """Let the tool set choices from what was picked or pasted (#62)."""

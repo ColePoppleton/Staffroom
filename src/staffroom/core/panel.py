@@ -28,7 +28,7 @@ EditableTable      :class:`~staffroom.core.table.Table` (and its ``choice``, if
 TablePreview       (display only; never appears in ``inputs``)
 =================  =====================================================
 
-Output widgets fill from a ``RunResult``: ``ResultsTable``, ``ActionTable``,
+Output widgets fill from a ``RunResult``: ``ResultsTable``, ``CardList``, ``ActionTable``,
 ``StatTiles`` (build its table with :func:`stat_table`) and ``BarChart`` from
 ``tables[key]``, ``ImageView`` from ``images[key]``, ``TextView`` from
 ``texts[key]`` (and a ``BarChart`` takes a one-line caption from there),
@@ -36,7 +36,9 @@ Output widgets fill from a ``RunResult``: ``ResultsTable``, ``ActionTable``,
 :func:`pages_from` over the files the run wrote). A
 ``ResultsTable`` with ``line_column`` points its rows at lines of the panel's
 ``CodeSource``: selecting a row lights its line, clicking a line selects its
-rows. An
+rows (a ``CardList`` links its cards the same way). A wide ``ResultsTable``
+can be made to fit the screen with ``compact``, ``lift_constants``,
+``mark_changes`` and ``pin_last``. An
 ``ActionTable`` additionally lets the user pick a row and press an action
 button; the shell then calls
 ``plugin.act(action_name, row, ctx)`` and applies the returned RunResult.
@@ -88,6 +90,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import re
+import string
 import types
 import typing
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -587,7 +590,23 @@ class ResultsTable:
     ``line_column`` names a column of line numbers in the program of the
     panel's :class:`CodeSource` ``line_source``: selecting a row lights its
     line in the code, and clicking a line selects the rows that point at it
-    (a trace table's steps, a bug key's variants)."""
+    (a trace table's steps, a bug key's variants).
+
+    For a wide table that must fit the screen (a completed trace table), four
+    options change only how it is shown, never the table the tool returns:
+
+    * ``compact``: columns as narrow as their header and widest value, not the
+      roomy default; a value too long for its column shows in full as a tooltip.
+    * ``lift_constants``: a column whose value never changes once set, and
+      which repeats on at least half the rows, leaves the table for one line
+      above it ("Never changes after line 2: scores = [45, 62, 58]"); see
+      :func:`constant_columns`.
+    * ``mark_changes``: a value is bold on the row where it differs from the
+      row above and grey where it is carried down (the trace-table convention;
+      see :func:`change_marks`). The line column and a pinned column stay plain.
+    * ``pin_last``: the last column stays in view at the right edge however
+      wide the rest (a trace's *Output*); the others scroll sideways under
+      it if they must."""
 
     key: str
     label: str = "Results"
@@ -598,6 +617,147 @@ class ResultsTable:
     collapsed: bool = False
     line_column: str | None = None
     line_source: str = "source"
+    compact: bool = False
+    lift_constants: bool = False
+    mark_changes: bool = False
+    pin_last: bool = False
+
+    def plain_columns(self, table: Table) -> tuple[str, ...]:
+        """Columns that are never lifted or marked: the line column, the
+        pinned last column, hidden and tag columns, bars."""
+        plain = {*self.hidden_columns, *(b.name for b in self.bars)}
+        plain |= {c for c in (self.line_column, self.tag_column) if c}
+        if self.pin_last and table.columns:
+            plain.add(table.columns[-1])
+        return tuple(c for c in table.columns if c in plain)
+
+
+LIFT_SHARE = 0.5  # a constant must repeat on at least this share of the rows to leave the table
+
+
+def _blank(value: Cell) -> bool:
+    return value is None or value == ""
+
+
+@dataclass(frozen=True)
+class Constant:
+    """A column lifted out of a table by :func:`constant_columns`: its one
+    value, and the line-column value of the row where it was first set
+    (None without a line column)."""
+
+    column: str
+    value: Cell
+    line: Cell = None
+
+
+def constant_columns(
+    table: Table,
+    *,
+    skip: Iterable[str] = (),
+    line_column: str | None = None,
+    share: float = LIFT_SHARE,
+) -> list[Constant]:
+    """The columns of ``table`` (bar ``skip``) whose non-blank values are all
+    the same and fill at least ``share`` of the rows (and two rows at least):
+    a value that repeats down the table without ever changing, such as a
+    list a trace sets on its first line. A value set once near the end (an
+    average worked out on the last lines) stays in the table, where its row
+    says when it was set."""
+    skipped = set(skip)
+    lines = table.column(line_column) if line_column in table.columns else None
+    found: list[Constant] = []
+    for i, name in enumerate(table.columns):
+        if name in skipped:
+            continue
+        filled = [(r, row[i]) for r, row in enumerate(table.rows) if not _blank(row[i])]
+        if len(filled) < max(2, share * len(table.rows)):
+            continue
+        first_row, value = filled[0]
+        if any(v != value for _r, v in filled):
+            continue
+        found.append(Constant(name, value, lines[first_row] if lines is not None else None))
+    return found
+
+
+def change_marks(table: Table, *, skip: Iterable[str] = ()) -> list[list[bool | None]]:
+    """Per row, per column: True where the value differs from the row above
+    (it changed on this row), False where it is the same (carried down), None
+    for a blank cell or a column in ``skip``."""
+    skipped = {i for i, name in enumerate(table.columns) if name in set(skip)}
+    marks: list[list[bool | None]] = []
+    previous: list[Cell] = [None] * len(table.columns)
+    for row in table.rows:
+        line: list[bool | None] = []
+        for i, value in enumerate(row):
+            if i in skipped or _blank(value):
+                line.append(None)
+            else:
+                line.append(value != previous[i])
+        marks.append(line)
+        previous = list(row)
+    return marks
+
+
+Tone = Literal["neutral", "warning", "danger"]
+"""How loudly a :class:`CardList` badge speaks: ``"danger"`` (it breaks),
+``"warning"`` (it goes wrong quietly) or ``"neutral"``."""
+
+
+@dataclass(frozen=True)
+class CardList:
+    """One card per row of ``tables[key]``: for a short list whose rows each
+    say several things that a table would spread past the right edge (a bug
+    key: which version, where, what kind, the old and new line, what happens).
+
+    Every card shows, in order:
+
+    * a heading: ``title`` in bold, then each of ``details`` in muted text,
+      and ``badge``'s value as a badge at the right, coloured by ``tones``
+      (value of ``tone_column`` -> :data:`Tone`; anything else is neutral).
+      ``title`` and ``details`` are format strings over the row's columns,
+      e.g. ``"Version {Version}"`` (a blank cell is left out with its text);
+    * ``code_lines``: ``(caption, column)`` pairs shown as code under the
+      heading, the first muted and the rest on a tinted ground, as in a diff
+      (``("was", "Original"), ("now", "Changed to")``).
+
+    The badge is never cut: the heading's other text wraps first. Columns
+    the cards do not name are not shown. ``line_column`` / ``line_source``
+    link cards to lines of the code as a :class:`ResultsTable` does: a
+    selected card (click, or the arrow keys) lights its line, and clicking a
+    line selects its cards."""
+
+    key: str
+    label: str = "Results"
+    title: str = ""
+    details: tuple[str, ...] = ()
+    badge: str | None = None
+    tone_column: str | None = None
+    tones: tuple[tuple[str, Tone], ...] = ()
+    code_lines: tuple[tuple[str, str], ...] = ()
+    line_column: str | None = None
+    line_source: str = "source"
+    place: Place | None = None
+
+    def tone(self, value: Cell) -> Tone:
+        return dict(self.tones).get("" if value is None else str(value), "neutral")
+
+
+_FORMATTER = string.Formatter()
+
+
+class _RowFields(dict[str, str]):
+    def __missing__(self, key: str) -> str:
+        return ""
+
+
+def card_text(template: str, record: Mapping[str, Cell]) -> str:
+    """``template`` filled from ``record`` (a row as a dict); "" when every
+    field it names is blank, so a card leaves out a detail it has no value for."""
+    fields = _RowFields({k: "" if _blank(v) else str(v) for k, v in record.items()})
+    names = [name for _lit, name, _spec, _conv in _FORMATTER.parse(template) if name]
+    if names and all(not fields[n] for n in names):
+        return ""
+    return _FORMATTER.vformat(template, (), fields)
 
 
 @dataclass(frozen=True)
@@ -800,9 +960,26 @@ class LogArea:
 
 
 OutputWidget = (
-    ResultsTable | ActionTable | ImageView | TextView | StatTiles | BarChart | PagePreview | LogArea
+    ResultsTable
+    | CardList
+    | ActionTable
+    | ImageView
+    | TextView
+    | StatTiles
+    | BarChart
+    | PagePreview
+    | LogArea
 )
-ViewWidget = ResultsTable | ActionTable | ImageView | TextView | StatTiles | BarChart | PagePreview
+ViewWidget = (
+    ResultsTable
+    | CardList
+    | ActionTable
+    | ImageView
+    | TextView
+    | StatTiles
+    | BarChart
+    | PagePreview
+)
 MainLayout = Literal["tabs", "row"]
 
 
@@ -905,13 +1082,13 @@ class PanelSpec:
         code_sources = {w.key for w in self.inputs if isinstance(w, CodeSource)}
         for out in self.outputs:
             if (
-                isinstance(out, ResultsTable)
+                isinstance(out, ResultsTable | CardList)
                 and out.line_column
                 and (out.line_source not in code_sources)
             ):
                 msg = (
-                    f"ResultsTable {out.key!r} points its lines at {out.line_source!r}, "
-                    "which is not a CodeSource of this panel"
+                    f"{type(out).__name__} {out.key!r} points its lines at "
+                    f"{out.line_source!r}, which is not a CodeSource of this panel"
                 )
                 raise ValueError(msg)
         seen: set[str] = set()

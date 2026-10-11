@@ -195,8 +195,9 @@ class BugsPlugin:
             style=house_style_from(ctx.config),
         )
         ctx.progress(1.0, "Done")
+        # "Outcome" is the class behind "What happens": it picks the badge's tone.
         key = Table(
-            ["Version", "Line", "Bug", "Original", "Changed to", "What happens"],
+            ["Version", "Line", "Bug", "Original", "Changed to", "What happens", "Outcome"],
             [
                 [
                     v.number,
@@ -204,8 +205,9 @@ class BugsPlugin:
                     logic.key_label(v.mutation),
                     *logic.key_lines(v.mutation),
                     v.outcome,
+                    outcome,
                 ]
-                for v in variants
+                for v, outcome in zip(variants, outcomes, strict=True)
             ],
         )
         sheet_text, key_text = to_text(doc.sheet()), to_text(doc.key())

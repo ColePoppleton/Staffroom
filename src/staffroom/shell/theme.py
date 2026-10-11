@@ -432,9 +432,51 @@ BarCanvas {{
 }}
 TableWidget {{
     qproperty-barColor: {p.text_muted}; qproperty-trackColor: {p.border};
-    qproperty-textColor: {p.text};
+    qproperty-textColor: {p.text}; qproperty-carriedColor: {p.text_muted};
 }}
 TableWidget[action="true"] {{ qproperty-actionColor: {p.accent}; }}
+/* A table fitted to the screen (trace): constants lifted into chips above it,
+   the pinned last column behind a stronger hairline. Carried values take the
+   muted ink, which keeps 4.5:1; bold marks the value that changed. */
+QFrame#FitTableFrame {{
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+}}
+QFrame#FitTableFrame QTableView {{ border: none; border-radius: 0px; }}
+QFrame#FitTableFrame QTableView::item {{ padding: 4px 6px; }}
+QFrame#FitTableFrame QHeaderView::section {{ padding: 6px 6px; }}
+QFrame#FitTableFrame TableWidget#PinnedColumn {{ border-left: 1px solid {p.border_strong}; }}
+QLabel#LiftedLead {{ color: {p.text_muted}; font-size: 12px; }}
+QLabel#LiftedChip {{
+    font-family: {MONO_FAMILY}; font-size: 12px; color: {p.text};
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: 6px; padding: 1px 7px;
+}}
+/* A card list (bugs: what each bug does): one card per row, the outcome badge
+   at the right, a diff's two inks under it; the accent rings the chosen card. */
+QScrollArea#CardList, QWidget#CardListBody {{ background: transparent; border: none; }}
+QFrame#ResultCard {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: 9px;
+}}
+QFrame#ResultCard:hover {{ border-color: {p.border_strong}; }}
+QFrame#ResultCard[selected="true"] {{
+    border: 1px solid {p.accent}; border-left: 3px solid {p.accent};
+}}
+QLabel#CardTitle {{ font-weight: 700; }}
+QLabel#CardDetail {{ color: {p.text_muted}; font-size: 13px; }}
+QLabel#CardBadge {{
+    background: {p.surface_alt}; color: {p.text_muted}; border: 1px solid {p.border_strong};
+    border-radius: 9px; padding: 1px 9px; font-size: 12px; font-weight: 700;
+}}
+QLabel#CardBadge[tone="danger"] {{
+    background: {p.accent_soft}; color: {p.danger}; border-color: {p.accent_soft};
+}}
+QLabel#CardBadge[tone="warning"] {{
+    background: transparent; color: {p.warning}; border-color: {p.warning};
+}}
+QFrame#CardCodeLine {{ background: transparent; border: none; border-radius: 4px; }}
+QFrame#CardCodeLine[diff="new"] {{ background: {p.surface_alt}; }}
+QLabel#CardCodeCaption {{ font-family: {MONO_FAMILY}; font-size: 12px; color: {p.text_faint}; }}
+QLabel#CardCode {{ font-family: {MONO_FAMILY}; font-size: 12.5px; color: {p.text}; }}
+QFrame#CardCodeLine[diff="old"] QLabel#CardCode {{ color: {p.text_muted}; }}
 QLabel[role="note-ok"] {{ color: {p.text_muted}; font-size: 12px; }}
 QLabel[role="note-warn"] {{ color: {p.text}; font-size: 12px; font-weight: 600; }}
 

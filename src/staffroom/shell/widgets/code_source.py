@@ -42,6 +42,7 @@ from PySide6.QtWidgets import (
 
 from staffroom.core.library.service import ResourceService
 from staffroom.core.panel import CodeSource, CodeValue
+from staffroom.shell.widgets.card_list import CardListWidget
 from staffroom.shell.widgets.choice import ChoiceWidget
 from staffroom.shell.widgets.code_view import CodeViewWidget
 from staffroom.shell.widgets.elided_label import ElidedLabel
@@ -309,9 +310,12 @@ def _line_of(value: Any) -> int | None:
 class LineLink(QObject):
     """Rows of ``table`` point at lines of ``code`` through ``column``: a
     selected row lights its line; a clicked line selects every row that
-    points at it and scrolls to the first."""
+    points at it and scrolls to the first. ``table`` is a table view or a
+    :class:`CardListWidget` (which answers the same model and selection calls)."""
 
-    def __init__(self, table: TableWidget, column: str, code: CodeViewWidget) -> None:
+    def __init__(
+        self, table: TableWidget | CardListWidget, column: str, code: CodeViewWidget
+    ) -> None:
         super().__init__(table)
         self.table = table
         self.column = column
