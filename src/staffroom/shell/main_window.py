@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
         self.settings.update_available.connect(self.sidebar.set_update_available)
         res = self.resources
         res.search_changed.connect(self._on_search)
-        res.kind_changed.connect(self.library_page.set_kind)
+        res.kind_changed.connect(self._on_kind_changed)
         res.tags_changed.connect(self._on_tags_changed)
         res.show_hidden_toggled.connect(self._on_show_hidden)
         res.resource_selected.connect(self._on_resource_selected)
@@ -408,6 +408,12 @@ class MainWindow(QMainWindow):
         self.library_page.set_show_hidden(show)
         self.refresh_resources()
 
+    def _on_kind_changed(self, kind: str) -> None:
+        """The type filter changed (#122): narrow the results and the tree,
+        as the tag filter does, with or without a query."""
+        self.library_page.set_kind(kind)
+        self.refresh_resources()
+
     def _on_tags_changed(self, _tags: object) -> None:
         """The tag filter changed (#111): narrow the tree and the results."""
         self.refresh_resources()
@@ -449,16 +455,18 @@ class MainWindow(QMainWindow):
             status, detail = "No folder chosen: set it in Settings", ""
         elif not self.library.root_exists:
             status, detail = "Folder not found: set it in Settings", ""
-        # The tag filter (#111): its counts are over the files listed, and it
-        # narrows the tree only; the counts above stay the library's own.
+        # The type and tag filters (#111, #122) narrow the tree only; the
+        # counts above stay the library's own. The tag counts are over every
+        # file listed, so switching type never drops a chosen tag.
         self.resources.set_tag_counts(self.library.tag_counts(include_hidden=show_hidden))
-        chosen = self.resources.chosen_tags()
+        view = self.resources.current_filter()
         shown = resources
-        if chosen:
-            shown = self.library.resources(include_hidden=show_hidden, tags=chosen)
-            n = len(shown)
-            status = f"{n} file{'s' if n != 1 else ''} tagged {' + '.join(chosen)}\n{status}"
-        self.resources.set_resources(shown, status, detail, filtered=bool(chosen))
+        if view.active:
+            shown = self.library.resources(
+                include_hidden=show_hidden, kinds=view.kinds, tags=view.tags
+            )
+            status = f"{view.describe(len(shown))}\n{status}"
+        self.resources.set_resources(shown, status, detail, filtered=view.active)
         self.resources.set_library_state(
             can_index=self.library.available, can_search=self.library.searchable
         )

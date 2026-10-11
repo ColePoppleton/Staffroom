@@ -41,6 +41,13 @@ indexed, the tree lists 563, and turning *Hidden* on makes it `587 files
 (incl. 24 hidden)`. `staff library status` prints the long form:
 `587 indexed: 563 shown, 24 hidden, 2 cloud-only, 3 name only`.
 
+The type filter (*All types*) and **Tags ▾** narrow the tree, and the search
+results while there is a query; the two always combine, with each other and
+with the query. While either is on, the tree opens all the way down and the
+footer starts with what it shows, `3 Python files tagged loops`, above the
+library's own count, which (like the number beside Library and the header)
+does not change.
+
 Pick a tool, fill in the inputs down the left, press the button at their foot
 (or ⌘↵). Results appear on the right, beside the inputs, so you can change one
 setting and run again without scrolling; a tool with more than one result shows

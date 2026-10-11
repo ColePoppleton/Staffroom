@@ -50,6 +50,13 @@ with every change; `just release <part>` turns it into a version.
   permissions, a symlinked config stays a symlink, and a config made read-only on
   purpose is still left alone. `usage.toml` and the Library's tags sidecar now use
   the same helper (`core/atomic.py`), so they cannot be truncated either.
+- In the Library, the type filter (*All types*) narrows the folder tree too, not
+  only the search results (#122): with no query, choosing *python* now leaves just
+  the Python files, opened all the way down, as the Tags filter does. Type, tags
+  and query always combine, and the footer says what is shown
+  (`3 Python files tagged loops`) above the library's own count, which the
+  sidebar and the header keep (#30). `LibraryService.resources()` takes `kinds=`,
+  and `core/library/filters.py`'s `LibraryFilter` words the footer line.
 - `just install` updates an installed Staffroom.app in place (overwriting its files,
   removing ones the build no longer has, then re-signing and re-registering it)
   instead of deleting and recopying it, so Spotlight keeps listing the app rather

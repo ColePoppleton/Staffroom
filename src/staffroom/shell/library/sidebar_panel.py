@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from staffroom.core.library.filters import LibraryFilter
 from staffroom.core.library.model import KIND_BY_EXT, Resource
 from staffroom.core.library.tags import TagCount
 from staffroom.shell.library.tag_filter import TagFilterButton
@@ -111,8 +112,8 @@ class ResourcesPanel(QWidget):
     ) -> None:
         """``detail`` is the longer explanation behind a terse status (shown as
         a tooltip), e.g. why some files are indexed by name only. A
-        ``filtered`` list (the tag filter is on) is opened all the way down:
-        the few files it leaves should not hide in closed folders."""
+        ``filtered`` list (the type or tag filter is on) is opened all the way
+        down: the files it leaves should not hide in closed folders."""
         current = self.current_rel_path()
         self.model.set_resources(resources)
         self.status.setText(status)
@@ -124,9 +125,17 @@ class ResourcesPanel(QWidget):
         if current:
             self.select(current)
 
-    # -- the tag filter (#111) -------------------------------------------
+    # -- the type and tag filters (#111, #122) ---------------------------
+    def chosen_kind(self) -> str:
+        """The type filter's choice: a file kind, or ``"all"``."""
+        return str(self.kind.currentData() or "all")
+
     def chosen_tags(self) -> list[str]:
         return self.tag_filter.chosen()
+
+    def current_filter(self) -> LibraryFilter:
+        """Both filters as one: what the tree and the results are narrowed to."""
+        return LibraryFilter(kind=self.chosen_kind(), tags=tuple(self.chosen_tags()))
 
     def set_tag_counts(self, counts: list[TagCount]) -> None:
         self.tag_filter.set_counts(counts)
