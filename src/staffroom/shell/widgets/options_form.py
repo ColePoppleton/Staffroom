@@ -14,6 +14,9 @@ the form also hides the fields that do not apply (``shown_when``), shows a
 choice's values by their labels (``choice_labels``) and draws the
 ``switches`` as segmented switches. A hidden field keeps what was set in it;
 :meth:`OptionsFormWidget.value` hands the tool its default instead.
+``inline`` fields share one row (*Questions* [8]  *Seed* [1]); ``more``
+fields fold behind a *More* link at the foot of the form, which opens by
+itself while one of them is not at its default.
 """
 
 from __future__ import annotations
@@ -30,8 +33,10 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPushButton,
     QSizePolicy,
     QSpinBox,
     QWidget,
@@ -49,6 +54,8 @@ from staffroom.shell.widgets.choice import ChoiceWidget
 
 CUSTOM = "Custom"
 LABEL_MAX_WIDTH = 112
+MORE, LESS = "More ▸", "Less ▴"
+INLINE_FIELD_WIDTH = 84  # an inline number: wide enough for 999 999, short enough for three
 
 
 def _narrow(combo: QComboBox) -> None:
@@ -109,6 +116,9 @@ class OptionsFormWidget(QWidget):
 
         hints = typing.get_type_hints(schema)
         shown = set(fields)
+        self.inline_row: QWidget | None = None  # the row the inline fields share
+        self._more_open = False
+        later: list[tuple[QLabel, QWidget]] = []  # the More fields, after the rest
         for f in dataclasses.fields(schema):
             if shown and f.name not in shown:
                 continue  # left at its default (another input may set it)
@@ -133,13 +143,73 @@ class OptionsFormWidget(QWidget):
             natural = label.fontMetrics().horizontalAdvance(label_text) + 4
             label.setMinimumWidth(min(natural, LABEL_MAX_WIDTH))
             label.setMaximumWidth(LABEL_MAX_WIDTH)
-            layout.addRow(label, widget)
+            if f.name in self.spec.inline:
+                self._add_inline(label, widget)
+            elif f.name in self.spec.more:
+                later.append((label, widget))
+            else:
+                layout.addRow(label, widget)
             self.widgets[f.name] = widget
             self._getters[f.name] = getter
             self._setters[f.name] = setter
             edited.connect(lambda *_: self._field_edited())
+        self.more_button: QPushButton | None = None
+        if later:
+            for label, widget in later:
+                layout.addRow(label, widget)
+            self.more_button = QPushButton(MORE)
+            self.more_button.setProperty("role", "link")
+            names = [self.widgets_label(n) for n in self.spec.more if n in self.widgets]
+            self.more_button.setToolTip("Also: " + ", ".join(names))
+            self.more_button.clicked.connect(lambda: self.set_more_open(not self._more_open))
+            layout.addRow(self.more_button)
         self._sync_visibility()
         self._sync_preset_combo()
+
+    def widgets_label(self, name: str) -> str:
+        """The label a field is shown under."""
+        f = next(f for f in dataclasses.fields(self.schema) if f.name == name)
+        return str(f.metadata.get("label", name.replace("_", " ").capitalize()))
+
+    def _add_inline(self, label: QLabel, widget: QWidget) -> None:
+        """The first inline field takes a row of the form; the others join it,
+        each after its own label."""
+        widget.setMaximumWidth(INLINE_FIELD_WIDTH)
+        if self.inline_row is None:
+            self.inline_row = QWidget()
+            self.inline_row.setObjectName("InlineFields")
+            row = QHBoxLayout(self.inline_row)
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(12)
+            row.addWidget(widget)
+            row.addStretch(1)
+            self._layout.addRow(label, self.inline_row)
+            return
+        same_row = self.inline_row.layout()
+        assert isinstance(same_row, QHBoxLayout)
+        label.setMaximumWidth(LABEL_MAX_WIDTH)
+        same_row.insertWidget(same_row.count() - 1, label)
+        same_row.insertWidget(same_row.count() - 1, widget)
+
+    # -- More --------------------------------------------------------------
+    def more_open(self) -> bool:
+        return self._more_open
+
+    def set_more_open(self, opened: bool) -> None:
+        """Show or fold the ``more`` fields (they stay open while one of them
+        is not at its default)."""
+        self._more_open = opened or self._more_changed()
+        if self.more_button is not None:
+            self.more_button.setText(LESS if self._more_open else MORE)
+        self._sync_visibility()
+
+    def _more_changed(self) -> bool:
+        held = self.held()
+        return any(
+            getattr(held, n) != getattr(self._defaults, n)
+            for n in self.spec.more
+            if n in self.widgets
+        )
 
     @classmethod
     def for_spec(cls, spec: OptionsForm, parent: QWidget | None = None) -> OptionsFormWidget:
@@ -160,14 +230,20 @@ class OptionsFormWidget(QWidget):
 
     def shown_fields(self) -> list[str]:
         """The fields whose rows are on screen, in form order."""
-        return [n for n, w in self.widgets.items() if self._layout.isRowVisible(w)]
+        return [
+            n
+            for n, w in self.widgets.items()
+            if (n in self.spec.inline and self.inline_row is not None)
+            or self._layout.isRowVisible(w)
+        ]
 
     def _sync_visibility(self) -> None:
         hidden = self.spec.hidden(self.held())
-        for name in self.spec.shown_when:
+        for name in {*self.spec.shown_when, *self.spec.more}:
             widget = self.widgets.get(name)
             if widget is not None:
-                self._layout.setRowVisible(widget, name not in hidden)
+                folded = name in self.spec.more and not self._more_open
+                self._layout.setRowVisible(widget, name not in hidden and not folded)
 
     # -- presets -----------------------------------------------------------
     def current_preset(self) -> str:
@@ -196,6 +272,8 @@ class OptionsFormWidget(QWidget):
     def _field_edited(self) -> None:
         if self._syncing:
             return
+        if not self._more_open and self._more_changed():
+            self.set_more_open(True)
         self._sync_visibility()
         self._sync_preset_combo()
         self.changed.emit()

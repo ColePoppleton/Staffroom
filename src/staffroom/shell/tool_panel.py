@@ -32,6 +32,7 @@ from staffroom.core.log import get_logger
 from staffroom.core.panel import (
     DEFAULT_OPEN_LABEL,
     CardList,
+    ChipChoice,
     Choice,
     CodeSource,
     CodeValue,
@@ -49,11 +50,13 @@ from staffroom.core.panel import (
 from staffroom.core.plugin import RunContext, RunResult, SupportsActions, ToolError, ToolPlugin
 from staffroom.shell.widgets import (
     CardListWidget,
+    ChipChoiceWidget,
     ChoiceWidget,
     CodeSourceWidget,
     CompactTableWidget,
     Divider,
     EditableTableWidget,
+    FoundWidget,
     InputGroup,
     LineLink,
     LoadSummaryWidget,
@@ -108,6 +111,9 @@ class ToolPanel(QWidget):
         self.forms: dict[str, OptionsFormWidget] = {}
         self.grids: dict[str, EditableTableWidget | CompactTableWidget] = {}
         self.choices: dict[str, ChoiceWidget] = {}
+        self.chip_choices: dict[str, ChipChoiceWidget] = {}
+        self.found: dict[str, FoundWidget] = {}  # under each file input: what the tool found
+        self._inspecting = False
         self.previews: dict[str, TablePreviewWidget] = {}
         self.summaries: dict[str, LoadSummaryWidget] = {}
         self.groups: dict[str, InputGroup] = {}
@@ -199,6 +205,8 @@ class ToolPanel(QWidget):
             path_picker.changed.connect(self._suggest)
         for rpicker in self.resource_pickers.values():
             rpicker.changed.connect(self._suggest)
+        if self.spec.inspect is not None:
+            self._connect_inspect()
         if writes_to:  # a tool's own destination may follow a typed input, e.g. a label
             for text_field in self.text_fields.values():
                 text_field.edit.textChanged.connect(self._show_output_folder)
@@ -223,16 +231,24 @@ class ToolPanel(QWidget):
 
     def _build_inputs(self) -> None:
         for spec in self.spec.inputs:
+            joined = spec.key in self.spec.joined
             if isinstance(spec, FilePicker | FolderPicker):
-                group = InputGroup(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help, joined=joined)
                 picker = PathPickerWidget(spec)
                 group.add(picker)
                 self.pickers[spec.key] = picker
+                self._add_found(spec.key, spec.label, group)
             elif isinstance(spec, ResourcePicker):
-                group = InputGroup(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help, joined=joined)
                 rpicker = ResourcePickerWidget(spec, self.resources)
                 group.add(rpicker)
                 self.resource_pickers[spec.key] = rpicker
+                self._add_found(spec.key, spec.label, group)
+            elif isinstance(spec, ChipChoice):
+                group = InputGroup(spec.label, spec.help, joined=joined)
+                chips = ChipChoiceWidget(spec)
+                group.add(chips)
+                self.chip_choices[spec.key] = chips
             elif isinstance(spec, CodeSource):
                 group = InputGroup(spec.label, spec.help)
                 code = CodeSourceWidget(spec, self.resources)
@@ -242,12 +258,12 @@ class ToolPanel(QWidget):
                 if spec.choice is not None and code.choice is not None:
                     self.choices[spec.choice.key] = code.choice
             elif isinstance(spec, TextField):
-                group = InputGroup(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help, joined=joined)
                 field = TextFieldWidget(spec)
                 group.add(field)
                 self.text_fields[spec.key] = field
             elif isinstance(spec, TextArea):
-                group = InputGroup(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help, joined=joined)
                 area = TextAreaWidget(spec)
                 group.add(area)
                 self.text_areas[spec.key] = area
@@ -272,12 +288,12 @@ class ToolPanel(QWidget):
                     lambda path, s=spec, w=preview: self._load_preview(s, w, path)
                 )
             elif isinstance(spec, Choice):
-                group = InputGroup(spec.label, spec.help)
+                group = InputGroup(spec.label, spec.help, joined=joined)
                 choice = ChoiceWidget(spec)
                 group.add(choice)
                 self.choices[spec.key] = choice
             elif isinstance(spec, OptionsForm):
-                group = InputGroup(spec.label)
+                group = InputGroup(spec.label, joined=joined)
                 form = OptionsFormWidget.for_spec(spec)
                 group.add(form)
                 self.forms[spec.key] = form
@@ -302,11 +318,20 @@ class ToolPanel(QWidget):
             else:  # pragma: no cover - exhaustive over InputWidget
                 msg = f"unknown input widget {spec!r}"
                 raise TypeError(msg)
-            if self.groups:
+            if self.groups and not joined:
                 self.dividers[spec.key] = Divider()
                 self.inputs_layout.addWidget(self.dividers[spec.key])
             self.groups[spec.key] = group
             self.inputs_layout.addWidget(group)
+
+    def _add_found(self, key: str, title: str, group: InputGroup) -> None:
+        """Room under a file input for what the tool found in it (``inspect``)."""
+        if self.spec.inspect is None:
+            return
+        found = FoundWidget(title)
+        group.body.addWidget(found)
+        group.add_trailing(found.preview_button)
+        self.found[key] = found
 
     def hidden_inputs(self) -> frozenset[str]:
         """The inputs whose ``PanelSpec.shown_when`` does not hold just now."""
@@ -361,6 +386,50 @@ class ToolPanel(QWidget):
             if choice is not None:
                 choice.set_value(value)
 
+    def _connect_inspect(self) -> None:
+        signals = [
+            *(w.changed for w in self.pickers.values()),
+            *(w.changed for w in self.resource_pickers.values()),
+            *(w.changed for w in self.code_sources.values()),
+            *(w.changed for w in self.choices.values()),
+            *(w.changed for w in self.chip_choices.values()),
+            *(w.changed for w in self.forms.values()),
+            *(w.edit.textChanged for w in self.text_fields.values()),
+        ]
+        for signal in signals:
+            signal.connect(self.inspect)
+        self.inspect()
+
+    def inspect(self, *_: object) -> None:
+        """Ask the tool what it finds in the inputs as they are, and show it:
+        notes and a preview under each file, a chip choice's chips and their
+        total, the run button's words. A failure is logged, never shown."""
+        if self.spec.inspect is None or self._inspecting:
+            return
+        self._inspecting = True
+        try:
+            for _attempt in range(2):  # again once if new chips dropped some that were on
+                try:
+                    inspection = self.spec.inspect(self.collect_inputs())
+                except Exception as exc:  # a hint: never break the panel over it
+                    log.warning("%s inspect failed: %s", self.plugin.name, exc)
+                    return
+                changed = False
+                for key, chips in self.chip_choices.items():
+                    found = inspection.found.get(key)
+                    if found is not None and found.chips is not None:
+                        changed = chips.set_options(found.chips) or changed
+                if not changed:
+                    break
+            for key, widget in self.found.items():
+                widget.set_found(inspection.found.get(key))
+            for key, chips in self.chip_choices.items():
+                found = inspection.found.get(key)
+                chips.set_notes(found.notes if found is not None else ())
+            self.run_bar.set_label(inspection.run_label or self.spec.run_label)
+        finally:
+            self._inspecting = False
+
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
         """The inputs pane keeps 390 px while the output pane has room, and
         gives up to 50 px of it at the window's minimum width."""
@@ -412,6 +481,8 @@ class ToolPanel(QWidget):
             values[key] = grid.value()
         for key, choice in self.choices.items():
             values[key] = choice.value()
+        for key, chips in self.chip_choices.items():
+            values[key] = chips.value()
         # An input that does not apply hands over its empty value (#123).
         return self.spec.passed(values)
 
