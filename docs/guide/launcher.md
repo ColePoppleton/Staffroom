@@ -12,8 +12,8 @@ One line per tool with a small glyph; hover a tool for what it does and its
 shortcut. The red accent marks only where you are. Above the list, the gear
 opens Settings and the search field searches the library (typing carries on
 in the Library's own search box). At the foot: the running version (with
-*up to date*, or a link such as *0.9.0 out* that opens Settings › Updates,
-once the app has checked) and **Activity log**, which opens the log drawer.
+*up to date*, or a link naming the newer release, *… out*, that opens
+Settings › Updates, once the app has checked) and **Activity log**, which opens the log drawer.
 
 A fresh install opens on Classroom; after that the app opens where you left
 it, a tool or the Library. (`hello`, the developers' reference tool, is not in

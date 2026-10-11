@@ -45,16 +45,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Run the install line from docs/index.md in a throwaway tool dir
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           pattern='^uv tool install --python 3\.12 git\+https://github\.com/ColePoppleton/Staffroom@main$'
           line=$(grep -m1 -E "$pattern" docs/index.md) || {
             echo "docs/index.md has no line matching: $pattern"; exit 1; }
           echo "Running: $line"
-          # The repository is private: let git (which uv uses) clone with the job token.
-          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          # The repository is public: git (which uv uses) clones without a token,
+          # as it will on a colleague's Mac.
           # A home folder kept as a git repository, with a remote: the tool goes inside it.
           export GIT_AUTHOR_NAME=ci GIT_AUTHOR_EMAIL=ci@example.invalid
           export GIT_COMMITTER_NAME=ci GIT_COMMITTER_EMAIL=ci@example.invalid
