@@ -92,6 +92,20 @@ later entries refer to this repository's issues.
   now get the same Qt. Qt 6.12 needs macOS 14 Sonoma or later. A test fails if any
   code imports a Qt module those two packages do not ship.
 ### Fixed
+- The docs tell the truth (#14, #34). Install says to open a new Terminal window after
+  installing uv (in the same window the next line stops with `uv: command not found`),
+  and the home page's install box says what it shows. No page quotes an old version:
+  Updating and the launcher guide describe versions in words, and a test fails if a page
+  or the README names a release other than the current one. The Privacy page's deletion
+  list covers only Staffroom's folders (the Teaching Tools upgrade note is in the 0.3.0
+  entry), and the tool and guide pages match today's panels: Bugs' cards and
+  outcomes, Fade's order names, Parsons' hint box, Pseudocode's *Don't save*, what a
+  timeout or a missing input does in Trace and Bugs, Marks' max-marks order, the Library's
+  name-only count, Settings › Updates and ⌘O. Every screenshot is re-rendered at the
+  current version: screenshot mode shows the folders a teacher would see
+  (`~/Documents/Teaching resources`, an empty output folder, *Writes to* the default
+  folder) and refuses to save an image that still shows `/Users/`, `/var/folders/` or a
+  worktree path. The install-line check clones without a token, as a colleague does.
 - An installed copy (`uv tool install`, a wheel) never runs git: no fetch at start, and
   `staff update` and Settings › Updates say it was installed with uv and show
   `uv tool upgrade staffroom` instead of fetching, or fast-forwarding, whatever repository

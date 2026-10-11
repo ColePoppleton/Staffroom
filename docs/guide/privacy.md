@@ -159,12 +159,6 @@ The sessions folder is `~/TeachingSessions` unless you change it. The
 lesson label is the one line you typed (60 characters at most); the UI asks
 for a lesson, not a class, and cannot check what you wrote.
 
-!!! note "Upgrading from Teaching Tools"
-    The first run of Staffroom copies `~/.config/teaching-tools/` to
-    `~/.config/staffroom/` and leaves the old folder alone. A
-    `.teaching-tools/tags.json` sidecar (or `ignore` file) in the resources
-    folder is still read; the next edit writes `.staffroom/tags.json`.
-
 Nothing leaves the machine. An installed copy (`uv tool install`, a wheel)
 never runs git. Its one network call asks GitHub which release is newest: a
 single HTTPS request to
@@ -183,19 +177,18 @@ network call a checkout makes.
 There is no account and no server, so removing the app's traces is a
 matter of deleting folders:
 
-1. `~/.config/staffroom/` (config, logs, the library index, usage counts),
-   and `~/.config/teaching-tools/` if it is still there from before the
-   rename.
+1. `~/.config/staffroom/` (config, logs, the library index, usage counts,
+   the last release check).
 2. The sessions folder (`~/TeachingSessions` by default), which holds the
    lesson copies, their `.origin.json` sidecars and the default outputs
    folder.
-3. `<resources folder>/.staffroom/` (tags, notes, your ignore file) and any
-   `.teaching-tools/` folder beside it. The resources themselves were never
-   changed.
+3. `<resources folder>/.staffroom/` (tags, notes, your ignore file). The
+   resources themselves were never changed.
 4. Any outputs you saved next to inputs or in a folder you chose.
 
-Then `uv tool uninstall staffroom`, or drag the launcher app out of
-/Applications.
+Then run `uv tool uninstall staffroom` in Terminal. (Running from a git
+checkout with the launcher app instead? Drag the app out of /Applications and
+delete the checkout.)
 
 ## In the repository
 

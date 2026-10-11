@@ -34,8 +34,10 @@ The use bar under the file's title hands it on:
   (Office files are still never parsed). A file not downloaded on this Mac, or
   indexed by name only, is not offered for class or to a tool.
 
-*Open externally* and *Reveal* sit quietly beside the title. Tools still reach
-the library from their own inputs too: *From library…* on any file input.
+*Reveal* sits quietly beside the title, with *Open externally* when the use
+bar does not already offer it. Tools still reach the library from their own
+inputs too: *From library…* on every program input and on Classroom's and
+Quiz's file inputs.
 
 ## Keeping things out
 
@@ -51,8 +53,8 @@ so pupil work should not be under the resources folder at all. Two guards help:
   listed, and changing the list re-indexes.
 - **Name only.** A file whose text looks like it holds pupil details (a
   candidate number, surname, UPN or date of birth next to a value) is indexed
-  by name only. The index summary, the sidebar status and
-  `staff library status` show the count; the preview carries a banner, and the
+  by name only. The index summary, the Library's header and column footer,
+  and `staff library status` show the count; the preview carries a banner, and the
   file is not offered for class or to a tool. This is a warning to act on, not
   a filter to rely on.
 

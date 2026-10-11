@@ -11,7 +11,10 @@ It is **not on PyPI**, so install it straight from the GitHub repository's
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-2. Install the tools (the newest release):
+   Then **open a new Terminal window** (or run `source $HOME/.local/bin/env`).
+   uv's installer adds itself only to windows opened after it, so step 2 in
+   the same window stops with `uv: command not found`.
+2. In the new window, install Staffroom (the newest release):
    ```bash
    uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main
    ```
@@ -20,9 +23,11 @@ It is **not on PyPI**, so install it straight from the GitHub repository's
    staffroom
    ```
 
-If the terminal says `staffroom: command not found`, run `uv tool update-shell`
-and open a new terminal window: uv puts the commands in `~/.local/bin`, which
-is not always on the path yet.
+If the terminal says `uv: command not found`, open a new Terminal window: uv
+was installed in step 1 but this window does not know yet. If it says
+`staffroom: command not found`, run `uv tool update-shell` and open a new
+Terminal window: uv puts the commands in `~/.local/bin`, which is not always
+on the path yet.
 
 `--python 3.12` makes uv use (and if needed download) a Python that Staffroom
 supports; without it uv may pick an older Python already on the Mac and stop
@@ -64,10 +69,6 @@ they are on the roadmap, not a priority yet.
 
 ## For developers
 
-```bash
-git clone https://github.com/ColePoppleton/Staffroom
-cd Staffroom
-just setup      # uv sync + pre-commit hooks
-just test
-just gui
-```
+To change the code, fork the repository and work from a clone of your fork:
+[How to contribute](../contributing.md) has the setup, and how to try a
+change in throwaway folders without touching your own Staffroom.

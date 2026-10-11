@@ -26,7 +26,8 @@ Every generator is verified in the tests by independent computation.
 
 Truth tables use the gates the exam board requires: OCR J277 is AND, OR and
 NOT; AQA 8525 adds XOR. Neither GCSE board has NAND or NOR, so those appear
-only when **Level** is `a_level` *and* the difficulty is `hard` (A-level also
+only when **Level** is *A level* (`--level a_level`) *and* **Difficulty** is
+*Hard* (A-level also
 adds XOR at every difficulty). The board comes from Settings (`general.board`)
 or `--board`. Every question uses all of the inputs its table lists, no gate is
 fed the same input twice, and Q is never constant or simply one input. Each
@@ -43,10 +44,12 @@ and the key undoes the wraps in order, each step in the question's own letters:
 two, hard three, and a question stays the size of an exam one at every
 difficulty (a hard sheet reads `(A OR (A AND C)) AND NOT (A AND NOT B)`, not a
 form nested inside a form inside a form); a sheet never repeats a question.
-**Boolean laws** chooses what is practised: `absorption` (absorption,
-distributive and complement; the default), `de_morgan` (adds De Morgan),
-`identities` (identity, idempotent, double negation, complement; the only
-family that puts `X AND X`, `NOT NOT X` or `0`/`1` on the sheet) or `all`.
+**Boolean laws** chooses what is practised: *Absorption* (`absorption`:
+absorption, distributive and complement; the default), *Absorption + De
+Morgan* (`de_morgan`), *Identities* (`identities`: identity, idempotent,
+double negation, complement; the only family that puts `X AND X`, `NOT NOT
+X` or `0`/`1` on the sheet) or *All laws* (`all`). The panel shows **Level**
+only for truth tables and **Boolean laws** only for Boolean simplification.
 
 The header names the gate set or the law family next to the seed, so a sheet
 describes the settings that regenerate it; an A-level sheet also gets `alevel`

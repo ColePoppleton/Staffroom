@@ -29,7 +29,7 @@ pupil data.
 
 <div class="sr-install" markdown>
 
-<p class="sr-install__label">Two lines in Terminal (<a href="https://docs.astral.sh/uv/">uv</a> first)</p>
+<p class="sr-install__label">Two lines in Terminal, once you have <a href="https://docs.astral.sh/uv/">uv</a></p>
 
 ```bash
 uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main
@@ -38,8 +38,9 @@ staffroom
 
 </div>
 
-No GitHub account is needed. [Install](guide/install.md) has the details and
-the alternatives.
+No uv yet? Its installer is one more line, on the [Install](guide/install.md)
+page; open a new Terminal window after it. No GitHub account is needed. Needs
+macOS 14 or later.
 { .sr-install__note }
 
 </div>
