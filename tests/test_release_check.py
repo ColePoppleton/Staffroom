@@ -209,6 +209,5 @@ def test_versions_dates_ages_and_notes() -> None:
     folded = (
         "Teachers.\n\n<details>\n<summary>For contributors</summary>\n\n### Added\n- a\n</details>"
     )
-    assert update.notes_for_display(folded) == (
-        "Teachers.\n\n#### For contributors\n\n### Added\n- a"
-    )
+    # The card shows only the teacher part; the contributors' list stays on GitHub.
+    assert update.notes_for_display(folded) == "Teachers."
