@@ -35,5 +35,6 @@ library search, ⌘O open for class, ⌘1–9 tools in sidebar order, ⌘L log,
 Documentation: https://colepoppleton.github.io/Staffroom/ (built from
 `docs/` by MkDocs). MIT licensed.
 
-See `CLAUDE.md` for the conventions and `docs/adding-a-tool.md` for how to add
+See the [contributing guide](https://colepoppleton.github.io/Staffroom/contributing/) for the rules
+and `docs/adding-a-tool.md` for how to add
 a tool.

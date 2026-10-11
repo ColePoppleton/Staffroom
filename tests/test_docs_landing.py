@@ -43,7 +43,7 @@ CLAIMS = {
     ),
 }
 
-CONTRIBUTOR_PAGES = ["process.md", "adding-a-tool.md", "ROADMAP.md", "PHASES.md", "audits/"]
+CONTRIBUTOR_PAGES = ["contributing.md", "adding-a-tool.md"]
 
 
 def _flat(text: str) -> str:
