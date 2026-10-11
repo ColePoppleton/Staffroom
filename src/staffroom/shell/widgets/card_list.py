@@ -50,12 +50,13 @@ def _repolish(widget: QWidget) -> None:
 
 
 class ResultCard(QFrame):
-    """One row as a card. Emits ``clicked`` when pressed anywhere on it."""
+    """One row as a card. Emits ``clicked(row)`` when pressed anywhere on it."""
 
-    clicked = Signal()
+    clicked = Signal(int)
 
     def __init__(self, spec: CardList, record: Mapping[str, Cell], parent: QWidget | None = None):
         super().__init__(parent)
+        self.row = 0  # its row in the list, set by the list
         self.setObjectName("ResultCard")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -120,7 +121,7 @@ class ResultCard(QFrame):
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
+            self.clicked.emit(self.row)
         super().mousePressEvent(event)
 
 
@@ -183,7 +184,8 @@ class CardListWidget(QScrollArea):
             return
         for row, record in enumerate(table.to_dicts()):
             card = ResultCard(self.spec, record)
-            card.clicked.connect(lambda r=row: self._card_clicked(r))
+            card.row = row
+            card.clicked.connect(self._card_clicked)
             self._box.insertWidget(row, card)
             self.cards.append(card)
         self.verticalScrollBar().setValue(0)
