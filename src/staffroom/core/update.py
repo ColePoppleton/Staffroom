@@ -8,7 +8,13 @@ the checkout is on: the owner's copy may sit on ``dev`` or a feature branch
 and should still learn that a release is out. A checkout on another branch,
 with no upstream, or detached is described in one plain line and is never
 pulled. Never force-pushes, never switches branch, never discards local
-changes: a dirty tree or a diverged branch is reported, not fixed."""
+changes: a dirty tree or a diverged branch is reported, not fixed.
+
+Only this project's own checkout is ever updated. Unless a test passes
+``repo`` explicitly, :func:`status` and :func:`apply` first ask
+:func:`staffroom.core.install.detect`; an installed copy (``uv tool
+install``, a wheel, a bundle) gets one plain line on how to update it and
+**no git command runs at all** (#9)."""
 
 from __future__ import annotations
 
@@ -17,7 +23,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from staffroom.core import paths
+from staffroom.core import install
 from staffroom.core.log import get_logger
 
 log = get_logger(__name__)
@@ -40,6 +46,7 @@ class UpdateStatus:
     tag: str = ""  # newest vX.Y.Z tag on the release ref that HEAD lacks
     note: str = ""  # one plain line about the checkout: other branch, no upstream, detached
     head_tag: str = ""  # the vX.Y.Z tag HEAD sits on exactly, "" off a release tag
+    installed: str = ""  # an installed copy: how to update it; nothing was asked of git
 
     @property
     def available(self) -> bool:
@@ -62,6 +69,8 @@ class UpdateStatus:
         return f"{version} ({branch}, {self.commit})"
 
     def describe(self) -> str:
+        if self.installed:
+            return self.installed
         if self.error:
             return f"Could not check: {self.error}"
         if not self.remote:
@@ -137,8 +146,13 @@ def status(
     repo: Path | None = None, *, fetch: bool = True, release_branch: str | None = None
 ) -> UpdateStatus:
     """Compare HEAD with the remote's release branch. Fetches first unless
-    ``fetch`` is False; never changes the working tree."""
-    repo = repo or paths.project_root()
+    ``fetch`` is False; never changes the working tree. With no ``repo``, an
+    installed copy is answered without running git (:func:`installed_status`)."""
+    if repo is None:
+        here = install.detect()
+        if not here.is_checkout or here.root is None:
+            return installed_status(here)
+        repo = here.root
     release_branch = release_branch or configured_release_branch()
     try:
         commit = _git(["rev-parse", "--short", "HEAD"], repo)
@@ -201,12 +215,25 @@ def status(
         )
 
 
+def installed_status(here: install.Installation) -> UpdateStatus:
+    """The status of an installed copy: never behind, nothing to apply, and
+    the one line that says how to update it. Asks nothing of git."""
+    return UpdateStatus(
+        here.package_dir, "", "", "", 0, 0, False, on_release=False, installed=here.update_hint()
+    )
+
+
 def apply(repo: Path | None = None, *, sync: bool = True, release_branch: str | None = None) -> str:
     """Fast-forward the release branch to the remote and sync dependencies.
     Returns a one-line summary. Raises RuntimeError when the tree is dirty,
     the checkout is not on the release branch, the branch has diverged, or
-    git fails. Never switches branch."""
-    repo = repo or paths.project_root()
+    git fails, and (before any git runs) when this is an installed copy.
+    Never switches branch."""
+    if repo is None:
+        here = install.detect()
+        if not here.is_checkout or here.root is None:
+            raise RuntimeError(here.update_hint())
+        repo = here.root
     st = status(repo, release_branch=release_branch)
     if st.error:
         raise RuntimeError(st.error)

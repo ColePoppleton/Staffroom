@@ -14,10 +14,16 @@ uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.
 
 (Swap the tag for the one you want. The same works to go back a version.)
 
+An installed copy never updates itself and never runs git. Settings ›
+Updates and `staff update` say so and show `uv tool upgrade staffroom`, which
+updates a copy installed from `@main`; a copy installed from a release tag,
+as above, is updated by running the install line again.
+
 ## Which version am I running?
 
 The foot of the sidebar shows it, for example `v0.6.0 · up to date` once the
-app has checked for a release (just `v0.6.0` before, or when it cannot check).
+app has checked for a release (just `v0.6.0` before, when it cannot check, and
+always for an installed copy, which does not check).
 
 ![The sidebar footer with the version, dark theme](../sidebar-footer-dark.png)
 ![The sidebar footer with the version, light theme](../sidebar-footer-light.png)

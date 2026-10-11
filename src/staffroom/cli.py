@@ -92,7 +92,8 @@ def update_(
 ) -> None:
     """Compare this checkout with the released branch (origin/main unless
     ``release_branch`` is set in config), then fast-forward to it and sync
-    dependencies. Never switches branch or overwrites local edits."""
+    dependencies. Never switches branch or overwrites local edits. An
+    installed copy runs no git: it prints how to update it and exits 0."""
     from staffroom.core import update
 
     st = update.status()

@@ -369,8 +369,9 @@ class Sidebar(QWidget):
         self.rows[LIBRARY].item.set_count(text)
 
     def set_update_available(self, available: bool | None) -> None:
-        """``None`` until a check answers; then *up to date*, or an *update*
-        link that opens Settings > Updates."""
+        """``None`` until a check answers, when it failed, and always for an
+        installed copy (which never checks): just the version. Then *up to
+        date*, or an *update* link that opens Settings > Updates."""
         self.update_button.setVisible(bool(available))
         state = {None: "", False: " · up to date", True: " ·"}[available]
         self.version_label.setText(f"v{__version__}{state}")
