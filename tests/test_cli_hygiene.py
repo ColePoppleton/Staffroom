@@ -43,6 +43,11 @@ def _commands() -> Iterator[tuple[str, click.Command]]:
     yield from walk(typer.main.get_command(app), "staff")
 
 
+def _plain(output: str) -> str:
+    """``output`` without ANSI colour codes; rich adds them on CI."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", output)
+
+
 def _example(help_text: str) -> str | None:
     for paragraph in help_text.split("\n\n"):
         if paragraph.startswith("Example: "):
@@ -108,10 +113,11 @@ def test_help_reads_as_sentences_with_an_example(path: str, cmd: click.Command) 
 def test_root_help_lists_one_line_per_command() -> None:
     result = runner.invoke(app, ["--help"], terminal_width=200)
     assert result.exit_code == 0, result.output
-    assert "``" not in result.output
-    assert "Update this copy of Staffroom to the latest release." in result.output
-    assert "Show which tools you have used, how often, and when last." in result.output
-    assert "staff COMMAND --help" in result.output
+    output = _flat(result.output)
+    assert "``" not in output
+    assert "Update this copy of Staffroom to the latest release." in output
+    assert "Show which tools you have used, how often, and when last." in output
+    assert "staff COMMAND --help" in output
 
 
 # ---------------------------------------------------------------- quiz bank argument
@@ -141,8 +147,9 @@ def test_quiz_export_and_retrieval_take_the_bank_as_an_argument(tmp_path: Path) 
 
 
 def _flat(output: str) -> str:
-    """Error text with rich's box and its line wrapping taken out."""
-    return re.sub(r"[│╭╮╰╯─\s]+", " ", output)
+    """Error text with rich's colours (CI forces them on), its box and its line
+    wrapping taken out."""
+    return re.sub(r"[│╭╮╰╯─\s]+", " ", _plain(output))
 
 
 def test_quiz_without_a_bank_says_what_to_give() -> None:
