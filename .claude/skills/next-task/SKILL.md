@@ -22,7 +22,7 @@ One issue, one branch, one PR. Never work in the main checkout.
 ```
 branch=feat/<number>-<short-slug>      # fix/ for type:bug, chore/ or docs/ likewise
 gh issue edit <n> --add-label status:in-progress --remove-label status:ready
-gh issue comment <n> --body "Claimed: branch \`$branch\`, $(date -u +%Y-%m-%dT%H:%MZ), $(hostname -s)"
+gh issue comment <n> --body "Claimed: branch \`$branch\`, $(date -u +%Y-%m-%dT%H:%MZ)"
 ```
 
 Then re-read the comments. If another *Claimed:* comment is older than yours, remove your

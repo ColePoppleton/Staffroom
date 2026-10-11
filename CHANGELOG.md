@@ -6,6 +6,10 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Changed
+- Ready to be public: the first audit no longer names the owner's real folder or
+  index counts, and issue claims no longer record the machine's name.
+
 
 ## [0.8.0] - 2026-10-11
 ### Added
