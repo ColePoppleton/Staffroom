@@ -44,7 +44,19 @@ def panel_spec() -> PanelSpec:
         ),
         outputs=(
             # Each step names its line: a row lights it in the program, and back.
-            ResultsTable(key="table", label="Completed table", line_column="Line"),
+            # On screen the table fits the pane (#16): a list set once and never
+            # changed leaves for the line above, columns are as wide as their
+            # values, a changed value is bold and a carried one grey, and Output
+            # stays at the right edge. The printed sheet and key keep every column.
+            ResultsTable(
+                key="table",
+                label="Completed table",
+                line_column="Line",
+                compact=True,
+                lift_constants=True,
+                mark_changes=True,
+                pin_last=True,
+            ),
             PagePreview(key="pages", label="Trace tables"),
             LogArea(),
         ),

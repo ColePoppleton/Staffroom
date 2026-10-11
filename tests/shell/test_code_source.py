@@ -151,13 +151,13 @@ def test_trace_rows_and_lines_light_each_other(window: MainWindow, qtbot: QtBot)
     assert view.lit_lines() == []
 
 
-def test_bugs_key_rows_point_at_lines(window: MainWindow, qtbot: QtBot) -> None:
+def test_bugs_key_cards_point_at_lines(window: MainWindow, qtbot: QtBot) -> None:
     panel = _panel(window, "bugs")
     panel.set_input_path("source", EXAMPLES / "year9.py")
     _run(panel, qtbot)
-    model, table, _caption = panel.results.tables["key"]
-    table.selectRow(0)
-    line = int(model.index(0, 1).data())  # Version, Line, …
+    cards = panel.results.card_lists["key"]
+    cards.selectRow(0)
+    line = int(cards.model().index(0, 1).data())  # Version, Line, …
     assert panel.code_sources["source"].view.lit_lines() == [line]
 
 

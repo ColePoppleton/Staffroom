@@ -5,7 +5,9 @@ A results table can carry hints (:class:`~staffroom.core.panel.ResultsTable`):
 numeric columns drawn with an inline bar, a tag beside the first cell, and
 hidden columns whose values go to the row's tooltip. :class:`ReportDelegate`
 paints the bars and tags in colours the stylesheet sets on
-:class:`TableWidget` (``qproperty-barColor`` …)."""
+:class:`TableWidget` (``qproperty-barColor`` …). Change marks
+(:func:`~staffroom.core.panel.change_marks`) make a changed value bold and a
+carried one grey (``qproperty-carriedColor``) through :class:`MarkDelegate`."""
 
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ from PySide6.QtCore import (
     Qt,
     Signal,
 )
-from PySide6.QtGui import QFont, QFontMetrics, QPainter
+from PySide6.QtGui import QFont, QFontMetrics, QPainter, QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -48,6 +50,8 @@ from staffroom.shell.widgets.paint import color_property, default_colors
 Index = QModelIndex | QPersistentModelIndex
 TAG_ROLE = Qt.ItemDataRole.UserRole + 1  # the row's tag text, on any cell
 NUMBER_ROLE = Qt.ItemDataRole.UserRole + 2  # the cell as a float, or None
+CHANGE_ROLE = Qt.ItemDataRole.UserRole + 3  # True changed here, False carried, None plain
+TOOLTIP_CHARS = 24  # with cell tooltips on, a longer value shows in full on hover
 TAGGED_ROW_HEIGHT = 42  # a tagged row: its text and the tag under it
 
 
@@ -59,6 +63,8 @@ class TableModel(QAbstractTableModel):
         self._kinds: dict[int, str] = {}
         self._tag_column: str | None = None
         self._tooltip_columns: tuple[str, ...] = ()
+        self._marks: list[list[bool | None]] = []
+        self._cell_tooltips = False
 
     # -- data access -----------------------------------------------------
     def table(self) -> Table:
@@ -69,7 +75,20 @@ class TableModel(QAbstractTableModel):
     def set_table(self, table: Table | None) -> None:
         self.beginResetModel()
         self._table = table or Table([], [])
+        self._marks = []
         self.endResetModel()
+
+    def set_marks(self, marks: list[list[bool | None]]) -> None:
+        """Change marks per row and column (:func:`core.panel.change_marks`),
+        offered as :data:`CHANGE_ROLE`. Reset by the next ``set_table``."""
+        self._marks = marks
+        if self._table.rows:
+            last = self.index(len(self._table.rows) - 1, len(self._table.columns) - 1)
+            self.dataChanged.emit(self.index(0, 0), last)
+
+    def set_cell_tooltips(self, on: bool) -> None:
+        """Offer a long value in full as its cell's tooltip (narrow columns)."""
+        self._cell_tooltips = on
 
     def set_kinds(self, columns: tuple[Column, ...]) -> None:
         self._kinds = {i: c.kind for i, c in enumerate(columns)}
@@ -126,7 +145,13 @@ class TableModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.TextAlignmentRole and isinstance(value, int | float):
             return int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         if role == Qt.ItemDataRole.ToolTipRole:
-            return self._tooltip(index.row())
+            tooltip = self._tooltip(index.row())
+            if tooltip is None and self._cell_tooltips and len(str(value or "")) > TOOLTIP_CHARS:
+                return str(value)
+            return tooltip
+        if role == CHANGE_ROLE:
+            marks = self._marks[index.row()] if index.row() < len(self._marks) else []
+            return marks[index.column()] if index.column() < len(marks) else None
         if role == TAG_ROLE:
             return self.tag(index.row())
         if role == NUMBER_ROLE:
@@ -181,7 +206,24 @@ def _coerce_kind(value: Any, kind: str) -> Cell:
     return coerce(text) if kind == "text" else text
 
 
-class ReportDelegate(QStyledItemDelegate):
+class MarkDelegate(QStyledItemDelegate):
+    """Bold for a value that changed on its row, the carried colour for one
+    carried down from the row above (:data:`CHANGE_ROLE`)."""
+
+    def __init__(self, view: TableWidget) -> None:
+        super().__init__(view)
+        self.view = view
+
+    def initStyleOption(self, option: QStyleOptionViewItem, index: Index) -> None:  # noqa: N802
+        super().initStyleOption(option, index)
+        mark = index.data(CHANGE_ROLE)
+        if mark is True:
+            option.font.setBold(True)
+        elif mark is False:
+            option.palette.setColor(QPalette.ColorRole.Text, self.view.colors()["carried"])
+
+
+class ReportDelegate(MarkDelegate):
     """Paints the hinted cells of a :class:`TableWidget`: an inline bar beside
     the number in ``bars`` columns (the action colour for a tagged row), and the row's
     tag as a small outlined label after the first cell's text."""
@@ -191,7 +233,6 @@ class ReportDelegate(QStyledItemDelegate):
 
     def __init__(self, view: TableWidget, bars: dict[int, BarColumn]) -> None:
         super().__init__(view)
-        self.view = view
         self.bars = bars
 
     def _tag_font(self, option: QStyleOptionViewItem) -> QFont:
@@ -271,10 +312,12 @@ class TableWidget(QTableView):
     actionColor = color_property("action")  # noqa: N815
     trackColor = color_property("track")  # noqa: N815
     textColor = color_property("text")  # noqa: N815
+    # A value carried down from the row above (MarkDelegate).
+    carriedColor = color_property("carried")  # noqa: N815
 
     def __init__(self, model: TableModel, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._colors = default_colors("bar", "action", "track", "text")
+        self._colors = default_colors("bar", "action", "track", "text", "carried")
         self.setModel(model)
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
@@ -324,6 +367,8 @@ class TableWidget(QTableView):
         if bars or has_tag:
             self._delegate = ReportDelegate(self, bars)
             self.setItemDelegate(self._delegate)
+        elif not isinstance(self.itemDelegate(), MarkDelegate):
+            self.setItemDelegate(MarkDelegate(self))  # plain unless the model marks changes
 
     def fit_columns(self, min_width: int = 90, max_width: int = 320, extra: int = 16) -> None:
         """Size columns to their contents plus ``extra``, within the bounds;

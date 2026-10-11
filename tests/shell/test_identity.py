@@ -83,6 +83,8 @@ _ACCENT_ALLOWED = re.compile(
     r'|\[action="true"\]'
     # a code view's lit line is the selection: the line of the selected row (#86)
     r'|CodeViewWidget\[lit="true"\]'
+    # a chosen card in a card list is its selection, as a table's row is (#16)
+    r'|\[selected="true"\]'
 )
 
 

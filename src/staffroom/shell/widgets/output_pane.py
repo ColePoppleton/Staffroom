@@ -20,6 +20,9 @@ Top to bottom:
   too narrow for them.
 * Secondary outputs (ActionTable lists, notes) as sections under the main view;
   a ``collapsed`` table folds under a one-line heading the user opens.
+* A ``ResultsTable`` asked to fit the screen (``compact``, ``lift_constants``,
+  ``mark_changes``, ``pin_last``) is a :class:`FitTable`; a ``CardList`` is a
+  :class:`CardListWidget`.
 * The *Details* footer: one line (the toggle and the latest log line) that
   opens the run log above it. Closed by default; open or closed is remembered
   per tool for the session. Every panel has it, whether or not its spec lists
@@ -53,6 +56,7 @@ from PySide6.QtWidgets import (
 from staffroom.core.panel import (
     ActionTable,
     BarChart,
+    CardList,
     ImageView,
     MainLayout,
     OutputWidget,
@@ -70,8 +74,10 @@ from staffroom.core.plugin import RunResult
 from staffroom.shell.widgets.action_table import ActionTableWidget
 from staffroom.shell.widgets.bar_chart import BarChartWidget
 from staffroom.shell.widgets.card import make_label
+from staffroom.shell.widgets.card_list import CardListWidget
 from staffroom.shell.widgets.code_view import CodeViewWidget
 from staffroom.shell.widgets.elided_label import ElidedLabel
+from staffroom.shell.widgets.fit_table import FitTable
 from staffroom.shell.widgets.image_view import ImageViewWidget
 from staffroom.shell.widgets.input_group import eyebrow
 from staffroom.shell.widgets.page_preview import PagePreviewWidget, pages_phrase
@@ -217,6 +223,8 @@ class OutputPane(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         self.details_key = details_key
         self.tables: dict[str, tuple[TableModel, TableWidget, QLabel]] = {}
+        self.fit_tables: dict[str, FitTable] = {}  # tables fitted to the screen (by key)
+        self.card_lists: dict[str, CardListWidget] = {}
         self.action_tables: dict[str, ActionTableWidget] = {}
         self.text_views: dict[str, TextViewWidget | CodeViewWidget] = {}
         self.images: dict[str, ImageViewWidget] = {}
@@ -438,6 +446,8 @@ class OutputPane(QWidget):
         if isinstance(spec, ResultsTable):
             _model, view, _caption = self._results_table(spec)
             return view, []
+        if isinstance(spec, CardList):
+            return self._card_list(spec), []
         if isinstance(spec, ImageView):
             image = ImageViewWidget()
             self.images[spec.key] = image
@@ -480,10 +490,15 @@ class OutputPane(QWidget):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(6)
         if isinstance(spec, ResultsTable):
-            _model, view, caption = self._results_table(spec)
-            view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-            content_layout.addWidget(view, 1)
-            content_layout.addWidget(caption)
+            _model, view, caption = self._results_table(spec, fit=True)
+            if spec.key in self.fit_tables:
+                content_layout.addWidget(self.fit_tables[spec.key], 1)
+            else:
+                view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+                content_layout.addWidget(view, 1)
+                content_layout.addWidget(caption)
+        elif isinstance(spec, CardList):
+            content_layout.addWidget(self._card_list(spec), 1)
         elif isinstance(spec, ImageView):
             image = ImageViewWidget()
             self.images[spec.key] = image
@@ -531,17 +546,20 @@ class OutputPane(QWidget):
         if isinstance(spec, ActionTable):
             layout.addWidget(self._action_table(spec))
         elif isinstance(spec, ResultsTable):
-            _model, view, caption = self._results_table(spec)
-            layout.addWidget(view)
-            layout.addWidget(caption)
+            _model, view, caption = self._results_table(spec, fit=True)
+            if spec.key in self.fit_tables:
+                layout.addWidget(self.fit_tables[spec.key])
+            else:
+                layout.addWidget(view)
+                layout.addWidget(caption)
             if folded:
                 section.setObjectName("FoldSection")
                 section.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
                 layout.setContentsMargins(12, 6, 12, 6)
-                view.setVisible(False)
+                self._table_body(spec.key).setVisible(False)
                 caption.setVisible(False)
             self._below_hidden.add(spec.key)
-        elif isinstance(spec, StatTiles | BarChart | PagePreview):
+        elif isinstance(spec, StatTiles | BarChart | PagePreview | CardList):
             content, extras = self._content(spec)
             layout.addWidget(content)
             for extra in extras:
@@ -620,7 +638,12 @@ class OutputPane(QWidget):
     def details_open(self) -> bool:
         return self.details_toggle.isChecked()
 
-    def _results_table(self, spec: ResultsTable) -> tuple[TableModel, TableWidget, QLabel]:
+    def _results_table(
+        self, spec: ResultsTable, *, fit: bool = False
+    ) -> tuple[TableModel, TableWidget, QLabel]:
+        """The model, view and caption for ``spec``; with ``fit`` (a tab or a
+        section, not a report card) a table asked to fit the screen is also
+        wrapped in a :class:`FitTable`, which holds the view and caption."""
         model = TableModel()
         view = TableWidget(model)
         view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -630,7 +653,14 @@ class OutputPane(QWidget):
         caption = QLabel("")
         caption.setProperty("role", "faint")
         self.tables[spec.key] = (model, view, caption)
+        if fit and (spec.compact or spec.lift_constants or spec.mark_changes or spec.pin_last):
+            self.fit_tables[spec.key] = FitTable(spec, model, view, caption)
         return model, view, caption
+
+    def _card_list(self, spec: CardList) -> CardListWidget:
+        cards = CardListWidget(spec)
+        self.card_lists[spec.key] = cards
+        return cards
 
     def _fold_button(self, spec: ResultsTable) -> QPushButton:
         """The heading of a collapsed section: a toggle that opens and folds it."""
@@ -646,7 +676,7 @@ class OutputPane(QWidget):
         """Fold or open a collapsed below section."""
         button = self.folds[key]
         _model, view, caption = self.tables[key]
-        view.setVisible(not folded)
+        self._table_body(key).setVisible(not folded)
         caption.setVisible(not folded and bool(caption.text()))
         if button.isChecked() == folded:
             button.blockSignals(True)
@@ -658,7 +688,11 @@ class OutputPane(QWidget):
         button.setText(f"{FOLD_CLOSED if folded else FOLD_OPEN} {spec.label}{count}")
 
     def is_folded(self, key: str) -> bool:
-        return not self.tables[key][1].isVisibleTo(self.sections[key])
+        return not self._table_body(key).isVisibleTo(self.sections[key])
+
+    def _table_body(self, key: str) -> QWidget:
+        """What folds: the table view, or the fitted table holding it."""
+        return self.fit_tables.get(key) or self.tables[key][1]
 
     def _action_table(self, spec: ActionTable) -> ActionTableWidget:
         widget = ActionTableWidget(spec)
@@ -775,6 +809,9 @@ class OutputPane(QWidget):
             model.set_table(None)
             caption.setText("")
             self._emptied(key)
+        for key, card_list in self.card_lists.items():
+            card_list.set_table(None)
+            self._emptied(key)
         for key, image in self.images.items():
             image.set_image(None)
             self._emptied(key)
@@ -829,22 +866,31 @@ class OutputPane(QWidget):
             view.apply_hints()
             spec = self._specs.get(key)
             hinted = isinstance(spec, ResultsTable) and bool(spec.bars or spec.tag_column)
-            if hinted:
+            rows, cols = table.shape
+            if key in self.fit_tables:  # sizes itself and says what its marks mean
+                self.fit_tables[key].refresh()
+                if key not in self.main_keys:
+                    view.fit_rows(BELOW_TABLE_ROWS)
+            elif hinted:
                 view.fit_columns(min_width=COMPACT_COLUMN, extra=0)
             else:
                 view.fit_columns()
-            rows, cols = table.shape
             if key in self.cards:  # a report's table: every row, no caption
                 view.fit_rows(ROW_TABLE_ROWS)
                 caption.setText("")
                 caption.hide()
-            else:
+            elif key not in self.fit_tables:
                 if key not in self.main_keys:
                     view.fit_rows(BELOW_TABLE_ROWS)
                 caption.setText(f"{rows} rows × {cols} columns")
             self._filled(key)
             if key in self.folds:
                 self.set_folded(key, True)  # a fresh result starts folded again
+        for key, card_list in self.card_lists.items():
+            table = result.tables.get(key)
+            if table is not None:
+                card_list.set_table(table)
+                self._filled(key)
         for key, tiles in self.tiles.items():
             table = result.tables.get(key)
             if table is not None:
