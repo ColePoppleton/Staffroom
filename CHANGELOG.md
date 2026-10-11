@@ -143,6 +143,13 @@ later entries refer to this repository's issues.
   a wrong variable to offer, such as `year9.py` and programs with two loop
   counters; programs with one variable (a single `while` counter, one mark read in)
   keep their sheets.
+- A tool run, the library index or an update check can no longer crash Staffroom with a
+  segmentation fault. Python's garbage collector could run on the worker thread mid-run
+  (matplotlib drawing the Marks chart, say) and free a closed panel's Qt objects there;
+  every shell worker now derives from `GuiWorker`, which turns automatic collection off
+  while any worker runs and collects on the GUI thread instead (every few seconds during
+  a long run, and once when the last one finishes). A child-process test reproduces the
+  crash and the suite sets `faulthandler_timeout` (#39).
 
 ## [0.8.1] - 2026-10-11
 

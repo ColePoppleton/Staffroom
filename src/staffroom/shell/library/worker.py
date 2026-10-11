@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import Signal
 
 from staffroom.core.library.service import LibraryService
+from staffroom.shell.worker import GuiWorker
 
 
 class IndexInterruptedError(Exception):
     """Raised inside the worker's progress callback once a stop was requested."""
 
 
-class IndexWorker(QThread):
+class IndexWorker(GuiWorker):
     """``requestInterruption()`` stops the run at the next file: what was
     indexed so far is kept (the indexer commits in ``finally``) but no
     ``last_indexed`` stamp is written, so the next launch finishes the job."""
