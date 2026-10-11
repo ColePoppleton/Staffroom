@@ -16,6 +16,7 @@ from typing import Any, Literal
 import tomli_w
 
 from staffroom.core import paths
+from staffroom.core.atomic import atomic_write_text
 
 log = logging.getLogger(__name__)
 
@@ -102,8 +103,9 @@ class Config:
         payload: dict[str, Any] = {"general": asdict(self.general), "tools": self.tools}
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with self.path.open("wb") as fh:
-                tomli_w.dump(payload, fh)
+            # A temporary file then a rename (#125): a failed write leaves the
+            # old config.toml whole instead of truncated.
+            atomic_write_text(self.path, tomli_w.dumps(payload))
         except OSError as exc:
             failure = NotSaved.from_error(self.path, exc)
             if not self._save_warned:

@@ -21,6 +21,7 @@ from typing import Literal
 import tomli_w
 
 from staffroom.core import paths
+from staffroom.core.atomic import atomic_write_text
 
 log = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ def record_run(
     entry["last_used"] = (when or datetime.now(UTC)).date().isoformat()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(tomli_w.dumps({"tools": data}), encoding="utf-8")
+        atomic_write_text(path, tomli_w.dumps({"tools": data}))
     except OSError as exc:
         log.debug("usage not recorded (%s): %s", path, exc)
         return False

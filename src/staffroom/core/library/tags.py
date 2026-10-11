@@ -6,10 +6,11 @@ next save writes the new location."""
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+from staffroom.core.atomic import atomic_write_text
 
 SIDECAR_DIR = ".staffroom"
 LEGACY_SIDECAR_DIR = ".teaching-tools"
@@ -103,9 +104,7 @@ class TagStore:
             "version": 1,
             "entries": {rel: asdict(e) for rel, e in sorted(self._entries.items()) if not e.empty},
         }
-        tmp = self.path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        os.replace(tmp, self.path)
+        atomic_write_text(self.path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
         return self.path
 
     # -- access ----------------------------------------------------------

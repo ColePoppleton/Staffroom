@@ -1,3 +1,5 @@
+import errno
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -5,6 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from staffroom.cli import app
+from staffroom.core import atomic
 from staffroom.core.config import Config
 from staffroom.core.usage import record_run, summary, usage_file
 
@@ -108,3 +111,20 @@ def test_cli_usage_shows_launcher_and_cli_shares(isolated_home: Path) -> None:
     assert r.exit_code == 0, r.output
     line = next(line for line in r.output.splitlines() if line.startswith("marks"))
     assert "3 run(s)" in line and "launcher 1" in line and "cli 2" in line
+
+
+def test_a_failed_write_keeps_the_old_counts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#125: the counts survive a disk that fills mid-write."""
+    path = tmp_path / "usage.toml"
+    assert record_run("marks", path=path, when=datetime(2026, 10, 1, tzinfo=UTC))
+    before = path.read_bytes()
+
+    def no_space(fd: int) -> None:
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+    monkeypatch.setattr(atomic.os, "fsync", no_space)
+    assert record_run("marks", path=path) is False
+    assert path.read_bytes() == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["usage.toml"]

@@ -1,6 +1,10 @@
+import errno
 import os
 from pathlib import Path
 
+import pytest
+
+from staffroom.core import atomic
 from staffroom.core.library.service import LibraryService
 from staffroom.core.library.tags import TagStore, normalise_tags
 
@@ -53,3 +57,22 @@ def test_legacy_sidecar_is_read_and_migrated_on_save(resources_root: Path) -> No
     again = TagStore(resources_root)
     assert again.get("Python/notes.md").notes == "old"
     assert again.get("Python/readme.txt").tags == ["text"]
+
+
+def test_a_failed_save_keeps_the_sidecar(
+    resources_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#125: a disk that fills mid-save leaves tags.json whole and no temp file."""
+    store = TagStore(resources_root)
+    store.set_entry("Python/notes.md", "loops")
+    before = store.path.read_bytes()
+
+    def no_space(fd: int) -> None:
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+    monkeypatch.setattr(atomic.os, "fsync", no_space)
+    with pytest.raises(OSError):
+        store.set_entry("Python/readme.txt", "text")
+    assert store.path.read_bytes() == before
+    assert sorted(p.name for p in store.path.parent.iterdir()) == ["tags.json"]
+    assert TagStore(resources_root).get("Python/readme.txt").tags == []

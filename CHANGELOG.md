@@ -42,6 +42,14 @@ with every change; `just release <part>` turns it into a version.
   one, and at most one SyntaxError unless nothing else can make up the count;
   still one bug per version, chosen in the seed's order, so the same seed gives
   the same sheet. A program that cannot offer the mix gets its sheet and a warning.
+- Saving settings can no longer leave `config.toml` truncated (#125). The file is
+  written to a hidden temporary file beside it and swapped in with `os.replace`,
+  so a disk that fills or a folder that turns read-only mid-write leaves the old
+  settings whole; the temporary file is removed and the teacher sees the same
+  *Settings could not be saved* line as before (#74). The file keeps its
+  permissions, a symlinked config stays a symlink, and a config made read-only on
+  purpose is still left alone. `usage.toml` and the Library's tags sidecar now use
+  the same helper (`core/atomic.py`), so they cannot be truncated either.
 - `just install` updates an installed Staffroom.app in place (overwriting its files,
   removing ones the build no longer has, then re-signing and re-registering it)
   instead of deleting and recopying it, so Spotlight keeps listing the app rather
