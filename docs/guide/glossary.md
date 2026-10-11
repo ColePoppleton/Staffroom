@@ -69,7 +69,7 @@ term has a precise meaning in the code, this is that meaning.
 
 **Distractor**
 : A block that does not belong: a real line with its colon removed, a
-  comparison flipped or a number off by one. In Quiz, a wrong option in a
+  comparison flipped or a loop bound or index off by one. In Quiz, a wrong option in a
   multiple-choice question.
 
 **Trace table**

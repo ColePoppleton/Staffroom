@@ -18,6 +18,12 @@ with every change; `just release <part>` turns it into a version.
   `uv tool upgrade staffroom` instead of fetching, or fast-forwarding, whatever repository
   encloses the tool folder. One function, `core.install.detect`, decides checkout or
   installed copy; the sidebar footer no longer says "up to date" after a failed check (#9).
+- Parsons distractors are wrong in a way the sheet shows (#19): a missing colon, a
+  flipped comparison, or an off-by-one in a `range()`, an index or a `while`
+  condition. List values, starting values, numbers in an `if` and numbers in strings
+  are never changed, and no distractor reads `+ 0`; the key adds a *What is wrong*
+  column. Sheets for programs that had such distractors (including `year9.py`) change
+  for the same seed; the rest are as before.
 
 ## [0.8.1] - 2026-10-11
 ### Changed
