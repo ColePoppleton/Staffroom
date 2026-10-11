@@ -6,6 +6,7 @@ from __future__ import annotations
 import ast
 import random
 import re
+import tokenize
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -37,6 +38,7 @@ class Block:
     indent: int  # levels of 4 spaces
     order: int  # position in the solution, 0-based
     distractor: bool = False
+    kind: str = ""  # a distractor's mistake, e.g. "missing colon" (the key prints it)
 
     @property
     def lines(self) -> list[str]:
@@ -157,6 +159,17 @@ def split(source: str, granularity: Granularity = "statement") -> list[Block]:
 
 
 # ---------------------------------------------------------------- distractors
+# Every distractor must be wrong in a way the sheet itself shows (#19): a syntax
+# slip, a flipped comparison operator, or an off-by-one where a pupil can reason
+# about the bound. Data (list literals, an assignment's starting value, a pass
+# mark in an ``if``) is never changed: nothing on the sheet says what it should be.
+KINDS = (
+    "missing colon",
+    "wrong comparison",
+    "off by one in range()",
+    "off by one in an index",
+    "off by one in a loop condition",
+)
 _MUTATIONS: list[tuple[str, re.Pattern[str], str]] = [
     ("comparison", re.compile(r"(?<![<>=!])<=(?!=)"), "<"),
     ("comparison", re.compile(r"(?<![<>=!])<(?![<=])"), "<="),
@@ -166,27 +179,136 @@ _MUTATIONS: list[tuple[str, re.Pattern[str], str]] = [
     ("comparison", re.compile(r"!="), "=="),
 ]
 _INT = re.compile(r"(?<![\w.])(\d+)(?![\w.])")
+_COMPARISONS = {"<", "<=", ">", ">=", "==", "!="}
+_CONTAINERS = (ast.List, ast.Tuple, ast.Set, ast.Dict)
 
 
 def mutate(line: str, rng: random.Random) -> tuple[str, str] | None:
-    """Return ``(mutated_line, kind)`` or None if nothing sensible applies."""
+    """Return ``(mutated_line, kind)`` or None if nothing sensible applies.
+
+    ``kind`` is one of :data:`KINDS`. The random draws are the same for every
+    line with the same integers, so a program none of whose candidates changed
+    keeps its sheet for a seed."""
     candidates: list[tuple[str, str]] = []
     stripped = line.rstrip()
     if stripped.endswith(":") and not stripped.lstrip().startswith("#"):
         candidates.append((stripped[:-1], "missing colon"))
+    operators = _comparison_columns(stripped)
     for kind, pattern, replacement in _MUTATIONS:
-        if pattern.search(stripped):
+        match = pattern.search(stripped)
+        if match and match.start() in operators:
             candidates.append((pattern.sub(replacement, stripped, count=1), f"wrong {kind}"))
+    bounds = _bound_ints(stripped)
     for m in _INT.finditer(stripped):
+        delta = rng.choice([-1, 1])  # drawn for every integer, used or not
+        if m.start(1) not in bounds:
+            continue
+        where, degenerate = bounds[m.start(1)]
         n = int(m.group(1))
-        delta = rng.choice([-1, 1])
-        if n + delta >= 0:
+        if n + delta >= 0 and n + delta in degenerate:  # never "+ 0", "* 1", "x[-0]"
+            delta = -delta
+        if n + delta >= 0 and n + delta not in degenerate:
             new = stripped[: m.start(1)] + str(n + delta) + stripped[m.end(1) :]
-            candidates.append((new, "off by one"))
+            candidates.append((new, f"off by one in {where}"))
     candidates = [c for c in candidates if c[0] != stripped]
     if not candidates:
         return None
     return rng.choice(candidates)
+
+
+def _comparison_columns(line: str) -> set[int]:
+    """Columns where a real comparison operator starts (not inside a string)."""
+    found: set[int] = set()
+    try:
+        for tok in tokenize.generate_tokens(iter([line]).__next__):  # one line, no I/O
+            if tok.type == tokenize.OP and tok.string in _COMPARISONS:
+                found.add(tok.start[1])
+    except (tokenize.TokenError, SyntaxError):
+        pass  # the first line of a longer statement: keep what was read
+    return found
+
+
+def _bound_ints(line: str) -> dict[int, tuple[str, set[int]]]:
+    """Columns of the integers a pupil can reason about, with where each sits
+    (``range()``, ``an index``, ``a loop condition``) and the values that would
+    make its operation do nothing (0 beside ``+``/``-``, 0 or 1 beside ``*``).
+    Integers inside list/tuple/set/dict literals, in an assignment's value, in
+    strings or in an ``if`` condition are left out: they are data."""
+    body = line.lstrip()
+    lead = len(line) - len(body)
+    parsed = _parse_line(body)
+    if parsed is None:
+        return {}
+    tree, lineno, text = parsed
+    parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+    encoded = text.encode()
+    bounds: dict[int, tuple[str, set[int]]] = {}
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Constant)
+            and type(node.value) is int
+            and node.lineno == lineno
+            and node.end_lineno == lineno
+        ):
+            continue
+        where = _bound_context(node, parents)
+        if where is None:
+            continue
+        column = len(encoded[: node.col_offset].decode())
+        bounds[lead + column] = (where, _degenerate(node, parents))
+    return bounds
+
+
+def _parse_line(body: str) -> tuple[ast.Module, int, str] | None:
+    """Parse one line on its own; a compound header gets a body to parse.
+    Returns the tree, the line the original sits on, and that line's text."""
+    attempts = [(body, 1, body)]
+    if body.endswith(":"):
+        head = re.sub(r"^elif\b", "if  ", body)  # same width, so columns hold
+        attempts.append((head + "\n    pass", 1, head))
+        attempts.append(("try:\n    pass\n" + body + "\n    pass", 3, body))
+    for source, lineno, text in attempts:
+        try:
+            return ast.parse(source), lineno, text
+        except SyntaxError:
+            continue
+    return None
+
+
+def _bound_context(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> str | None:
+    in_comparison = False
+    while node in parents:
+        parent = parents[node]
+        if isinstance(parent, _CONTAINERS):
+            return None
+        if (
+            isinstance(parent, ast.Call)
+            and node in parent.args
+            and isinstance(parent.func, ast.Name)
+            and parent.func.id == "range"
+        ):
+            return "range()"
+        if isinstance(parent, ast.Subscript) and node is parent.slice:
+            return "an index"
+        if isinstance(parent, ast.Compare):
+            in_comparison = True
+        if isinstance(parent, ast.While) and node is parent.test:
+            return "a loop condition" if in_comparison else None
+        if isinstance(parent, ast.stmt):
+            return None
+        node = parent
+    return None
+
+
+def _degenerate(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> set[int]:
+    parent = parents.get(node)
+    if isinstance(parent, ast.BinOp):
+        if isinstance(parent.op, ast.Add | ast.Sub):
+            return {0}
+        return {0, 1}
+    if isinstance(parent, ast.UnaryOp):
+        return {0}
+    return set()
 
 
 def make_distractors(blocks: list[Block], count: int, rng: random.Random) -> list[Block]:
@@ -209,7 +331,7 @@ def make_distractors(blocks: list[Block], count: int, rng: random.Random) -> lis
         if text in real or text in seen:
             continue
         seen.add(text)
-        made.append(Block(text, block.indent, -1, distractor=True))
+        made.append(Block(text, block.indent, -1, distractor=True, kind=result[1]))
     return made
 
 

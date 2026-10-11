@@ -79,9 +79,9 @@ def build_document(
         )
         key.add(
             TableBlock(
-                ("Block", "Distractor", "Looks like"),
+                ("Block", "Distractor", "Looks like", "What is wrong"),
                 tuple(
-                    (str(n), b.lines[0], _closest(b, problem))
+                    (str(n), b.lines[0], _closest(b, problem), b.kind)
                     for n, b in problem.numbered()
                     if b.distractor
                 ),

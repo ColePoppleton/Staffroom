@@ -7,8 +7,13 @@ with optional distractors, and a key.
 
 - **Split at** statement (compound headers and their bodies become separate
   blocks, so structure is rebuilt too) or line.
-- **Distractors** are real lines with a colon removed, a comparison flipped
-  or a number off by one. The key says which blocks to leave out.
+- **Distractors** are real lines with one mistake a pupil can spot from the
+  sheet: a colon removed, a comparison flipped, or a number off by one in a
+  `range()`, an index or a `while` condition. Data is never changed: list
+  values, a variable's starting value and the number in an `if` stay as
+  written, and no distractor adds `+ 0`. A program with none of these gets
+  fewer distractors than asked for. The key says which blocks to leave out
+  and what is wrong with each.
 - **Show indentation** off makes pupils decide the indents.
 - The sheet prints the blocks as numbered cut-out boxes, two across, with
   dashed cut lines and an answer grid underneath; a 15-block problem fits on
