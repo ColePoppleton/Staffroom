@@ -65,6 +65,9 @@ class GeneralSettings:
     # Updates card compare HEAD with origin/<release_branch>, whatever branch
     # the checkout is on.
     release_branch: str = "main"
+    # An installed copy asks GitHub for the newest release when it opens, at
+    # most once a day (Settings > Updates, #11). *Check again* asks anyway.
+    check_for_releases: bool = True
     # Folders and files under the resources root the library must not index or
     # list: names (any depth, * and ? allowed) or paths from the root.
     library_exclude: list[str] = field(default_factory=list)

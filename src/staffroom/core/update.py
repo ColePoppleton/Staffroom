@@ -14,16 +14,31 @@ Only this project's own checkout is ever updated. Unless a test passes
 ``repo`` explicitly, :func:`status` and :func:`apply` first ask
 :func:`staffroom.core.install.detect`; an installed copy (``uv tool
 install``, a wheel, a bundle) gets one plain line on how to update it and
-**no git command runs at all** (#9)."""
+**no git command runs at all** (#9).
+
+An installed copy learns about releases another way (#11):
+:func:`check_latest_release` asks GitHub's public Releases API for the
+newest release, over HTTPS with a short timeout, no token and nothing about
+the teacher. The launcher asks when the teacher presses *Check again*, and at
+start at most once a day while ``check_for_releases`` is on; the last answer
+is kept in ``release-check.json`` beside ``config.toml`` so the card and the
+sidebar footer can show it without asking again. It never runs git and never
+installs anything: the card shows the one command to paste."""
 
 from __future__ import annotations
 
+import json
+import re
 import subprocess
-from collections.abc import Sequence
+import urllib.request
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
-from staffroom.core import install
+from staffroom.core import install, paths
+from staffroom.core.atomic import atomic_write_text
 from staffroom.core.log import get_logger
 
 log = get_logger(__name__)
@@ -271,3 +286,223 @@ def _find_uv() -> str | None:
         if candidate.exists():
             return str(candidate)
     return None
+
+
+# -- releases, for an installed copy (#11) ------------------------------------
+
+#: The one address the release check asks. Public, read-only, no token.
+RELEASES_API = "https://api.github.com/repos/ColePoppleton/Staffroom/releases/latest"
+RELEASES_PAGE = "https://github.com/ColePoppleton/Staffroom/releases"
+RELEASE_TIMEOUT = 5.0  # seconds; a slow school network gives up quickly
+CHECK_EVERY = timedelta(days=1)  # the start check asks at most this often
+MAX_RESPONSE = 1_000_000  # bytes read from the answer; a release is a few KB
+RELEASE_CACHE = "release-check.json"
+UNREACHABLE = "Could not reach GitHub, so Staffroom cannot tell whether a newer release is out."
+UNREADABLE = (
+    "GitHub's answer could not be read, so Staffroom cannot tell whether a newer release is out."
+)
+
+#: ``fetch(url, timeout) -> body``. The real one is :func:`https_get`; tests
+#: pass a fake so no test touches the network.
+Fetch = Callable[[str, float], bytes]
+
+
+@dataclass(frozen=True)
+class Release:
+    version: str  # "0.9.0", from the tag "v0.9.0"
+    url: str  # the release's page on GitHub
+    published: str = ""  # ISO date, "2026-10-14"; "" when GitHub gave none
+    notes: str = ""  # the release notes, Markdown
+
+
+@dataclass(frozen=True)
+class ReleaseCheck:
+    """One answer from the release check: the newest release, or the plain
+    sentence saying why there is none. Never "up to date" after a failure."""
+
+    checked_at: datetime  # when it asked, UTC
+    release: Release | None = None
+    error: str = ""
+
+    @property
+    def ok(self) -> bool:
+        return self.release is not None and not self.error
+
+    def newer_than(self, running: str) -> bool | None:
+        """True when the newest release is ahead of ``running``, False when
+        it is not, None when the check failed (nothing is claimed)."""
+        if not self.ok or self.release is None:
+            return None
+        newest, here = version_key(self.release.version), version_key(running)
+        if newest is None or here is None:
+            return None
+        return newest > here
+
+    def to_json(self) -> dict[str, Any]:
+        data: dict[str, Any] = {"checked_at": self.checked_at.isoformat()}
+        if self.release is not None:
+            data["release"] = {
+                "version": self.release.version,
+                "url": self.release.url,
+                "published": self.release.published,
+                "notes": self.release.notes,
+            }
+        if self.error:
+            data["error"] = self.error
+        return data
+
+    @classmethod
+    def from_json(cls, data: object) -> ReleaseCheck | None:
+        if not isinstance(data, dict):
+            return None
+        try:
+            checked = datetime.fromisoformat(str(data["checked_at"]))
+        except (KeyError, ValueError):
+            return None
+        if checked.tzinfo is None:
+            checked = checked.replace(tzinfo=UTC)
+        raw = data.get("release")
+        release = None
+        if isinstance(raw, dict) and isinstance(raw.get("version"), str):
+            release = Release(
+                version=raw["version"],
+                url=str(raw.get("url") or RELEASES_PAGE),
+                published=str(raw.get("published") or ""),
+                notes=str(raw.get("notes") or ""),
+            )
+        error = str(data.get("error") or "")
+        if release is None and not error:
+            return None
+        return cls(checked, release, error)
+
+
+def version_key(text: str) -> tuple[int, int, int] | None:
+    """``"0.9.0"`` or ``"v0.9.0"`` as a comparable tuple; None for anything
+    that is not a plain release number (a pre-release, a commit)."""
+    m = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", text.strip())
+    return (int(m[1]), int(m[2]), int(m[3])) if m else None
+
+
+def https_get(url: str, timeout: float) -> bytes:
+    """GET ``url`` (HTTPS only) and return the body. Sends GitHub's Accept
+    header and a bare ``Staffroom`` user agent (GitHub requires one); no
+    token, cookie or anything about the teacher."""
+    if not url.startswith("https://"):
+        raise ValueError(f"refusing a non-HTTPS URL: {url}")
+    request = urllib.request.Request(
+        url, headers={"Accept": "application/vnd.github+json", "User-Agent": "Staffroom"}
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        body: bytes = response.read(MAX_RESPONSE)
+    return body
+
+
+def check_latest_release(
+    fetch: Fetch | None = None, *, now: datetime | None = None
+) -> ReleaseCheck:
+    """Ask GitHub for the newest published release. Never raises and never
+    runs git: any failure is a :class:`ReleaseCheck` with one plain sentence."""
+    when = now or datetime.now(UTC)
+    try:
+        body = (fetch or https_get)(RELEASES_API, RELEASE_TIMEOUT)
+    except (OSError, ValueError, TimeoutError) as exc:  # URLError and HTTPError are OSErrors
+        log.info("release check failed: %s", exc)
+        return ReleaseCheck(when, error=UNREACHABLE)
+    release = _parse_release(body)
+    if release is None:
+        log.info("release check: an answer without a release version")
+        return ReleaseCheck(when, error=UNREADABLE)
+    log.info("release check: newest release %s", release.version)
+    return ReleaseCheck(when, release)
+
+
+def _parse_release(body: bytes) -> Release | None:
+    try:
+        data = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("draft") or data.get("prerelease"):
+        return None
+    tag = data.get("tag_name")
+    if not isinstance(tag, str) or version_key(tag) is None:
+        return None
+    url = data.get("html_url")
+    if not isinstance(url, str) or not url.startswith("https://github.com/"):
+        url = f"{RELEASES_PAGE}/tag/{tag}"
+    published = str(data.get("published_at") or "")[:10]
+    return Release(tag.lstrip("v"), url, published, str(data.get("body") or ""))
+
+
+def notes_for_display(markdown: str) -> str:
+    """Release notes as the card shows them: images and HTML comments
+    dropped (the card never fetches anything, so a picture would be a broken
+    box), and an empty body said plainly."""
+    text = re.sub(r"<!--.*?-->", "", markdown, flags=re.S)
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text)
+    text = re.sub(r"<img\b[^>]*>", "", text, flags=re.I)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    return text or "This release has no notes."
+
+
+def release_cache_file() -> Path:
+    return paths.home_dir() / RELEASE_CACHE
+
+
+def load_release_check(path: Path | None = None) -> ReleaseCheck | None:
+    """The last answer kept on disk, or None when there is none (or it is
+    unreadable)."""
+    try:
+        data = json.loads((path or release_cache_file()).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return ReleaseCheck.from_json(data)
+
+
+def save_release_check(check: ReleaseCheck, path: Path | None = None) -> bool:
+    """Keep ``check`` for the next start. False when it could not be written
+    (a read-only home); the answer still shows for this session."""
+    target = path or release_cache_file()
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(target, json.dumps(check.to_json(), indent=2) + "\n")
+    except OSError as exc:
+        log.warning("could not keep the release check in %s: %s", target, exc)
+        return False
+    return True
+
+
+def release_check_due(last: ReleaseCheck | None, now: datetime | None = None) -> bool:
+    """Whether the start check should ask again: never asked, or the last
+    ask (successful or not) was at least :data:`CHECK_EVERY` ago. A clock
+    that went backwards counts as due."""
+    if last is None:
+        return True
+    elapsed = (now or datetime.now(UTC)) - last.checked_at
+    return elapsed >= CHECK_EVERY or elapsed < timedelta(0)
+
+
+def release_date_text(iso: str) -> str:
+    """``"2026-10-14"`` as the card prints it, ``"14 Oct 2026"``; ``""`` when
+    there is no usable date."""
+    try:
+        day = datetime.fromisoformat(iso[:10]).date()
+    except ValueError:
+        return ""
+    return f"{day.day} {day:%b %Y}"
+
+
+def age_text(then: datetime, now: datetime | None = None) -> str:
+    """How long ago ``then`` was, in words: *just now*, *5 minutes ago*,
+    *3 hours ago*, *yesterday*, *on 14 Oct 2026*."""
+    seconds = ((now or datetime.now(UTC)) - then).total_seconds()
+    if seconds < 60:
+        return "just now"
+    minutes = int(seconds // 60)
+    if minutes < 60:
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    if hours < 48:
+        return "yesterday"
+    return f"on {release_date_text(then.date().isoformat())}"

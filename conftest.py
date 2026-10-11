@@ -23,6 +23,19 @@ def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[P
     yield home
 
 
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test reaches GitHub: the release check (#11) gets a transport that
+    fails like an unreachable network. Tests that want an answer patch
+    ``staffroom.core.update.https_get`` with a fake of their own."""
+    from staffroom.core import update
+
+    def offline(url: str, timeout: float) -> bytes:
+        raise OSError(f"network disabled in tests: {url}")
+
+    monkeypatch.setattr(update, "https_get", offline)
+
+
 @pytest.fixture
 def example_marks() -> Path:
     return EXAMPLES / "marks_10x.csv"

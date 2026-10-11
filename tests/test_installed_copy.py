@@ -137,6 +137,45 @@ def test_uv_tool_outside_any_repository_is_installed(tmp_path: Path) -> None:
     assert install.detect(package).kind is InstallKind.UV_TOOL
 
 
+GH = "https://github.com/ColePoppleton/Staffroom"
+
+
+@pytest.mark.parametrize(
+    ("requirement", "tracks_main"),
+    [
+        (f'{{ name = "staffroom", git = "{GH}?rev=main" }}', True),  # the line since #11
+        (f'{{ name = "staffroom", git = "{GH}" }}', True),  # no revision: the default branch
+        ('{ name = "staffroom" }', True),  # unfamiliar: show the short command
+        (f'{{ name = "staffroom", git = "{GH}?rev=v0.8.1" }}', False),  # the line before #11
+        ('{ name = "staffroom", path = "/Users/x/staffroom-0.8.1-py3-none-any.whl" }', False),
+    ],
+)
+def test_the_update_command_follows_how_uv_installed_it(
+    tmp_path: Path, requirement: str, tracks_main: bool
+) -> None:
+    """``uv tool upgrade`` only moves a tool installed from ``main``; uv
+    answers *Nothing to upgrade* for a tag or a wheel. Read from the receipt
+    uv writes (``[tool] requirements``), never from git."""
+    package = uv_tool_package(tmp_path / "tools")
+    (tmp_path / "tools" / "staffroom" / "uv-receipt.toml").write_text(
+        f"[tool]\nrequirements = [{requirement}]\n"
+    )
+    here = install.detect(package)
+    assert here.kind is InstallKind.UV_TOOL and here.tracks_main is tracks_main
+    if tracks_main:
+        assert here.update_command == "uv tool upgrade staffroom"
+    else:
+        assert here.update_command == install.INSTALL_LINE
+        assert install.INSTALL_LINE.endswith("Staffroom@main")
+        assert "fixed release" in here.update_hint() and install.INSTALL_LINE in here.update_hint()
+
+
+def test_an_unreadable_receipt_shows_the_short_command(tmp_path: Path) -> None:
+    package = uv_tool_package(tmp_path / "tools")
+    (tmp_path / "tools" / "staffroom" / "uv-receipt.toml").write_text("[tool\n")
+    assert install.detect(package).update_command == "uv tool upgrade staffroom"
+
+
 def test_other_installs_are_not_checkouts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     venv_pkg = tmp_path / "venv" / "lib" / "python3.12" / "site-packages" / "staffroom"
     venv_pkg.mkdir(parents=True)
