@@ -60,7 +60,7 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(1) from None
         table = result.tables["key"]
         for row in table.rows:
-            typer.echo(f"  v{row[0]}  line {row[1]:<3} {row[2]:<28} {row[5]}")
+            typer.echo(f"  v{row[0]}  line {row[1]:<3} {row[2]:<32} {row[5]}")
         if preview:
             typer.echo(result.texts["preview"])
         typer.echo(result.summary)

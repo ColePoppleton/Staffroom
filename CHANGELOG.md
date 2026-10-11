@@ -51,6 +51,19 @@ with every change; `just release <part>` turns it into a version.
   today's folder.
 
 ### Fixed
+- Bugs: a *wrong variable name* bug now swaps in a name a pupil might really
+  type (#127): one of the same apparent kind (number, string, list…) that is
+  already assigned in the same scope, the most recently assigned first, instead
+  of always the program's first name. In `examples/year9.py` that was the list
+  `scores`, so seven of the eight wrong-name bugs were TypeErrors; now seven run
+  with the wrong output (`if count >= 50:`), and only `for score in score:`
+  crashes. Still deterministic, so a seed gives the same sheet.
+- Bugs: the key shows an indentation slip (#130). Its two lines used to read the
+  same (`count = count + 1` twice) because the key trimmed the indent; now each
+  space of indentation shows as `·` when the indent is what changed, and the
+  *Bug* cell says how far it moved (*indentation slip (4 spaces to 0)*), in the
+  PDF, docx and text key and the panel's *What each bug does* table. The printed
+  key adds a one-line legend for the dots.
 - Bugs aims for a mix of outcomes (#118): at the defaults all four `year9.py`
   versions crashed, two of them with SyntaxErrors. With two or more versions the
   sheet now includes a *runs, but the output is wrong* bug when the program has

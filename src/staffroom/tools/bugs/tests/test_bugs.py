@@ -92,7 +92,8 @@ def test_plugin_runs_variants_and_classifies(tmp_path: Path) -> None:
         diff = logic.one_line_diff(PROGRAM, (tmp_path / f"pasted_code_bug{row[0]}.py").read_text())
         assert diff is not None
         line_no, old, new = diff
-        assert (line_no, old.strip(), new.strip()) == (row[1], row[3], row[4])
+        shown = logic.key_lines(logic.Mutation("off_by_one", line_no, old, new, ""))
+        assert (line_no, *shown) == (row[1], row[3], row[4])
 
 
 def test_cli(tmp_path: Path) -> None:
@@ -386,3 +387,103 @@ def test_outcome_kind_names_compile_errors_and_hangs() -> None:
         broken = RunOutcome(stderr=f"{name}: invalid syntax", returncode=1)
         assert outcome_kind(ok, broken) == "syntax_error"
     assert outcome_kind(ok, RunOutcome(stderr="TypeError: no", returncode=1)) == "crash"
+
+
+# ---------------------------------------------------------------- #127: a plausible wrong name
+def _swaps(source: str) -> dict[tuple[int, str], str]:
+    """(line, original name) -> the name the wrong_variable bug puts in."""
+    found = {}
+    for m in logic.candidates(source):
+        if m.kind == "wrong_variable":
+            gone, came = m.note.split(" replaced by ") if "replaced" in m.note else (None, None)
+            if gone and came:
+                found[(m.line, gone)] = came
+    return found
+
+
+def test_wrong_variable_uses_a_name_of_the_same_kind() -> None:
+    """The audit's failure (#127): every swap in year9.py brought in the
+    list ``scores``, so ``if scores >= 50:`` crashed. Now a number stands in
+    for a number, the one most recently assigned before the line."""
+    swaps = _swaps(YEAR9.read_text())
+    assert swaps[(9, "average")] == "count"  # if count >= 50:
+    assert swaps[(6, "total")] == "score"  # total = score + score
+    assert swaps[(6, "score")] == "count"
+    assert swaps[(8, "total")] == "count" and swaps[(8, "count")] == "total"
+    numbers = {"total", "count", "average", "score"}
+    assert all(came in numbers for (_, gone), came in swaps.items() if gone in numbers)
+    assert logic.candidates(YEAR9.read_text()) == logic.candidates(YEAR9.read_text())
+
+
+def test_wrong_variable_stand_in_is_in_scope_and_already_assigned() -> None:
+    source = (
+        'name = input("Name? ")\n'
+        'greeting = "Hello"\n'
+        "def area(width, height):\n"
+        "    side = width\n"
+        "    return side * height\n"
+        "size = area(2, 3)\n"
+        "later = 4\n"
+        "print(greeting, name, size, later)\n"
+    )
+    swaps = _swaps(source)
+    assert swaps[(8, "greeting")] == "name" and swaps[(8, "name")] == "greeting"  # strings
+    assert swaps[(5, "side")] in {"width", "height"}  # the function's own names
+    assert swaps[(8, "size")] == "later"  # a number, assigned before line 8
+    assert all(
+        came not in {"width", "height", "side"} for (line, _), came in swaps.items() if line > 5
+    )
+
+
+def test_year9_wrong_variable_bugs_mostly_change_the_output(
+    year9_outcomes: dict[logic.Mutation, logic.Outcome],
+) -> None:
+    """Before #127 seven of the eight year9 wrong-name bugs were TypeErrors."""
+    wrong_names = {m: o for m, o in year9_outcomes.items() if m.kind == "wrong_variable"}
+    assert len(wrong_names) >= 6
+    crashes = [m for m, o in wrong_names.items() if o == "crash"]
+    assert len(crashes) <= 1, crashes  # only `for score in score:`, a NameError
+    assert sum(o == "wrong_output" for o in wrong_names.values()) >= len(wrong_names) - 1
+
+
+# ---------------------------------------------------------------- #130: indentation in the key
+def test_key_lines_show_indentation_only_when_it_changed() -> None:
+    slip = logic.Mutation("indentation_slip", 7, "    count = count + 1", "count = count + 1", "")
+    assert logic.key_lines(slip) == ("····count = count + 1", "count = count + 1")
+    tab = logic.Mutation("indentation_slip", 2, "\t\tx = 1", "\tx = 1", "")
+    assert logic.key_lines(tab) == ("»»x = 1", "»x = 1")
+    flip = logic.Mutation("comparison_flip", 9, "    if a > 1:", "    if a >= 1:", "")
+    assert logic.key_lines(flip) == ("if a > 1:", "if a >= 1:")
+    assert logic.key_label(slip) == "indentation slip (4 spaces to 0)"
+    assert logic.key_label(flip) == "comparison flipped"
+
+
+def test_year9_seed1_key_shows_the_indentation_slip(tmp_path: Path) -> None:
+    """The audit's failure (#130): at seed 1 the indentation bug's key row read
+    ``count = count + 1`` twice. Every key now shows the indentation."""
+    from docx import Document as Docx
+
+    result, _, _ = _run(tmp_path, Options(seed=1, formats="both"))
+    slips = [row for row in result.tables["key"].rows if "indentation" in str(row[2])]
+    assert len(slips) == 1
+    _, line, bug, old, new, _ = slips[0]
+    assert bug == "indentation slip (4 spaces to 0)"
+    assert line == 7 and (old, new) == ("····count = count + 1", "count = count + 1")
+    assert old != new and str(old).replace("·", "") == new  # differ only in the visible indent
+
+    text = result.texts["preview"]
+    assert "····count = count + 1" in text and logic.INDENT_LEGEND in text
+    pdf = " ".join(p.extract_text() for p in PdfReader(str(tmp_path / "year9_bugs_key.pdf")).pages)
+    pdf = " ".join(pdf.split())  # the narrow PDF cells wrap
+    assert "····count = count + 1 count = count + 1" in pdf and logic.INDENT_LEGEND in pdf
+    assert "(4 spaces to 0)" in pdf
+    cells = [c.text for t in Docx(str(tmp_path / "year9_bugs_key.docx")).tables for c in t._cells]
+    assert "····count = count + 1" in cells and "count = count + 1" in cells
+    assert "indentation slip (4 spaces to 0)" in cells
+
+
+def test_key_without_an_indentation_bug_has_no_legend() -> None:
+    source = YEAR9.read_text()
+    variants = logic.make_variants(source, Options(count=2, seed=1, indentation_slip=False))
+    text = to_text(build_document("year9", source, variants))
+    assert "·" not in text.split("ANSWER KEY")[1] and logic.INDENT_LEGEND not in text

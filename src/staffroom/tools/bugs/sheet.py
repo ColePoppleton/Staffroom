@@ -6,7 +6,7 @@ from datetime import date
 
 from staffroom.core.codeinput import numbered_listing
 from staffroom.core.export import Code, Document, PageBreak, Paragraph, TableBlock, sheet_date
-from staffroom.tools.bugs.logic import Variant
+from staffroom.tools.bugs.logic import INDENT_LEGEND, Variant, key_label, key_lines, shows_indent
 
 PER_PAGE = 2  # variants per printed page; a page break only between pairs
 SILENT_HINT = "this version may run the same: read the code"
@@ -54,22 +54,18 @@ def build_document(
         )
 
     key = doc.section("Answer key", answers=True)
+    lines = [key_lines(v.mutation) for v in variants]
     key.add(
         TableBlock(
             ("Version", "Line", "Bug", "Original", "Changed to", "What happens"),
             tuple(
-                (
-                    str(v.number),
-                    str(v.mutation.line),
-                    v.mutation.label,
-                    v.mutation.original.strip(),
-                    v.mutation.mutated.strip(),
-                    v.outcome,
-                )
-                for v in variants
+                (str(v.number), str(v.mutation.line), key_label(v.mutation), old, new, v.outcome)
+                for v, (old, new) in zip(variants, lines, strict=True)
             ),
             monospace=True,
         )
     )
+    if shows_indent(lines):
+        key.add(Paragraph(INDENT_LEGEND, style="muted"))
     key.add(Code(numbered_listing(source), caption="Original program"))
     return doc

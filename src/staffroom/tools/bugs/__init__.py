@@ -201,9 +201,8 @@ class BugsPlugin:
                 [
                     v.number,
                     v.mutation.line,
-                    v.mutation.label,
-                    v.mutation.original.strip(),
-                    v.mutation.mutated.strip(),
+                    logic.key_label(v.mutation),
+                    *logic.key_lines(v.mutation),
                     v.outcome,
                 ]
                 for v in variants

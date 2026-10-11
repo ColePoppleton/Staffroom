@@ -14,6 +14,19 @@ Each variant differs from the original by exactly one line, and the key says
 *crashes: SyntaxError*, *runs, but the output is wrong*, *hangs*, or
 *silent: no visible change*.
 
+A *wrong variable name* bug swaps in a name a pupil might really type: one
+that already holds the same sort of value (a number for a number, a string
+for a string) and is assigned earlier in the same function or program, the
+most recently assigned first. So `if average >= 50:` becomes
+`if count >= 50:`, which runs with the wrong answer, rather than
+`if scores >= 50:`, which only crashes. With nothing like it in scope the
+name is misspelt instead (`scores` → `score`).
+
+The key's *Original* and *Changed to* columns trim each line's indentation,
+except where the indentation is the bug: there each space shows as `·`
+(`····count = count + 1` → `count = count + 1`) and the *Bug* column says how
+far it moved, *indentation slip (4 spaces to 0)*.
+
 A bug that leaves the program running exactly as before cannot be found by
 running it, so by default the tool runs each candidate while choosing and
 skips silent ones for the next bug in the seed's order. *Silent bugs
