@@ -14,6 +14,13 @@ with every change; `just release <part>` turns it into a version.
   off, and `SECURITY.md` says how to report a privacy problem privately (#15).
 
 ### Changed
+- The README, the repository's front page on GitHub, is written for a teacher: what
+  Staffroom makes in one paragraph, the Marks report and four real first pages, the whole
+  install (uv's line and Staffroom's) with the update command, what it does with your data
+  in two sentences linked to the Privacy page, the tools grouped as in the sidebar, and
+  contributing in two lines ("please never attach a real marks file"). The developer
+  commands now live only in the contributing guide; a test keeps the README's pictures,
+  privacy wording and links in step with the docs site (#13).
 - Settings › Updates for an installed copy shows the version you have, the newest release
   with its date and *What changed* (the release notes, and a link to the release), and the
   one command to update, `uv tool upgrade staffroom`, with a *Copy* button; the sidebar
