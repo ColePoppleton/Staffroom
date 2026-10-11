@@ -368,7 +368,9 @@ def test_built_wheel_installed_inside_a_repository_leaves_it_alone(tmp_path: Pat
             check=False,
         )
         assert result.returncode == 0, result.stderr
-        assert "uv tool upgrade staffroom" in result.stdout, result.stdout
+        # Installed from a wheel file, uv cannot upgrade it in place: the one
+        # command is the @main install line, read from uv's real receipt (#11).
+        assert install.INSTALL_LINE in result.stdout, result.stdout
         assert "Traceback" not in result.stderr
     assert git("rev-parse", "HEAD", cwd=home) == head
     assert git("reflog", cwd=home) == reflog
