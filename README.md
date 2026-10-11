@@ -6,13 +6,15 @@ sidebar; each tool is a plugin that owns its logic and a declarative panel.
 ## Install
 
 Staffroom is not on PyPI. Install the latest release straight from GitHub with
-[uv](https://docs.astral.sh/uv/), then start the launcher:
+[uv](https://docs.astral.sh/uv/) (`main` is the released branch), then start the launcher:
 
-    uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.1
+    uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main
     staffroom
 
-No GitHub account is needed. See [Install](https://colepoppleton.github.io/Staffroom/guide/install/)
-for the details and the alternatives.
+No GitHub account is needed. To update later, quit Staffroom and run
+`uv tool upgrade staffroom`; Settings › Updates says when a new release is out. See
+[Install](https://colepoppleton.github.io/Staffroom/guide/install/) for the details and the
+alternatives.
 
 ## Develop
 
@@ -28,7 +30,7 @@ Sheets & quizzes, From a program, After a test), with the **Library** first
 externally and are never parsed).
 
 `just install` puts a thin launcher in /Applications that runs this checkout;
-`staff update` (or Settings › Update now) pulls the latest code. Shortcuts: ⌘K
+in a checkout, `staff update` (or Settings › Update now) pulls the latest release. Shortcuts: ⌘K
 library search, ⌘O open for class, ⌘1–9 tools in sidebar order, ⌘L log,
 ⇧⌘L theme, ⌘, settings.
 

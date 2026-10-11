@@ -2,6 +2,9 @@ name: Install line
 
 # Runs the install command the docs home page tells colleagues to use (#80),
 # so a wrong or unpublished install line fails here instead of on a teacher's Mac.
+# Since #11 that line installs from @main (the released branch), so
+# `uv tool upgrade staffroom` is the one-command update; the job installs
+# what main holds on GitHub, not this commit (the wheel job tests this commit).
 # The tests (tests/test_install_docs.py) separately refuse a PyPI-only line.
 # An installed copy must never run git in a repository that happens to enclose
 # its tool folder (#9): both jobs install inside a throwaway git repository
@@ -46,7 +49,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          pattern='^uv tool install --python 3\.12 git\+https://github\.com/ColePoppleton/Staffroom@v[0-9]+\.[0-9]+\.[0-9]+$'
+          pattern='^uv tool install --python 3\.12 git\+https://github\.com/ColePoppleton/Staffroom@main$'
           line=$(grep -m1 -E "$pattern" docs/index.md) || {
             echo "docs/index.md has no line matching: $pattern"; exit 1; }
           echo "Running: $line"
@@ -70,6 +73,8 @@ jobs:
           eval "$line"
           "$UV_TOOL_BIN_DIR/staff" version
           "$UV_TOOL_BIN_DIR/staff" update --check
+          # The one-command update the Updates card shows must run on this install.
+          uv tool upgrade staffroom
           test "$(git -C "$home" rev-parse HEAD)" = "$head"
           test "$(git -C "$home" reflog)" = "$reflog"
 
