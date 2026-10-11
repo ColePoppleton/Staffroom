@@ -22,6 +22,13 @@ discussion; each one is marked on the pupil sheet *this version may run
 the same: read the code*. The seed is printed in the sheet's header, and
 the same seed gives the same versions.
 
+The tool also aims for a mix of outcomes. With two or more versions, at
+least one *runs, but the output is wrong* (the most useful kind to hunt
+for) when the program has such a bug, and at most one stops with a
+*SyntaxError* before it starts; a further SyntaxError is used only when
+nothing else is left to make up the number. A program that cannot offer
+the mix still gets its sheet, and a warning says what is missing.
+
 The sheet puts two versions on each page, each with its *Line / What is
 wrong / What happens* line underneath, so four versions print on two pages.
 

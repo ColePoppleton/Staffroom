@@ -262,23 +262,40 @@ def _bump(lines: list[str], const: ast.Constant, where: str) -> Mutation:
 
 
 # ---------------------------------------------------------------- choosing and applying
+# What a variant does when it runs, as the caller's sandbox run found it.
+# "syntax_error" covers every error Python reports before the program starts
+# (SyntaxError, IndentationError, TabError).
+Outcome = Literal["wrong_output", "crash", "syntax_error", "hang", "silent"]
+SYNTAX_ERRORS_PER_SHEET = 1  # more only when nothing else makes up the count
+
+
 def choose(
     source: str,
     count: int,
     kinds: list[Kind],
     seed: int,
-    changes_behaviour: Callable[[Mutation], bool] | None = None,
+    outcome_of: Callable[[Mutation], Outcome | bool] | None = None,
     silent: int = 0,
 ) -> list[Mutation]:
     """Pick up to ``count`` mutations of the enabled kinds, spreading across
-    kinds and lines, deterministically for a seed.
+    kinds and lines and aiming for a mix of outcomes, deterministically for a
+    seed.
 
-    ``changes_behaviour`` (supplied by the caller, which runs the variant in
-    the sandbox) says whether a mutation is visible when the program runs.
-    Candidates are tried in the seed's order; a silent one is taken only
-    while fewer than ``silent`` have been kept, otherwise the next candidate
-    is tried instead. Without the callback every candidate counts as visible.
-    Fewer than ``count`` come back when the candidates run out."""
+    ``outcome_of`` (supplied by the caller, which runs the variant in the
+    sandbox) says what a mutation does when the program runs. It may answer
+    with a bare bool (True: visible, False: silent) when only silence
+    matters; then no mix is aimed for. Candidates are tried in the seed's
+    order and each is judged at most once:
+
+    * a silent one is taken only while fewer than ``silent`` have been kept;
+    * a second SyntaxError is held back, and used only if nothing else is
+      left to make up the count;
+    * with two or more variants and no wrong-output bug among them, the
+      first wrong-output candidate in the seed's order replaces the last of
+      the most common outcome (never a kept silent one).
+
+    Without the callback every candidate counts as visible. Fewer than
+    ``count`` come back when the candidates run out."""
     rng = random.Random(seed)
     pool = [m for m in candidates(source) if m.kind in kinds]
     rng.shuffle(pool)
@@ -286,21 +303,33 @@ def choose(
     rng.shuffle(kind_order)
     chosen: list[Mutation] = []
     used_lines: set[int] = set()
-    verdicts: dict[Mutation, bool] = {}
+    verdicts: dict[Mutation, Outcome | None] = {}  # None: visible, outcome unknown
+    held_back: list[Mutation] = []  # SyntaxErrors past the per-sheet allowance
     silent_left = silent
+
+    def verdict(m: Mutation) -> Outcome | None:
+        if outcome_of is None:
+            return None
+        if m not in verdicts:
+            said = outcome_of(m)
+            verdicts[m] = (None if said else "silent") if isinstance(said, bool) else said
+        return verdicts[m]
 
     def accept(m: Mutation) -> bool:
         nonlocal silent_left
-        if changes_behaviour is None:
-            return True
-        if m not in verdicts:
-            verdicts[m] = changes_behaviour(m)
-        if verdicts[m]:
-            return True
-        if silent_left > 0:
-            silent_left -= 1
-            return True
-        return False
+        v = verdict(m)
+        if v == "silent":
+            if silent_left > 0:
+                silent_left -= 1
+                return True
+            return False
+        if v == "syntax_error":
+            syntax = sum(verdicts.get(c) == "syntax_error" for c in chosen)
+            if syntax >= SYNTAX_ERRORS_PER_SHEET:
+                if m not in held_back:
+                    held_back.append(m)
+                return False
+        return True
 
     # One per kind first, on a fresh line where possible; then fill up.
     for kind in kind_order:
@@ -317,7 +346,45 @@ def choose(
             break
         if m not in chosen and accept(m):
             chosen.append(m)
+            used_lines.add(m.line)
+    # Extra SyntaxErrors only to make up the count.
+    for m in held_back:
+        if len(chosen) >= count:
+            break
+        chosen.append(m)
+        used_lines.add(m.line)
+
+    # At least one "runs, but the output is wrong" when the program has one.
+    if (
+        count >= 2
+        and len(chosen) >= 2
+        and _knows_outcomes(chosen, verdicts)
+        and not any(verdicts[c] == "wrong_output" for c in chosen)
+    ):
+        victim = _give_way(chosen, verdicts)
+        rest = [m for m in pool if m not in chosen] if victim is not None else []
+        fresh_first = sorted(rest, key=lambda m: m.line in used_lines)  # stable
+        wrong = next((m for m in fresh_first if verdict(m) == "wrong_output"), None)
+        if wrong is not None and victim is not None:
+            chosen[victim] = wrong
     return chosen
+
+
+def _knows_outcomes(chosen: list[Mutation], verdicts: dict[Mutation, Outcome | None]) -> bool:
+    """True when the caller judged outcomes, not just silence."""
+    return all(verdicts.get(c) is not None for c in chosen)
+
+
+def _give_way(chosen: list[Mutation], verdicts: dict[Mutation, Outcome | None]) -> int | None:
+    """Index of the variant to swap for a wrong-output one: the last of the
+    most common outcome. Kept silent ones were asked for, so never them."""
+    tally: dict[Outcome | None, int] = {}
+    for c in chosen:
+        tally[verdicts[c]] = tally.get(verdicts[c], 0) + 1
+    swappable = [i for i, c in enumerate(chosen) if verdicts[c] != "silent"]
+    if not swappable:
+        return None
+    return max(reversed(swappable), key=lambda i: tally[verdicts[chosen[i]]])
 
 
 def apply(source: str, mutation: Mutation) -> str:
@@ -332,11 +399,11 @@ def apply(source: str, mutation: Mutation) -> str:
 def make_variants(
     source: str,
     options: Options,
-    changes_behaviour: Callable[[Mutation], bool] | None = None,
+    outcome_of: Callable[[Mutation], Outcome | bool] | None = None,
 ) -> list[Variant]:
-    """The variants for ``options``; see :func:`choose` for ``changes_behaviour``."""
+    """The variants for ``options``; see :func:`choose` for ``outcome_of``."""
     chosen = choose(
-        source, options.count, options.kinds(), options.seed, changes_behaviour, options.silent
+        source, options.count, options.kinds(), options.seed, outcome_of, options.silent
     )
     return [Variant(i, m, apply(source, m)) for i, m in enumerate(chosen, 1)]
 

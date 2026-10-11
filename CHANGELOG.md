@@ -27,6 +27,12 @@ with every change; `just release <part>` turns it into a version.
   re-rendered once: it still showed the truth tables from before #43.
 
 ### Fixed
+- Bugs aims for a mix of outcomes (#118): at the defaults all four `year9.py`
+  versions crashed, two of them with SyntaxErrors. With two or more versions the
+  sheet now includes a *runs, but the output is wrong* bug when the program has
+  one, and at most one SyntaxError unless nothing else can make up the count;
+  still one bug per version, chosen in the seed's order, so the same seed gives
+  the same sheet. A program that cannot offer the mix gets its sheet and a warning.
 - `just install` updates an installed Staffroom.app in place (overwriting its files,
   removing ones the build no longer has, then re-signing and re-registering it)
   instead of deleting and recopying it, so Spotlight keeps listing the app rather

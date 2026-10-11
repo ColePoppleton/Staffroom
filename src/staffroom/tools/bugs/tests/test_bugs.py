@@ -1,6 +1,7 @@
 """Acceptance: every variant differs from the original by exactly the
 described mutation, and the key says what each one does."""
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,7 @@ from staffroom.core.config import load_config
 from staffroom.core.export import render, to_text
 from staffroom.core.plugin import RunContext, RunResult, ToolError
 from staffroom.core.runner import RunOutcome, run_source
-from staffroom.tools.bugs import classify, logic, plugin, runs_the_same
+from staffroom.tools.bugs import classify, logic, outcome_kind, plugin, runs_the_same
 from staffroom.tools.bugs.logic import KIND_LABELS, Options
 from staffroom.tools.bugs.sheet import build_document
 
@@ -87,12 +88,11 @@ def test_plugin_runs_variants_and_classifies(tmp_path: Path) -> None:
     outcomes = [str(row[5]) for row in result.tables["key"].rows]
     assert any(o.startswith("crashes") for o in outcomes)
     assert any("output is wrong" in o or "no visible change" in o for o in outcomes)
-    for v, row in zip(
-        logic.make_variants(PROGRAM, Options(count=7, seed=3)),
-        result.tables["key"].rows,
-        strict=True,
-    ):
-        assert (tmp_path / f"pasted_code_bug{row[0]}.py").read_text() == v.source
+    for row in result.tables["key"].rows:  # each file is the key's one-line change
+        diff = logic.one_line_diff(PROGRAM, (tmp_path / f"pasted_code_bug{row[0]}.py").read_text())
+        assert diff is not None
+        line_no, old, new = diff
+        assert (line_no, old.strip(), new.strip()) == (row[1], row[3], row[4])
 
 
 def test_cli(tmp_path: Path) -> None:
@@ -267,3 +267,122 @@ def test_same_crash_as_a_crashing_original_is_silent() -> None:
     assert classify(boom, boom).startswith("silent")
     other = RunOutcome(stdout="a\n", stderr="NameError: name 'x' is not defined", returncode=1)
     assert classify(boom, other) == "crashes: NameError"
+
+
+# ---------------------------------------------------------------- #118: a mix of outcomes
+_BY_KIND: dict[str, logic.Outcome] = {
+    "missing_colon": "syntax_error",
+    "missing_bracket": "syntax_error",
+    "indentation_slip": "hang",
+}
+
+
+def _fake_outcomes(wrong: logic.Mutation | None) -> Callable[[logic.Mutation], logic.Outcome]:
+    """Every bug crashes (colons and brackets before the program starts),
+    except ``wrong``, the one bug that runs with the wrong output."""
+
+    def outcome_of(m: logic.Mutation) -> logic.Outcome:
+        if m == wrong:
+            return "wrong_output"
+        return _BY_KIND.get(m.kind, "crash")
+
+    return outcome_of
+
+
+def test_choose_swaps_in_a_wrong_output_bug_and_holds_back_syntax_errors() -> None:
+    every = logic.choose(PROGRAM, 100, list(KIND_LABELS), seed=1)
+    wrong = every[-1]  # the last candidate the seed's order reaches
+    picked = logic.choose(PROGRAM, 4, list(KIND_LABELS), 1, _fake_outcomes(wrong))
+    outcomes = [_fake_outcomes(wrong)(m) for m in picked]
+    assert len(picked) == 4 and wrong in picked
+    assert outcomes.count("syntax_error") <= 1
+    assert logic.choose(PROGRAM, 4, list(KIND_LABELS), 1, _fake_outcomes(wrong)) == picked
+    # One variant has no mix to aim for: the seed's first pick stands.
+    one = logic.choose(PROGRAM, 1, list(KIND_LABELS), 1, _fake_outcomes(wrong))
+    assert one == logic.choose(PROGRAM, 1, list(KIND_LABELS), 1)
+
+
+def test_choose_without_the_mix_still_makes_up_the_count() -> None:
+    """No wrong-output bug anywhere, and only SyntaxErrors in the ticked
+    classes: the count is still met, with as many SyntaxErrors as it takes."""
+    syntax_only = ["missing_colon", "missing_bracket"]
+    picked = logic.choose(PROGRAM, 3, syntax_only, 2, _fake_outcomes(None))  # type: ignore[arg-type]
+    assert len(picked) == 3
+    assert {m.kind for m in picked} <= set(syntax_only)
+    mixed = logic.choose(PROGRAM, 4, list(KIND_LABELS), 2, _fake_outcomes(None))
+    assert len(mixed) == 4
+    assert [_fake_outcomes(None)(m) for m in mixed].count("syntax_error") <= 1
+
+
+def test_choose_never_swaps_out_a_kept_silent_bug() -> None:
+    """Silent bugs the teacher allowed are kept, not traded for the mix."""
+    wrong = logic.choose(PROGRAM, 100, list(KIND_LABELS), seed=1)[-1]
+
+    def silent_but_one(m: logic.Mutation) -> logic.Outcome:
+        return "wrong_output" if m == wrong else "silent"
+
+    picked = logic.choose(PROGRAM, 3, list(KIND_LABELS), 1, silent_but_one, silent=3)
+    assert picked == logic.choose(PROGRAM, 3, list(KIND_LABELS), 1)
+
+
+@pytest.fixture(scope="module")
+def year9_outcomes() -> dict[logic.Mutation, logic.Outcome]:
+    """What every year9.py candidate really does, run once in the sandbox."""
+    source = YEAR9.read_text()
+    original = run_source(source, timeout=logic.TIMEOUT)
+    return {
+        m: outcome_kind(original, run_source(logic.apply(source, m), timeout=logic.TIMEOUT))
+        for m in logic.candidates(source)
+    }
+
+
+@pytest.mark.parametrize("seed", range(1, 11))
+def test_year9_default_sheet_mixes_outcomes(
+    seed: int, year9_outcomes: dict[logic.Mutation, logic.Outcome]
+) -> None:
+    source = YEAR9.read_text()
+    picked = logic.choose(source, 4, list(KIND_LABELS), seed, year9_outcomes.__getitem__)
+    outcomes = [year9_outcomes[m] for m in picked]
+    assert len(picked) == 4
+    assert "wrong_output" in outcomes and "silent" not in outcomes
+    assert outcomes.count("syntax_error") <= 1
+
+
+def test_default_year9_sheet_has_a_wrong_output_bug(tmp_path: Path) -> None:
+    """The audit's failure (#118): at seed 1 all four versions crashed, two
+    of them with SyntaxErrors. Now one runs with the wrong output."""
+    result, logs, warnings = _run(tmp_path, Options(formats="pdf"))
+    outcomes = [str(row[5]) for row in result.tables["key"].rows]
+    assert len(outcomes) == 4
+    assert "runs, but the output is wrong" in outcomes
+    assert sum("SyntaxError" in o for o in outcomes) == 1
+    assert not warnings
+    assert any("already has a SyntaxError" in line for line in logs)
+
+
+def test_says_when_the_program_cannot_offer_the_mix(tmp_path: Path) -> None:
+    syntax_only = Options(
+        count=2,
+        formats="pdf",
+        comparison_flip=False,
+        off_by_one=False,
+        wrong_variable=False,
+        indentation_slip=False,
+        string_int=False,
+    )
+    result, _, warnings = _run(tmp_path, syntax_only)
+    outcomes = [str(row[5]) for row in result.tables["key"].rows]
+    assert outcomes == ["crashes: SyntaxError"] * 2
+    assert any("None of the possible bugs" in w and "Ticking more" in w for w in warnings)
+    assert any(w.startswith("2 of the 2 versions stop with a SyntaxError") for w in warnings)
+
+
+def test_outcome_kind_names_compile_errors_and_hangs() -> None:
+    ok = RunOutcome(stdout="1\n", returncode=0)
+    assert outcome_kind(ok, ok) == "silent"
+    assert outcome_kind(ok, RunOutcome(stdout="2\n", returncode=0)) == "wrong_output"
+    assert outcome_kind(ok, RunOutcome(stdout="", timed_out=True)) == "hang"
+    for name in ("SyntaxError", "IndentationError"):
+        broken = RunOutcome(stderr=f"{name}: invalid syntax", returncode=1)
+        assert outcome_kind(ok, broken) == "syntax_error"
+    assert outcome_kind(ok, RunOutcome(stderr="TypeError: no", returncode=1)) == "crash"

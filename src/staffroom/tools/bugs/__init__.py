@@ -37,6 +37,23 @@ def runs_the_same(original: RunOutcome, variant: RunOutcome) -> bool:
     )
 
 
+# Errors Python reports before the program starts: one per sheet is plenty.
+COMPILE_ERRORS = frozenset({"SyntaxError", "IndentationError", "TabError"})
+
+
+def outcome_kind(original: RunOutcome, variant: RunOutcome) -> logic.Outcome:
+    """The outcome class ``logic.choose`` balances, from two sandbox runs."""
+    if runs_the_same(original, variant) and not variant.blocked_imports:
+        return "silent"
+    if variant.timed_out:
+        return "hang"
+    if variant.crashed and variant.exception_name in COMPILE_ERRORS:
+        return "syntax_error"
+    if variant.crashed or variant.blocked_imports:
+        return "crash"
+    return "wrong_output"
+
+
 def classify(original: RunOutcome, variant: RunOutcome) -> str:
     """What the key says about a variant, from two sandbox runs."""
     if variant.blocked_imports:
@@ -89,20 +106,28 @@ class BugsPlugin:
         # selection itself is logic.choose, in the seed's order.
         runs: dict[logic.Mutation, RunOutcome] = {}
 
-        def changes_behaviour(m: logic.Mutation) -> bool:
+        def outcome_of(m: logic.Mutation) -> logic.Outcome:
             ctx.progress(min(0.8, 0.2 + 0.04 * len(runs)), f"Trying a bug on line {m.line}")
             runs[m] = run_source(logic.apply(source, m), stdin=stdin, timeout=TIMEOUT)
-            return not runs_the_same(baseline, runs[m])
+            return outcome_kind(baseline, runs[m])
 
         ctx.progress(0.2, "Finding places to break")
         try:
-            variants = logic.make_variants(source, options, changes_behaviour)
+            variants = logic.make_variants(source, options, outcome_of)
         except SyntaxError as exc:
             raise ToolError(f"That is not valid Python: {exc.msg} (line {exc.lineno})") from exc
         kept = {v.mutation for v in variants}
         dropped = [m for m, r in runs.items() if m not in kept and runs_the_same(baseline, r)]
         for m in dropped:
             ctx.log(f"Skipped line {m.line}, {m.label}: runs the same as the original")
+        outcomes = [outcome_kind(baseline, runs[v.mutation]) for v in variants]
+        syntax = outcomes.count("syntax_error")
+        if syntax == 1:
+            for m, r in runs.items():
+                if m not in kept and outcome_kind(baseline, r) == "syntax_error":
+                    ctx.log(
+                        f"Skipped line {m.line}, {m.label}: the sheet already has a SyntaxError"
+                    )
         for v in variants:
             v.outcome = classify(baseline, runs[v.mutation])
             v.silent = runs_the_same(baseline, runs[v.mutation])
@@ -127,6 +152,25 @@ class BugsPlugin:
                 ctx.warn(
                     f"Only {len(variants)} distinct mutations possible; asked for {options.count}."
                 )
+        # The selection looks for a wrong-output bug only with something visible
+        # to swap out; then it has tried every candidate before giving up.
+        if (
+            len(variants) >= 2
+            and visible
+            and "wrong_output" not in outcomes
+            and not any(outcome_kind(baseline, r) == "wrong_output" for r in runs.values())
+        ):
+            more = len(options.kinds()) < len(logic.KIND_LABELS)
+            ctx.warn(
+                "None of the possible bugs in this program runs with the wrong output; "
+                "every version crashes, hangs or runs the same."
+                + (" Ticking more error classes may give one." if more else "")
+            )
+        if syntax > 1:
+            ctx.warn(
+                f"{syntax} of the {len(variants)} versions stop with a SyntaxError before "
+                "they start: there were not enough other bugs to make up the number."
+            )
         if silent:
             ctx.warn(
                 f"{silent} of the {len(variants)} versions {'runs' if silent == 1 else 'run'} "
