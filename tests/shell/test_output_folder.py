@@ -44,11 +44,15 @@ def test_run_bar_follows_the_chosen_input(
     window = MainWindow(config, auto_index=False)
     qtbot.addWidget(window)
     window.show()
-    panel = window.panel_for("hello")
+    panel = window.panel_for("marks")
     assert panel.run_bar._folder is not None
-    assert panel.run_bar._folder.name == "hello"
-    panel.set_input_path("source", example_marks)
+    assert panel.run_bar._folder.name == "marks"
+    panel.set_input_path("marks", example_marks)
     assert panel.run_bar._folder == example_marks.parent
+    # hello (and a fresh scaffold) never write beside the input: its folder stays put.
+    hello = window.panel_for("hello")
+    hello.set_input_path("source", example_marks)
+    assert hello.run_bar._folder == config.output_dir_for(None, "hello")
 
 
 def test_screenshot_mode_writes_to_a_throwaway_folder(
@@ -141,8 +145,11 @@ def test_every_other_tool_still_names_the_output_folder(qtbot: QtBot, tmp_path: 
     assert others
     for name in others:
         panel = window.panel_for(name)
-        assert panel.spec.writes_to is None, name
         bar = panel.run_bar
-        assert bar._folder == panel.output_dir(panel.collect_inputs()), name
+        if panel.spec.writes_to is None:
+            assert bar._folder == panel.output_dir(panel.collect_inputs()), name
+        else:  # hello, like a fresh scaffold: the output folder, never beside the input
+            assert name == "hello"
+            assert bar._folder == config.output_dir_for(None, name)
         assert bar.folder.text().startswith("Writes to "), name
         assert panel.strip.folder_chip.text() == "Open output folder", name

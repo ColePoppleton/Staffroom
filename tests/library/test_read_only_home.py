@@ -193,7 +193,7 @@ def test_tools_still_run(read_only_home: Path, example_marks: Path, tmp_path: Pa
     out = tmp_path / "out"
     r = runner.invoke(app, ["hello", "run", str(example_marks), "--out", str(out)])
     assert r.exit_code == 0, r.output
-    assert (out / "marks_10x_totals.csv").exists()
+    assert (out / "marks_10x_summary.csv").exists()
 
 
 def test_library_exclude_with_a_locked_config_exits_one_with_the_reason(
