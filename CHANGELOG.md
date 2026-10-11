@@ -6,6 +6,11 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Fixed
+- `just install` updates an installed Staffroom.app in place (overwriting its files,
+  removing ones the build no longer has, then re-signing and re-registering it)
+  instead of deleting and recopying it, so Spotlight keeps listing the app rather
+  than dropping it until it re-indexes (#79).
 
 ## [0.7.0] - 2026-10-09
 ### Changed

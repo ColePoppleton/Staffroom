@@ -87,3 +87,81 @@ def test_bundle_version_follows_the_package(tmp_path: Path) -> None:
         plist = plistlib.load(fh)
     assert plist["CFBundleShortVersionString"] == "0.7.0rc1"
     assert plist["CFBundleVersion"] == "0.7.0"
+
+
+def _version(app: Path) -> str:
+    with (app / "Contents" / "Info.plist").open("rb") as fh:
+        return str(plistlib.load(fh)["CFBundleShortVersionString"])
+
+
+def test_reinstall_updates_the_bundle_in_place(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Deleting and recopying the bundle made Spotlight drop Staffroom until it
+    # re-indexed (#79): the installed folder must stay the same folder.
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        make_launcher.subprocess, "run", lambda argv, **kw: calls.append([str(a) for a in argv])
+    )
+    lsregister = tmp_path / "lsregister"
+    lsregister.write_text("")
+    monkeypatch.setattr(make_launcher, "LSREGISTER", str(lsregister))
+    applications = tmp_path / "Applications"
+    applications.mkdir()
+    dist = tmp_path / "dist"
+
+    app = make_launcher.build(dist, Path("/repo"), Path("/uv"), version="0.6.0")
+    target = make_launcher.install(app, (applications,))
+    inode = target.stat().st_ino
+    contents_inode = (target / "Contents").stat().st_ino
+    stale = target / "Contents" / "Resources" / "old.icns"
+    stale.write_bytes(b"left over from an older build")
+    stale_dir = target / "Contents" / "Frameworks"
+    stale_dir.mkdir()
+    (stale_dir / "gone.txt").write_text("x")
+    calls.clear()
+
+    app = make_launcher.build(dist, Path("/new-repo"), Path("/uv"), version="0.7.0")
+    again = make_launcher.install(app, (applications,))
+
+    assert again == target
+    assert target.stat().st_ino == inode
+    assert (target / "Contents").stat().st_ino == contents_inode
+    assert _version(target) == "0.7.0"
+    assert "/new-repo" in (target / "Contents" / "MacOS" / "staffroom").read_text()
+    assert (target / "Contents" / "Resources" / "icon.icns").exists()
+    assert not stale.exists()
+    assert not stale_dir.exists()
+    assert ["codesign", "--force", "--deep", "--sign", "-", str(target)] in calls
+    registrations = [c for c in calls if c[0] == str(lsregister)]
+    assert registrations == [
+        [str(lsregister), "-u", str(app)],
+        [str(lsregister), "-f", str(target)],
+    ]
+    assert ["mdimport", str(target)] in calls
+
+
+@pytest.mark.skipif(shutil.which("codesign") is None, reason="codesign is macOS only")
+def test_bundle_updated_in_place_is_validly_signed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Real codesign, but never tell Launch Services or Spotlight about a temp folder.
+    monkeypatch.setattr(make_launcher, "register", lambda app: None)
+    monkeypatch.setattr(make_launcher, "unregister", lambda app: None)
+    applications = tmp_path / "Applications"
+    applications.mkdir()
+    dist = tmp_path / "dist"
+    make_launcher.install(
+        make_launcher.build(dist, Path("/repo"), Path("/uv"), version="0.6.0"), (applications,)
+    )
+    target = make_launcher.install(
+        make_launcher.build(dist, Path("/repo2"), Path("/uv"), version="0.7.0"), (applications,)
+    )
+
+    assert _version(target) == "0.7.0"
+    result = subprocess.run(
+        ["codesign", "--verify", "--deep", "--strict", str(target)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
