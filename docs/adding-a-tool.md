@@ -1,5 +1,26 @@
 # Adding a tool
 
+## The rules every tool keeps
+
+Staffroom stores and processes no pupil data. A tool you add keeps the same
+rules as the shipped ones, and the scaffold below already does:
+
+- **Nothing per row is saved.** A marks file has one row per script; what a
+  run writes is class-level: per-question statistics, a grade distribution, a
+  chart, a sheet, a key. Never the input's rows with a column added, never a
+  grade per script. A per-script view may be shown on screen (marks folds one
+  away, labelled *view only, never saved*), but it is not written.
+- **No identifiers in, none out.** `core.csvio.read_table` drops any column
+  that looks like a name, an id, a UPN, a candidate number or an email before
+  your code sees the table. Do not add a "names" or "class" input.
+- **Rows are scripts, not pupils.** Summaries, outcomes and labels count
+  questions or scripts ("6 questions · 10 scripts"), never "pupils".
+- **Write to the output folder, not beside the input.** The scaffold writes to
+  the folder set in Settings, else `<sessions root>/outputs/<tool>/`, so trying
+  it on `examples/marks_10x.csv` never leaves a file in the repository.
+- **Example data is invented** and starts with a `# FAKE DATA` line; the
+  pre-commit hook refuses a CSV or XLSX without it.
+
 ## 1. Scaffold
 
 ```bash
@@ -16,16 +37,22 @@ This creates `src/staffroom/tools/my_tool/` with:
 | `cli.py` | `staff my_tool run ...` and friends |
 | `tests/` | tests; shared fixtures come from the root `conftest.py` |
 
-It shows up straight away:
+As generated it is a small working tool: it reads a marks file, shows one row
+per question (how many scripts have a mark, the mean, the highest) and saves
+that summary, nothing else, to the output folder. It passes `ruff` and its own
+tests as generated, so your first commit gets past the hooks. It shows up
+straight away:
 
 ```bash
 uv run staff list
 uv run staff my_tool run examples/marks_10x.csv
+# Summarised 6 questions from 10 scripts into ~/TeachingSessions/outputs/my_tool/marks_10x_summary.csv
 ```
 
-`hello` is the reference tool: read `src/staffroom/tools/hello/` before
-writing your own. It is `hidden`, so it is not in the launcher sidebar, but
-`staff hello run` works and its tests run with everything else.
+`--out <folder>` writes somewhere else for that run. Read the generated files
+before changing them; they are short, and they show each rule above in place.
+`tools/marks` is the reference for a report (tiles, a chart, aggregate-only
+saving).
 
 ## Where it sits in the sidebar
 
@@ -69,11 +96,18 @@ still opens them for a screenshot.
 ## 2. Write the logic
 
 Put the real work in `logic.py` as functions over `Table` (see
-`core/table.py`). Keep them pure so tests are one-liners:
+`core/table.py`). Keep them pure so tests are one-liners. What they return for
+saving is class-level, one row per question (or per grade, per topic), never
+one per script:
 
 ```python
-def process(table: Table, options: Options) -> Table:
-    return table.with_column("Total", lambda row: sum(...))
+def summarise(table: Table, options: Options) -> Table:
+    rows = []
+    for question in question_columns(table.columns, options.prefix):
+        marks = [m for m in table.column(question) if isinstance(m, int | float)]
+        mean = round(sum(marks) / len(marks), 1) if marks else None
+        rows.append([question, len(marks), mean])
+    return Table(["Question", "Answered", "Mean"], rows, fake_data=table.fake_data)
 ```
 
 Add fields to `Options` and the form draws itself. Field `metadata` can set
@@ -88,28 +122,31 @@ Add fields to `Options` and the form draws itself. Field `metadata` can set
 PanelSpec(
     title="Marks",
     inputs=(
-        FilePicker(key="marks", label="Marks file"),
-        TablePreview(key="preview", source="marks"),
+        FilePicker(key="marks", label="Marks file", chip=True),
+        TablePreview(key="preview", source="marks", summary=found, compact=True),
         EditableTable(
             key="boundaries",
             label="Grade boundaries",
-            columns=(Column("Grade"), Column("Min mark", "int")),
-            rows=(("9", 36), ("7", 28), ("4", 16), ("1", 0)),
+            columns=(Column("Grade", "text", 90), Column("Minimum", "float", 110)),
+            rows=(("9", 90), ("7", 70), ("4", 40), ("1", 10)),
+            compact=True,
         ),
         OptionsForm(key="options", schema=Options),
     ),
     outputs=(
-        ResultsTable(key="grades", label="Grades"),
-        ResultsTable(key="questions", label="Per-question analysis"),
-        ImageView(key="distribution", label="Cohort distribution"),
-        LogArea(),
+        StatTiles(key="headline"),
+        BarChart(key="distribution", label="Grades", category="Grade", value="Count"),
+        ResultsTable(key="questions", label="Questions, hardest first"),
     ),
     run_label="Analyse",
+    main_layout="row",
 )
 ```
 
 Input keys become the keys of the `inputs` dict passed to `run()`; output keys
-are what `run()` must put in `RunResult.tables` / `RunResult.images`.
+are what `run()` must put in `RunResult.tables` / `RunResult.images`. Every
+output here is class-level: the headline numbers, how many scripts reached
+each grade, and the questions.
 
 The shell lays every panel out as a workbench: the inputs in a column on the
 left with the run button at its foot (⌘↵ runs it), the outputs on the right.
@@ -118,7 +155,8 @@ An `ActionTable` goes below by default and everything else is a main view; set
 `place="below"` on a secondary output (notes, a view-only table) or
 `place="main"` on a list that is the point of the tool, as classroom's
 sessions are. The run log sits behind a one-line *Details* toggle at the foot
-of the output pane in every panel; listing `LogArea()` is optional.
+of the output pane in every panel, so there is no log output to declare;
+`ctx.log(...)` lines land there.
 
 How the run went is not an output you declare. The result strip on top of the
 output pane shows a tick or a cross, `RunResult.outcome` (a short line such as
@@ -196,23 +234,35 @@ def run(self, inputs, ctx):
     source = inputs["marks"]
     if source is None:
         raise ToolError("Choose a marks file first.")
-    table = read_table(source)
-    ctx.progress(0.3, "Grading")
-    graded = logic.grade(table, inputs["boundaries"], inputs["options"])
-    out = write_table(graded, ctx.output_dir / f"{source.stem}_graded.csv")
-    chart = ctx.output_dir / f"{source.stem}_distribution.png"
-    ...  # draw and save the PNG
+    table = read_table(source)  # identifier columns are already gone
+    ctx.progress(0.3, "Analysing")
+    analysis = logic.analyse(table, inputs["boundaries"], inputs["options"])
+    folder = output_folder(inputs, ctx.config)
+    # Aggregates only: per question and per grade. No row of the input is written.
+    questions = write_table(analysis.questions, folder / f"{source.stem}_questions.csv")
+    grades = write_table(analysis.distribution, folder / f"{source.stem}_distribution.csv")
     return RunResult(
-        tables={"grades": graded},
-        images={"distribution": chart},
-        files=[out, chart],
-        summary=f"Graded {len(graded)} pupils",
+        tables={
+            "headline": stat_table(headline_stats(analysis)),
+            "distribution": analysis.distribution,
+            "questions": analysis.questions,
+        },
+        files=[questions, grades],
+        summary=f"Analysed {len(analysis.questions)} questions from {len(table)} scripts",
+        outcome=f"{len(analysis.questions)} questions · {len(table)} scripts",
     )
 ```
 
-`ctx.output_dir` is the configured output folder, the input's folder, or
-`<sessions root>/outputs/<tool>/` when there is no input; never the current
-directory. In a CLI resolve it with `config.output_dir_for(source, "<tool>")`.
+`output_folder` is the scaffold's: `config.output_dir_for(None, "<tool>")`,
+the output folder set in Settings, else `<sessions root>/outputs/<tool>/`;
+never the input's folder and never the current directory. Declare the same
+function on the panel as `PanelSpec(writes_to=WritesTo(output_folder))` so the
+line under the run button and the *Open output folder* chip name it, and in a
+CLI resolve it the same way (the scaffold's `cli.py` does, with `--out` for
+one run). `ctx.output_dir` is the shell's shared choice, which is the input's
+own folder when Settings names none: fine for a sheet made from a program,
+not for a summary of a marks file that may sit in a shared folder or in
+`examples/`.
 `ctx.resources` is the Resource Library (`None` under a bare CLI run): use
 `ctx.resources.search("while")` or `ctx.resources.pick(".py")` to let the
 teacher choose a file from the indexed resources instead of a raw file
@@ -233,6 +283,10 @@ just lint
 
 The boundary tests fail if the tool imports Qt or if `logic.py` does I/O.
 The pre-commit hook refuses any CSV/XLSX without a `# FAKE DATA` first line.
+`git status` after a run should list only `src/staffroom/tools/my_tool/`: a
+file anywhere else (above all in `examples/`) means the tool wrote beside its
+input. `tests/test_discovery.py` lists the shipped tools by sidebar group;
+once you give yours a `group`, `glyph` and `order`, add it there.
 
 ## Running pupil code
 
