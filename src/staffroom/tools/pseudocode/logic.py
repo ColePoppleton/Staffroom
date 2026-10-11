@@ -35,7 +35,10 @@ class Options:
     target: Target = field(default="ocr", metadata={"label": "To"})
     formats: Literal["txt", "none"] = field(
         default="txt",
-        metadata={"label": "Save output", "help": "txt: write the translation to a file"},
+        metadata={
+            "label": "Save output",
+            "help": "Write the translation to a .txt file, or only show it",
+        },
     )
 
 

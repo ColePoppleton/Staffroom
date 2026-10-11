@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from staffroom.core.panel import (
+    OUTPUT_FORMAT_LABELS,
     CodeSource,
     LogArea,
     OptionsForm,
@@ -31,7 +32,13 @@ def panel_spec() -> PanelSpec:
                 placeholder="One line per input() call",
                 help="Used when running the original and each variant to see what happens.",
             ),
-            OptionsForm(key="options", schema=Options),
+            OptionsForm(
+                key="options",
+                schema=Options,
+                # A dropdown, not a switch: the long field labels leave the
+                # switch no room at the window's minimum width.
+                choice_labels={"formats": OUTPUT_FORMAT_LABELS},
+            ),
         ),
         outputs=(
             # Each variant names the line it broke: a row lights it in the program.

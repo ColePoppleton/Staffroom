@@ -254,6 +254,33 @@ cut lines, laid out in columns), `AnswerGrid` (empty boxes headed by
 position) and `PageBreak`. A new block goes in `core/export/model.py` with a
 rendering in each of `pdf.py`, `docx.py` and `text.py`, so every tool gets it.
 
+## Options that apply, in words
+
+An options form shows one row per field, so give it what it needs to show
+only the rows that matter and to say them in the teacher's words:
+
+```python
+OptionsForm(
+    key="options",
+    schema=Options,
+    shown_when={"laws": shown_when("topic", "boolean_simplification")},
+    choice_labels={"topic": TOPIC_TITLES, "formats": OUTPUT_FORMAT_LABELS},
+    switches=("difficulty", "formats"),
+)
+```
+
+`shown_when(field, *values)` hides a field unless another field of the form
+holds one of the values (and is itself shown). A hidden field keeps what the
+teacher set in it, so it comes back unchanged, but `run()` gets the field's
+default: nothing the teacher cannot see reaches the tool, the same as leaving
+the flag off on the command line. `choice_labels` names the values of a
+`Literal` or `Enum` field (a value with no label shows as itself;
+`OUTPUT_FORMAT_LABELS` covers the shared `both / docx / pdf`), and `switches`
+draws a choice as a segmented switch instead of a dropdown: keep those to two
+to four short labels. The command line keeps the values. All of it lives in
+`panel.py`; `core.panel` refuses a field name, a value or a loop that cannot
+work when the spec is built.
+
 ## Presets for an options form
 
 `OptionsForm(..., presets=(preset("Year 9", top_level_only=True), ...))` puts

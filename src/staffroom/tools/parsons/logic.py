@@ -20,7 +20,7 @@ class Options:
         default="statement",
         metadata={
             "label": "Split at",
-            "help": "statement: compound headers and bodies; line: every line",
+            "help": "Statements: a compound header with its body; Lines: every line",
         },
     )
     show_indentation: bool = field(

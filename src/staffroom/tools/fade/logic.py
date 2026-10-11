@@ -18,12 +18,12 @@ class Options:
         default="bottom_up",
         metadata={
             "label": "Fade order",
-            "help": "bottom_up: last lines go first; ranges: only the lines listed",
+            "help": "Which lines are blanked first, or only the lines you list",
         },
     )
     ranges: str = field(
         default="",
-        metadata={"label": "Line ranges", "help": "e.g. 3-5, 8 (used when order is ranges)"},
+        metadata={"label": "Line ranges", "help": "e.g. 3-5, 8: the lines to blank, in order"},
     )
     keep_headers: bool = field(
         default=True,

@@ -4,10 +4,12 @@ import enum
 from dataclasses import dataclass, field
 from typing import Literal
 
+from PySide6.QtWidgets import QComboBox
 from pytestqt.qtbot import QtBot
 
-from staffroom.core.panel import preset
+from staffroom.core.panel import OUTPUT_FORMAT_LABELS, OptionsForm, preset, shown_when
 from staffroom.shell.widgets import OptionsFormWidget
+from staffroom.shell.widgets.choice import ChoiceWidget
 
 
 class Mode(enum.Enum):
@@ -98,3 +100,129 @@ def test_editing_a_field_moves_the_dropdown_to_the_matching_preset_or_custom(qtb
     assert form.current_preset() == "Quick"
     form.apply_preset("not a preset")
     assert form.current_preset() == "Quick" and form.value().ratio == 2.0
+
+
+# -- shown_when, choice labels and switches (#91) ----------------------------
+@dataclass
+class Sheet:
+    topic: Literal["binary", "logic", "huffman"] = "binary"
+    laws: Literal["absorption", "all"] = "absorption"
+    strict: bool = False
+    note: str = ""
+    formats: Literal["both", "docx", "pdf"] = "both"
+    mode: Mode = Mode.CAREFUL
+
+
+SHEET_FORM = OptionsForm(
+    key="options",
+    schema=Sheet,
+    shown_when={
+        "laws": shown_when("topic", "logic"),
+        "strict": shown_when("topic", "logic", "huffman"),
+        # Only under a shown, ticked "strict": hidden when strict is hidden too.
+        "note": shown_when("strict", True),
+    },
+    choice_labels={
+        "topic": {"binary": "Binary numbers", "logic": "Logic"},
+        "formats": OUTPUT_FORMAT_LABELS,
+        "mode": {"fast": "Quick", "careful": "Careful"},
+    },
+    switches=("formats", "mode"),
+)
+
+
+def _sheet_form(qtbot: QtBot) -> OptionsFormWidget:
+    form = OptionsFormWidget.for_spec(SHEET_FORM)
+    qtbot.addWidget(form)
+    return form
+
+
+def test_a_field_shows_only_while_its_condition_holds(qtbot: QtBot) -> None:
+    form = _sheet_form(qtbot)
+    assert form.shown_fields() == ["topic", "formats", "mode"]
+    with qtbot.waitSignal(form.changed):
+        form.set_field("topic", "logic")
+    assert form.shown_fields() == ["topic", "laws", "strict", "formats", "mode"]
+    form.set_field("strict", True)
+    assert "note" in form.shown_fields()
+    # Hiding "strict" hides what depends on it, though strict is still ticked.
+    form.set_field("topic", "binary")
+    assert form.shown_fields() == ["topic", "formats", "mode"]
+
+
+def test_a_hidden_field_keeps_its_value_but_the_tool_gets_the_default(qtbot: QtBot) -> None:
+    form = _sheet_form(qtbot)
+    form.set_field("topic", "logic")
+    form.set_field("laws", "all")
+    form.set_field("strict", True)
+    form.set_field("note", "typed")
+    assert form.value() == Sheet(topic="logic", laws="all", strict=True, note="typed")
+    form.set_field("topic", "binary")
+    assert form.value() == Sheet()  # nothing the teacher cannot see reaches the tool
+    assert form.held().laws == "all" and form.held().note == "typed"
+    form.set_field("topic", "logic")  # and it all comes back as it was
+    assert form.value() == Sheet(topic="logic", laws="all", strict=True, note="typed")
+
+
+def test_choices_show_their_labels_and_hand_back_their_values(qtbot: QtBot) -> None:
+    form = _sheet_form(qtbot)
+    topic = form.widgets["topic"]
+    assert isinstance(topic, QComboBox)
+    # A value with no label shows as itself.
+    assert [topic.itemText(i) for i in range(topic.count())] == [
+        "Binary numbers",
+        "Logic",
+        "huffman",
+    ]
+    topic.setCurrentIndex(1)
+    assert form.value().topic == "logic"
+    form.set_field("topic", "not a topic")  # unknown values leave the choice alone
+    assert form.value().topic == "logic"
+
+
+def test_switches_draw_a_segmented_switch(qtbot: QtBot) -> None:
+    form = _sheet_form(qtbot)
+    formats = form.widgets["formats"]
+    assert isinstance(formats, ChoiceWidget)
+    assert [b.text() for b in formats.buttons.values()] == ["Word + PDF", "Word", "PDF"]
+    assert formats.buttons["both"].isChecked()
+    with qtbot.waitSignal(form.changed):
+        formats.buttons["pdf"].click()
+    assert form.value().formats == "pdf"
+    # An Enum switch hands back the member, and takes the member or its text.
+    mode = form.widgets["mode"]
+    assert isinstance(mode, ChoiceWidget)
+    mode.buttons["fast"].click()
+    assert form.value().mode is Mode.FAST
+    form.set_field("mode", Mode.CAREFUL)
+    assert form.value().mode is Mode.CAREFUL
+    form.set_field("mode", "fast")
+    assert form.value().mode is Mode.FAST
+
+
+def test_a_preset_shows_the_fields_it_makes_apply(qtbot: QtBot) -> None:
+    spec = OptionsForm(
+        key="options",
+        schema=Sheet,
+        presets=(preset("Logic", topic="logic"),),
+        shown_when=SHEET_FORM.shown_when,
+    )
+    form = OptionsFormWidget.for_spec(spec)
+    qtbot.addWidget(form)
+    assert "laws" not in form.shown_fields()
+    form.apply_preset("Logic")
+    assert "laws" in form.shown_fields()
+
+
+def test_fields_and_shown_when_work_together(qtbot: QtBot) -> None:
+    spec = OptionsForm(
+        key="options",
+        schema=Sheet,
+        fields=("topic", "laws"),
+        shown_when={"laws": shown_when("topic", "logic")},
+    )
+    form = OptionsFormWidget.for_spec(spec)
+    qtbot.addWidget(form)
+    assert form.shown_fields() == ["topic"]
+    form.set_field("topic", "logic")
+    assert form.shown_fields() == ["topic", "laws"]

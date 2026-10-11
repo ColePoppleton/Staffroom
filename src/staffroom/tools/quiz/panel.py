@@ -11,8 +11,11 @@ from staffroom.core.panel import (
     ResourcePicker,
     ResultsTable,
     TextView,
+    shown_when,
 )
 from staffroom.tools.quiz.logic import Options
+
+FORMAT_LABELS = {"kahoot": "Kahoot", "forms": "Forms", "donow": "Do now"}
 
 
 def panel_spec() -> PanelSpec:
@@ -36,7 +39,17 @@ def panel_spec() -> PanelSpec:
                 help="Columns date,topic. Topic and date only: never a class or a pupil.",
                 required=False,
             ),
-            OptionsForm(key="options", schema=Options),
+            OptionsForm(
+                key="options",
+                schema=Options,
+                # Kahoot rows carry no title; the date only steers retrieval mode.
+                shown_when={
+                    "title": shown_when("fmt", "forms", "donow"),
+                    "today": shown_when("retrieval", True),
+                },
+                choice_labels={"fmt": FORMAT_LABELS},
+                switches=("fmt",),
+            ),
         ),
         outputs=(
             ResultsTable(key="chosen", label="Chosen questions"),

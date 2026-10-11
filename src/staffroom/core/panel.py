@@ -67,6 +67,10 @@ Under the run button, the shell says where the next run will write: the
 shared output folder (``Config.output_dir_for``) unless the panel sets
 ``writes_to`` to a :class:`WritesTo` naming its own destination.
 
+An ``OptionsForm`` can hide fields that do not apply (``shown_when``), name
+its choices in words (``choice_labels``) and draw a short choice as a
+segmented switch (``switches``); see :class:`OptionsForm`.
+
 A panel's ``suggest`` lets a choice follow the code or file picked (e.g.
 pseudocode's *From* shows the language it guessed): a pure function from the
 current inputs to new values for ``Choice`` keys, called whenever a file is
@@ -79,7 +83,10 @@ widget kit. Do not put UI code in a tool.
 from __future__ import annotations
 
 import dataclasses
+import enum
 import re
+import types
+import typing
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -278,6 +285,60 @@ def matching_preset(presets: tuple[OptionsPreset, ...], options: object) -> Opti
     return next((p for p in presets if p.matches(options)), None)
 
 
+# The labels for the ``formats`` field the sheet tools share
+# (``Literal["both", "docx", "pdf"]``): what the teacher reads, not the value.
+OUTPUT_FORMAT_LABELS: Mapping[str, str] = {"both": "Word + PDF", "docx": "Word", "pdf": "PDF"}
+
+
+@dataclass(frozen=True)
+class ShownWhen:
+    """Show an :class:`OptionsForm` field only while the field ``on`` holds one
+    of ``values`` (and is itself shown). Build one with :func:`shown_when`."""
+
+    on: str
+    values: tuple[Any, ...]
+
+
+def shown_when(on: str, *values: Any) -> ShownWhen:
+    """``shown_when("topic", "truth_tables")``: a :class:`ShownWhen`."""
+    if not values:
+        msg = f"shown_when({on!r}) needs at least one value"
+        raise ValueError(msg)
+    return ShownWhen(on, values)
+
+
+def hidden_fields(conditions: Mapping[str, ShownWhen], options: object) -> frozenset[str]:
+    """The fields whose condition does not hold for ``options``, or whose
+    condition depends on a field that is itself hidden."""
+
+    def hidden(name: str) -> bool:
+        cond = conditions.get(name)
+        if cond is None:
+            return False
+        return hidden(cond.on) or getattr(options, cond.on) not in cond.values
+
+    return frozenset(name for name in conditions if hidden(name))
+
+
+def choice_values(schema: type, name: str) -> tuple[Any, ...] | None:
+    """The values a ``Literal[...]`` or ``Enum`` field of ``schema`` can take
+    (``Optional`` unwrapped), or None for any other field type."""
+    hint = typing.get_type_hints(schema)[name]
+    if typing.get_origin(hint) in (typing.Union, types.UnionType):
+        hint = next(a for a in typing.get_args(hint) if a is not type(None))
+    if typing.get_origin(hint) is Literal:
+        return typing.get_args(hint)
+    if isinstance(hint, type) and issubclass(hint, enum.Enum):
+        return tuple(hint)
+    return None
+
+
+def choice_key(value: Any) -> str:
+    """How a choice value is keyed in ``OptionsForm.choice_labels``: an
+    ``Enum`` member by its value, anything else as itself, both as text."""
+    return str(value.value) if isinstance(value, enum.Enum) else str(value)
+
+
 @dataclass(frozen=True)
 class OptionsForm:
     """A form generated from a dataclass. Field types drive the widgets:
@@ -290,13 +351,90 @@ class OptionsForm:
     moves the dropdown back to whichever preset still matches, or "Custom".
 
     ``fields`` limits the form to the named fields (empty: all of them); the
-    rest keep their dataclass defaults, e.g. one a :class:`Choice` sets."""
+    rest keep their dataclass defaults, e.g. one a :class:`Choice` sets.
+
+    ``shown_when`` maps a field to the :class:`ShownWhen` under which it
+    applies (``{"laws": shown_when("topic", "boolean_simplification")}``); the
+    form hides it otherwise. A hidden field keeps what the teacher set in the
+    form, so it comes back unchanged when it applies again, but the tool is
+    handed the field's default (:meth:`passed`): a value the teacher cannot
+    see never changes, or breaks, a run, and the tool gets exactly what the
+    command line gives it when the flag is left out.
+
+    ``choice_labels`` maps a choice field (``Literal`` or ``Enum``) to the text
+    shown for each value (``{"formats": OUTPUT_FORMAT_LABELS}``); a value with
+    no label shows as itself. ``switches`` names choice fields drawn as a
+    segmented switch instead of a dropdown: keep those to two to four short
+    labels (Easy / Medium / Hard)."""
 
     key: str
     schema: type
     label: str = "Options"
     presets: tuple[OptionsPreset, ...] = ()
     fields: tuple[str, ...] = ()
+    shown_when: Mapping[str, ShownWhen] = field(default_factory=dict)
+    choice_labels: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
+    switches: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not dataclasses.is_dataclass(self.schema):
+            return  # the shell says so when it builds the form
+        names = {f.name for f in dataclasses.fields(self.schema)}
+        in_form = set(self.fields) or names
+
+        def check(where: str, name: str) -> None:
+            if name not in names:
+                msg = f"OptionsForm {self.key!r}: {where} names {name!r}, not a field"
+                raise ValueError(msg)
+            if name not in in_form:
+                msg = f"OptionsForm {self.key!r}: {where} names {name!r}, not in its fields"
+                raise ValueError(msg)
+
+        for name, cond in self.shown_when.items():
+            check("shown_when", name)
+            check(f"shown_when[{name!r}]", cond.on)
+            allowed = choice_values(self.schema, cond.on)
+            wrong = [v for v in cond.values if allowed is not None and v not in allowed]
+            if wrong:
+                msg = f"OptionsForm {self.key!r}: {cond.on!r} can never be {wrong}"
+                raise ValueError(msg)
+        for name in self.shown_when:  # a field may not depend on itself, even by a loop
+            seen = [name]
+            while (step := self.shown_when.get(seen[-1])) is not None:
+                if step.on in seen:
+                    msg = f"OptionsForm {self.key!r}: shown_when loops: {[*seen, step.on]}"
+                    raise ValueError(msg)
+                seen.append(step.on)
+        for where, keys in (("choice_labels", self.choice_labels), ("switches", self.switches)):
+            for name in keys:
+                check(where, name)
+                values = choice_values(self.schema, name)
+                if values is None:
+                    msg = f"OptionsForm {self.key!r}: {where} names {name!r}, not a choice"
+                    raise ValueError(msg)
+                unknown = sorted(
+                    set(self.choice_labels.get(name, {})) - {choice_key(v) for v in values}
+                )
+                if unknown:
+                    msg = f"OptionsForm {self.key!r}: {name!r} labels values it lacks: {unknown}"
+                    raise ValueError(msg)
+
+    def hidden(self, options: object) -> frozenset[str]:
+        """The fields that do not apply to ``options`` (see ``shown_when``)."""
+        return hidden_fields(self.shown_when, options)
+
+    def passed(self, options: Any) -> Any:
+        """``options`` as handed to the tool: every hidden field at its default."""
+        hidden = self.hidden(options)
+        if not hidden:
+            return options
+        defaults = self.schema()
+        return dataclasses.replace(options, **{n: getattr(defaults, n) for n in hidden})
+
+    def label_for(self, name: str, value: Any) -> str:
+        """The text shown for one value of the choice field ``name``."""
+        key = choice_key(value)
+        return self.choice_labels.get(name, {}).get(key, key)
 
 
 @dataclass(frozen=True)

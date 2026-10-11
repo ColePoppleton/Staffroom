@@ -25,7 +25,16 @@ with every change; `just release <part>` turns it into a version.
   to day, and `scripts/screenshots.sh outputs` redoes just those pages. A teacher's
   own runs never set it and still print today's date. `worksheet-sample.png` is
   re-rendered once: it still showed the truth tables from before #43.
-
+- Options forms show only the fields that apply and say their choices in words
+  (#91). `OptionsForm` gains `shown_when` (a field shows only while another
+  holds given values), `choice_labels` and `switches` (a segmented switch for a
+  short choice). Worksheet shows *Level* only for truth tables and *Boolean
+  laws* only for simplification, with topic names, *Easy / Medium / Hard* and
+  *Word + PDF / Word / PDF*; the quiz shows *Title* only for Forms and do-now
+  and *As of* only in retrieval mode; Fade shows *Line ranges* only for *Only
+  the lines I list*; Parsons, Trace, Bugs and Pseudocode get readable output
+  choices. A hidden field keeps what was set in it, but the tool is handed its
+  default, so a value the teacher cannot see never changes or breaks a run.
 ### Fixed
 - Bugs aims for a mix of outcomes (#118): at the defaults all four `year9.py`
   versions crashed, two of them with SyntaxErrors. With two or more versions the

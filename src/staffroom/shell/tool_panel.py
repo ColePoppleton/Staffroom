@@ -267,7 +267,7 @@ class ToolPanel(QWidget):
                 self.choices[spec.key] = choice
             elif isinstance(spec, OptionsForm):
                 group = InputGroup(spec.label)
-                form = OptionsFormWidget(spec.schema, spec.presets, fields=spec.fields)
+                form = OptionsFormWidget.for_spec(spec)
                 group.add(form)
                 self.forms[spec.key] = form
             elif isinstance(spec, EditableTable):
