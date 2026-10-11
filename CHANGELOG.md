@@ -17,8 +17,19 @@ later entries refer to this repository's issues.
   (real marks, names, class lists) is attached; reports are labelled
   `status:triage` until someone has read them, blank issues are
   off, and `SECURITY.md` says how to report a privacy problem privately (#15).
+- `STAFFROOM_SESSIONS` stands in for the default sessions folder (`~/TeachingSessions`)
+  while Settings leaves it empty, as `STAFFROOM_HOME` does for the settings folder. Every
+  test sets both, and a guard fails any test that resolves a sessions folder under the real
+  home; `just screenshots` and the contributing guide's try-out commands set both too (#37).
 
 ### Changed
+- `hello`, the reference tool, now does what `staff new` generates: one row per question
+  (answered, mean, highest) saved to the output folder, never the input's rows with a Total
+  beside the input, so `staff hello run examples/marks_10x.csv` no longer writes into
+  `examples/`. A test keeps it in step with the scaffold. `staff new` refuses, in one line,
+  on an installed copy instead of writing into `site-packages`. The contributing guide says
+  to fork first, how to try changes in throwaway folders, that `just check` takes about
+  three minutes, and where to ask (#18).
 - Settings › Updates › What changed shows the release's short summary for teachers;
   the full list stays on the release page.
 - The README, the repository's front page on GitHub, is written for a teacher: what

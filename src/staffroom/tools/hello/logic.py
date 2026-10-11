@@ -1,4 +1,7 @@
-"""Pure logic for the hello tool. Tables in, tables out; no I/O."""
+"""Pure logic for the hello tool. Tables in, tables out; no I/O.
+
+What comes out is class-level: one row per question, never one per script,
+so nothing a run saves can be traced back to a row of the input."""
 
 from __future__ import annotations
 
@@ -6,15 +9,13 @@ from dataclasses import dataclass, field
 
 from staffroom.core.table import Cell, Table
 
+COLUMNS = ["Question", "Answered", "Mean", "Highest"]
+
 
 @dataclass
 class Options:
     prefix: str = field(
         default="q", metadata={"label": "Question column prefix", "help": "e.g. q for q1, q2…"}
-    )
-    max_marks: int = field(
-        default=0,
-        metadata={"label": "Paper total", "help": "If > 0, also add a Percent column", "min": 0},
     )
 
 
@@ -24,28 +25,22 @@ def question_columns(columns: list[str], prefix: str) -> list[str]:
     return [c for c in columns if c.lower().startswith(p) and c[len(p) :].isdigit()]
 
 
-def row_total(row: dict[str, Cell], columns: list[str]) -> int | float:
-    total: int | float = 0
-    for c in columns:
-        value = row[c]
-        if isinstance(value, int | float) and not isinstance(value, bool):
-            total += value
-    return total
-
-
-def add_total(table: Table, options: Options | None = None) -> Table:
-    """Append ``Total`` (and ``Percent`` when ``max_marks`` is set).
-
-    Raises ``ValueError`` if no question columns match the prefix.
-    """
+def summarise(table: Table, options: Options | None = None) -> Table:
+    """One row per question: how many scripts have a mark for it, the mean
+    and the highest mark. Raises ``ValueError`` if no column matches the
+    prefix."""
     options = options or Options()
-    qcols = question_columns(table.columns, options.prefix)
-    if not qcols:
+    questions = question_columns(table.columns, options.prefix)
+    if not questions:
         msg = f"No question columns starting with {options.prefix!r} in {table.columns}"
         raise ValueError(msg)
-    result = table.with_column("Total", lambda row: row_total(row, qcols))
-    if options.max_marks > 0:
-        result = result.with_column(
-            "Percent", lambda row: round(100 * row_total(row, qcols) / options.max_marks, 1)
-        )
-    return result
+    rows: list[list[Cell]] = []
+    for question in questions:
+        marks = [
+            m
+            for m in table.column(question)
+            if isinstance(m, int | float) and not isinstance(m, bool)
+        ]
+        mean = round(sum(marks) / len(marks), 1) if marks else None
+        rows.append([question, len(marks), mean, max(marks, default=None)])
+    return Table(list(COLUMNS), rows, fake_data=table.fake_data)

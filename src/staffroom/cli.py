@@ -64,11 +64,24 @@ def list_tools() -> None:
         typer.echo(f"\n{HIDDEN_MARKER}: not shown in the launcher; still runs from the CLI.")
 
 
+NEW_NEEDS_CHECKOUT = (
+    "staff new only works in a clone of the Staffroom repository, and this copy is installed: "
+    "fork and clone it (docs/contributing.md), then run just new <name> there."
+)
+
+
 @app.command("new")
 def new_tool(
     name: Annotated[str, typer.Argument(help="Tool name: lowercase, digits, underscores")],
 ) -> None:
-    """Scaffold a new tool package under src/staffroom/tools/."""
+    """Scaffold a new tool package under src/staffroom/tools/ (in a checkout only)."""
+    from staffroom.core import install
+
+    if not install.detect().is_checkout:
+        # An installed copy would write the tool into site-packages, where the
+        # next update deletes it (#18). One line, no traceback.
+        typer.secho(NEW_NEEDS_CHECKOUT, fg=typer.colors.RED, err=True)
+        raise typer.Exit(1)
     tools_dir = Path(__file__).resolve().parent / "tools"
     try:
         written = scaffold_tool(name, tools_dir)

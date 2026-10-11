@@ -88,7 +88,7 @@ def test_tools_still_run(
     with qtbot.waitSignal(panel.run_finished, timeout=5000) as blocker:
         panel.start_run()
     assert blocker.args == [True]
-    assert (tmp_path / "out" / "marks_10x_totals.csv").exists()
+    assert (tmp_path / "out" / "marks_10x_summary.csv").exists()
 
 
 class _Records(logging.Handler):
