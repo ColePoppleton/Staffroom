@@ -28,6 +28,10 @@ is not always on the path yet.
 supports; without it uv may pick an older Python already on the Mac and stop
 with "the current Python version does not satisfy Python>=3.12".
 
+The install takes about 500 MB of disk, most of it Qt: Staffroom installs only
+the parts of Qt it uses (PySide6-Essentials and PySide6-Pdf, no web engine).
+It needs macOS 14 Sonoma or later, which that Qt release is built for.
+
 !!! note "No account needed"
     The repository is public, so the line above works on any Mac with uv and
     git; no GitHub sign-in is needed. If git is missing, or a school network

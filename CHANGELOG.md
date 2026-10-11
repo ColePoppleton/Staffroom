@@ -75,6 +75,11 @@ later entries refer to this repository's issues.
   line in the program, and back; the printed sheets and keys are unchanged. Any tool
   can ask for the same: `ResultsTable(compact=…, lift_constants=…, mark_changes=…,
   pin_last=…)` and the new `CardList` output.
+- A fresh install is about 490 MB instead of 1.4 GB (#4): Staffroom depends on
+  `PySide6-Essentials` and `PySide6-Pdf`, pinned together at Qt 6.12.0, instead of
+  the whole `pyside6` package with its web engine. The dev lock and a fresh install
+  now get the same Qt. Qt 6.12 needs macOS 14 Sonoma or later. A test fails if any
+  code imports a Qt module those two packages do not ship.
 ### Fixed
 - An installed copy (`uv tool install`, a wheel) never runs git: no fetch at start, and
   `staff update` and Settings › Updates say it was installed with uv and show

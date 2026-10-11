@@ -17,7 +17,12 @@ classifiers = [
 ]
 dependencies = [
     "typer>=0.12",
-    "pyside6>=6.7",
+    # Only the Qt modules the app imports (#4): Essentials has QtCore/Gui/Widgets/Svg/
+    # PrintSupport, Pdf has QtPdf/QtPdfWidgets. Not the `pyside6` meta-package, which adds
+    # Addons and WebEngine (about 1 GB). One pin for both: each Pdf build requires the
+    # exact Essentials of its Qt release. tests/test_qt_modules.py guards the import set.
+    "pyside6-essentials==6.12.0.*",
+    "pyside6-pdf==6.12.0.*",
     "openpyxl>=3.1",
     "tomli-w>=1.0",
     "pypdf>=6.19.0",
