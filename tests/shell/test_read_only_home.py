@@ -13,6 +13,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from PySide6.QtWidgets import QLabel
 from pytestqt.qtbot import QtBot
 
 from staffroom.core.config import Config, load_config
@@ -221,6 +222,9 @@ def test_saving_a_marks_preset_shows_a_message_not_a_traceback(
         "You can use it until you quit."
     )
     assert panel.strip.state == "danger"
+    # The whole message is on screen, path and all, not cut after two lines (#121).
+    assert "…" not in QLabel.text(panel.strip.message)
+    assert not panel.strip.message.toolTip()
     assert "Traceback" not in panel.results.log_view.toPlainText()
     # Still in the list, and in the session's config, until the app quits.
     assert grid.preset_combo.findText("Custom A") >= 0

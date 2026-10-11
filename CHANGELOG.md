@@ -65,6 +65,14 @@ with every change; `just release <part>` turns it into a version.
   (`3 Python files tagged loops`) above the library's own count, which the
   sidebar and the header keep (#30). `LibraryService.resources()` takes `kinds=`,
   and `core/library/filters.py`'s `LibraryFilter` words the footer line.
+- A long failure in the result strip is shown whole, and the strip grows to fit it
+  (#121). A failure now wraps to as many lines as it needs (up to six; past that it
+  is cut between words, with the full text in the tooltip and behind *Details*), so
+  a message naming a file path keeps its last sentence: *"… config.toml is
+  read-only. You can use it until you quit."* Outcomes still wrap to two lines. The
+  strip lays itself out as soon as its text changes, so no frame shows the new
+  lines squeezed into the old height, and a path that wraps inside itself no
+  longer counts as cut (no needless tooltip).
 - `just install` updates an installed Staffroom.app in place (overwriting its files,
   removing ones the build no longer has, then re-signing and re-registering it)
   instead of deleting and recopying it, so Spotlight keeps listing the app rather
