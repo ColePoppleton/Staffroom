@@ -35,7 +35,10 @@ def register(app: typer.Typer) -> None:
             bool, typer.Option("--preview/--no-preview", help="Print the sheet and key")
         ] = True,
     ) -> None:
-        """Write K progressively faded versions of SOURCE plus the solution as key."""
+        """Write K progressively faded versions of SOURCE plus the solution as key.
+
+        Example: staff fade make examples/year9.py --steps 3
+        """
         from staffroom.tools.fade import plugin
 
         if order not in ("bottom_up", "top_down", "ranges"):

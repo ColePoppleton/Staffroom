@@ -29,7 +29,10 @@ def register(app: typer.Typer) -> None:
         ] = 5,
         out: Annotated[Path | None, typer.Option("--out", "-o", help="Output folder")] = None,
     ) -> None:
-        """Grade SOURCE and save class-level aggregates (distribution, questions, chart)."""
+        """Grade SOURCE and save class-level aggregates (distribution, questions, chart).
+
+        Example: staff marks run examples/marks_10x_max.csv --preset "AQA 8525 (GCSE 9-1)"
+        """
         from staffroom.tools.marks import plugin
 
         config = load_config()
@@ -65,7 +68,10 @@ def register(app: typer.Typer) -> None:
 
     @app.command("presets")
     def presets_() -> None:
-        """List boundary presets (built-in and saved)."""
+        """List the grade boundary presets, built-in and saved.
+
+        Example: staff marks presets
+        """
         config = load_config()
         saved = presets.saved_presets(config)
         for name, rows in presets.all_presets(config).items():

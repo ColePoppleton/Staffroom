@@ -45,7 +45,10 @@ def register(app: typer.Typer) -> None:
             bool, typer.Option("--preview/--no-preview", help="Print the sheet and key")
         ] = True,
     ) -> None:
-        """Make a worksheet and answer key."""
+        """Make a worksheet on one topic, with an answer key.
+
+        Example: staff worksheet make --topic binary --count 10
+        """
         from staffroom.tools.worksheet import plugin
 
         if topic not in GENERATORS:
@@ -91,6 +94,9 @@ def register(app: typer.Typer) -> None:
 
     @app.command()
     def topics() -> None:
-        """List the question generators."""
+        """List the topics a worksheet can be made on.
+
+        Example: staff worksheet topics
+        """
         for name, title in TOPIC_TITLES.items():
             typer.echo(f"{name:<24} {title}")
