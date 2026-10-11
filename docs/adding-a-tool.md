@@ -219,6 +219,23 @@ code=True)` shows an output as numbered code (pseudocode), and
 `PanelSpec(suggest=fn)` lets choices follow what was picked or pasted:
 `fn(inputs)` is pure and returns `{choice_key: value}`.
 
+A tool whose file decides what can be chosen says so with
+`PanelSpec(inspect=fn)`. The shell calls `fn(inputs)` when the panel opens
+and whenever an input changes; it returns an `Inspection` of a `Found` per
+input key: `notes` shown under a file (*13 questions · 6 topics · no
+problems*, or the first problem with its line), `rows` that a *Preview* link
+opens, and for a `ChipChoice` its `chips` (a bank's own topics,
+`ChipOption("binary", count=4)`), with notes under them for a running total.
+It can also name the run button (`run_label="Make do-now"`). `fn` is the
+plugin's code, not `logic`: it may read the files the inputs name (tables
+through `core.csvio.read_table`), must be quick, and is only a hint. A
+`ChipChoice`'s value is the tuple of chips that are on, `()` for none.
+`ResourcePicker(..., chip=True)` draws the file as a chip like a code tool's.
+`PanelSpec(joined=("topics",))` draws an input as part of the group above it
+(no hairline, a small label), and `OptionsForm(..., inline=("count",
+"seed"), more=("spec", "title"))` puts short fields on one row and folds what
+few runs need behind *More*. `tools/quiz` is the reference.
+
 The panel's first `CodeSource`, `ResourcePicker` or (opening) `FilePicker` is its **main
 file input**, and the extensions it declares (`filter_ext=".py"`, several as
 `filter_ext=(".py", ".txt")`, or the `*.ext` patterns in `filters`) put the
@@ -348,9 +365,9 @@ to four short labels. The command line keeps the values. All of it lives in
 work when the spec is built.
 
 A whole input can hide the same way, when it only matters for one setting:
-`PanelSpec(shown_when={"taught_log": shown_when("options.retrieval", True)})`
-shows quiz's taught-log picker only while the options form's *Retrieval mode*
-is ticked. `on` names a form field as `"<form key>.<field>"`, or the key of a
+`PanelSpec(shown_when={"taught_log": shown_when("pick", "taught")})` shows
+quiz's taught-log picker only while *Questions from* is *Taught 1, 3 and 6
+weeks ago*. `on` names a form field as `"<form key>.<field>"`, or the key of a
 `Choice`. The shell hides the group with the hairline over it; while hidden,
 `run()` gets the input's empty value (no file, no text, the choice's default)
 and a required input is not asked for. Put such an input after the setting it

@@ -133,8 +133,9 @@ term has a precise meaning in the code, this is that meaning.
   it.
 
 **Retrieval windows**
-: The three dates retrieval mode looks back to: one, three and six weeks
-  before today, each with three days' leeway either side. Topics taught
+: The three dates quiz looks back to when questions come from *Taught 1, 3
+  and 6 weeks ago* (`staff quiz retrieval`): one, three and six weeks before
+  the *As of* date (today when empty), each with three days' leeway either side. Topics taught
   inside a window are eligible, and the questions are drawn round-robin
   across the windows so each gets a fair share. The run log says what fell
   in each.
