@@ -245,6 +245,7 @@ class OutputPane(QWidget):
         # Each view's container: its tab page or card (main), or its section.
         self.sections: dict[str, QWidget] = {}
         self.empty_text = empty_text
+        self.empty_labels: list[QLabel] = []  # each main view's hint before a result
         self.main_layout = main_layout
         self._waiting: dict[str, QStackedLayout] = {}  # main views before their first result
         self._below_hidden: set[str] = set()  # below sections shown once filled
@@ -338,8 +339,7 @@ class OutputPane(QWidget):
         holder.setObjectName("PageHolder")
         stack = QStackedLayout(holder)
         stack.setContentsMargins(0, 0, 0, 0)
-        empty = QLabel(self.empty_text)
-        empty.setProperty("role", "placeholder")
+        empty = self._empty_label()
         empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty.setWordWrap(True)
         stack.addWidget(empty)
@@ -402,8 +402,7 @@ class OutputPane(QWidget):
         holder.setObjectName("MainRowHolder")
         stack = QStackedLayout(holder)
         stack.setContentsMargins(0, 0, 0, 0)
-        empty = QLabel(self.empty_text)
-        empty.setProperty("role", "placeholder")
+        empty = self._empty_label()
         empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty.setWordWrap(True)
         empty.setMinimumHeight(MAIN_MIN_HEIGHT)
@@ -517,8 +516,7 @@ class OutputPane(QWidget):
             content_layout.addWidget(text_view, 1)
             if spec.copy_button:
                 self._corner.addWidget(self._copy_button(spec.key, text_view))
-        empty = QLabel(self.empty_text)
-        empty.setProperty("role", "placeholder")
+        empty = self._empty_label()
         empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty.setWordWrap(True)
         stack = QStackedLayout()
@@ -802,9 +800,31 @@ class OutputPane(QWidget):
         if key in self.cards and self._row_stack is not None:
             self._row_stack.setCurrentIndex(0)
 
+    def _empty_label(self) -> QLabel:
+        """A main view's stand-in until its first result: the run hint, or
+        after a failed run its next step (:meth:`show_next_step`)."""
+        empty = QLabel(self.empty_text)
+        empty.setProperty("role", "placeholder")
+        self.empty_labels.append(empty)
+        return empty
+
+    def _set_empty(self, text: str, role: str) -> None:
+        for label in self.empty_labels:
+            label.setText(text)
+            label.setProperty("role", role)
+            label.style().unpolish(label)
+            label.style().polish(label)
+
+    def show_next_step(self, text: str) -> None:
+        """After a failed run: the views stand empty with what to do next in
+        place of the run hint (``ToolError.next_step``), or nothing at all,
+        never "Press Run" (#21)."""
+        self._set_empty(text, "next-step")
+
     def clear(self) -> None:
         """Before a run: tables and images go back to their empty state (text
         views keep their last text until the new one arrives)."""
+        self._set_empty(self.empty_text, "placeholder")
         for key, (model, _view, caption) in self.tables.items():
             model.set_table(None)
             caption.setText("")

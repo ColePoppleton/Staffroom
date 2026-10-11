@@ -21,7 +21,7 @@ class RunWorker(QThread):
     log = Signal(str)
     warned = Signal(str)  # a ctx.warn() message (also logged)
     succeeded = Signal(object)  # RunResult
-    failed = Signal(str, bool)  # message, is_bug
+    failed = Signal(str, bool, object)  # message, is_bug, the ToolError (None for a bug)
 
     def __init__(
         self,
@@ -55,8 +55,16 @@ class RunWorker(QThread):
             if self.job_is_run:
                 record_run(self.plugin.name)
         except ToolError as exc:
-            self.failed.emit(str(exc), False)
+            # A fresh copy, never raised: the raised one's traceback would keep
+            # this run's frames (and this worker) alive in a reference cycle.
+            detail = ToolError(
+                str(exc),
+                next_step=exc.next_step,
+                input_key=exc.input_key,
+                input_hint=exc.input_hint,
+            )
+            self.failed.emit(str(exc), False, detail)
         except Exception:
-            self.failed.emit(traceback.format_exc(), True)
+            self.failed.emit(traceback.format_exc(), True, None)
         else:
             self.succeeded.emit(result)

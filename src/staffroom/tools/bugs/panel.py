@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from staffroom.core.codeinput import INPUTS_PLACEHOLDER, inspect_inputs_box
 from staffroom.core.panel import (
     OUTPUT_FORMAT_LABELS,
     CardList,
@@ -40,7 +41,7 @@ def panel_spec() -> PanelSpec:
                 key="stdin",
                 label="Inputs",
                 rows=3,
-                placeholder="One line per input() call",
+                placeholder=INPUTS_PLACEHOLDER,
                 help="Used when running the original and each variant to see what happens.",
             ),
             OptionsForm(
@@ -70,4 +71,6 @@ def panel_spec() -> PanelSpec:
             LogArea(),
         ),
         run_label="Make variants",
+        # The Inputs box says how many input() calls the program has (#21).
+        inspect=inspect_inputs_box,
     )
