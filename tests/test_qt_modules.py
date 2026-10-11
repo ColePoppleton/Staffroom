@@ -144,18 +144,24 @@ def test_every_module_the_app_uses_is_provided() -> None:
     assert not missing, f"{sorted(missing)} not in {SLIM_DISTRIBUTIONS}"
 
 
-@pytest.mark.parametrize("path", python_files(), ids=lambda p: str(p.relative_to(ROOT)))
-def test_imports_only_provided_qt_modules(path: Path) -> None:
+def test_imports_only_provided_qt_modules() -> None:
     provided = provided_modules()
     bad = [
-        f"line {line}: PySide6.{name}"
+        f"{path.relative_to(ROOT)} line {line}: PySide6.{name}"
+        for path in python_files()
         for line, name in qt_imports(path.read_text(encoding="utf-8"))
         if name not in provided
     ]
     assert not bad, (
-        f"{path.relative_to(ROOT)} imports Qt modules that PySide6-Essentials and "
-        f"PySide6-Pdf do not ship, so a fresh install would fail: {bad}"
+        "these import Qt modules that PySide6-Essentials and PySide6-Pdf do not ship, "
+        f"so a fresh install would fail: {bad}"
     )
+
+
+def test_scan_covers_the_app() -> None:
+    # Guard against the scan silently finding nothing (a moved src/, say).
+    seen = {name for path in python_files() for _, name in qt_imports(path.read_text("utf-8"))}
+    assert seen >= USED, sorted(USED - seen)
 
 
 @pytest.mark.parametrize(
