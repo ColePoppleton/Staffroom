@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Staffroom documentation
+    url: https://colepoppleton.github.io/Staffroom/
+    about: How to install, update and use each tool. Many questions are answered here.
+  - name: Privacy - what Staffroom stores and why it never holds pupil data
+    url: https://colepoppleton.github.io/Staffroom/guide/privacy/
+    about: Read this before reporting a problem with a marks file.
+  - name: Report a privacy problem privately
+    url: https://github.com/ColePoppleton/Staffroom/security/advisories/new
+    about: If Staffroom kept, showed or logged something it should not have, tell the maintainer privately instead of opening a public issue.

@@ -1,0 +1,100 @@
+name: Bug report
+description: Something in Staffroom went wrong, or did not do what you expected.
+title: "Bug: "
+labels: ["status:triage", "type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Plain words are fine; you do not need to know any code.
+
+        **Please attach nothing from school.** This page is public: anyone can read what is posted here. That means no marks files or markbook exports, no class lists or registers, and no screenshots that show a pupil's name. Staffroom never holds pupil data, and neither does this tracker.
+
+        If a file caused the problem, make a small invented copy instead: the same columns, made-up numbers, no names. The [example files](https://github.com/ColePoppleton/Staffroom/tree/main/examples) are a good place to start, and often show the problem on their own.
+  - type: checkboxes
+    id: no-pupil-data
+    attributes:
+      label: Before you start
+      description: This includes marks files, markbook exports, class lists and screenshots with names in them.
+      options:
+        - label: I have not attached real marks, names or any file from school; I made a small invented example instead.
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of Staffroom?
+      options:
+        - Installing or updating
+        - The launcher (sidebar, settings, opening a tool)
+        - Resource Library
+        - Classroom
+        - Worksheet
+        - Quiz
+        - Parsons
+        - Trace
+        - Bugs
+        - Fade
+        - Pseudocode
+        - Marks
+        - Something else, or not sure
+    validations:
+      required: false
+  - type: textarea
+    id: did
+    attributes:
+      label: What did you do?
+      description: The steps, in order, so someone else can do the same.
+      placeholder: |
+        1. Opened Marks
+        2. Chose the example file marks_messy.csv
+        3. Pressed Run
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened instead?
+      description: Copy any error message in full. If you add a screenshot, check first that it shows no pupil names.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Staffroom version
+      description: Shown at the foot of the sidebar, for example `v0.8.1 · up to date`. Settings › Updates gives the full version, and `staff version` in Terminal prints it too.
+      placeholder: v0.8.1
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      description: Apple menu › About This Mac.
+      placeholder: macOS 15.3 Sequoia
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Staffroom?
+      options:
+        - With the install line from the docs (uv tool install)
+        - From a .whl file on a GitHub Release
+        - The Staffroom app in Applications, built from a copy of the code
+        - Running from a copy of the code (just gui)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else?
+      description: Did it work before? Does it happen every time? Invented example files can be dragged in here.
+    validations:
+      required: false
