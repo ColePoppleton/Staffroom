@@ -12,6 +12,7 @@ from staffroom.core.export import (
     HintBox,
     Paragraph,
     TableBlock,
+    sheet_date,
 )
 from staffroom.tools.parsons.logic import (
     Block,
@@ -28,7 +29,7 @@ def build_document(
     doc = Document(
         title=f"Parsons problem: {name}",
         topic="Python",
-        date=today or date.today(),
+        date=today or sheet_date(),
         subtitle=(
             f"seed {problem.seed} · {problem.granularity} blocks · {len(problem.solution)} needed"
         ),

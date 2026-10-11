@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from staffroom.core.codeinput import numbered_listing
-from staffroom.core.export import Code, Document, PageBreak, Paragraph, TableBlock
+from staffroom.core.export import Code, Document, PageBreak, Paragraph, TableBlock, sheet_date
 from staffroom.tools.bugs.logic import Variant
 
 PER_PAGE = 2  # variants per printed page; a page break only between pairs
@@ -23,7 +23,7 @@ def build_document(
     doc = Document(
         title=f"Find the bug: {name}",
         topic="Python",
-        date=today or date.today(),
+        date=today or sheet_date(),
         subtitle=count if seed is None else f"seed {seed} · {count}",
     )
     sheet = doc.section()

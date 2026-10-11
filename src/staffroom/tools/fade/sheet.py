@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from staffroom.core.codeinput import numbered_listing
-from staffroom.core.export import Code, Document, PageBreak, Paragraph
+from staffroom.core.export import Code, Document, PageBreak, Paragraph, sheet_date
 from staffroom.tools.fade.logic import blank_count
 
 
@@ -15,7 +15,7 @@ def build_document(
     doc = Document(
         title=f"Faded examples: {name}",
         topic="Python",
-        date=today or date.today(),
+        date=today or sheet_date(),
         subtitle=f"{len(versions)} versions",
     )
     sheet = doc.section()

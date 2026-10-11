@@ -6,6 +6,14 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Changed
+- The date in a sheet's header can be pinned with `STAFFROOM_DATE=YYYY-MM-DD` (#107),
+  read in one place (`core/export/dating.py`); every sheet builder falls back to it
+  instead of reading the clock. `scripts/screenshots.sh` pins it, so the docs pages
+  (`docs/output-*.png`, `docs/worksheet-sample.png`) stay byte-identical from day
+  to day, and `scripts/screenshots.sh outputs` redoes just those pages. A teacher's
+  own runs never set it and still print today's date. `worksheet-sample.png` is
+  re-rendered once: it still showed the truth tables from before #43.
 ### Fixed
 - `just install` updates an installed Staffroom.app in place (overwriting its files,
   removing ones the build no longer has, then re-signing and re-registering it)
