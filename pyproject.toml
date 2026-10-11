@@ -34,9 +34,6 @@ dependencies = [
 [project.scripts]
 staffroom = "staffroom.shell.app:main"
 staff = "staffroom.cli:main"
-# Kept for one release so existing shells and installed launchers keep working.
-tt = "staffroom.cli:main"
-tt-gui = "staffroom.shell.app:main"
 
 [project.urls]
 Repository = "https://github.com/ColePoppleton/Staffroom"

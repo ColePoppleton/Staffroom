@@ -68,7 +68,7 @@ docs/               ROADMAP.md, PHASES.md, adding-a-tool.md, screenshots
 ```
 
 Two entry points over the same code: `staff` (CLI, primary for testing) and
-`staffroom` (launcher); `tt` and `tt-gui` are aliases kept for one release.
+`staffroom` (launcher).
 `just` has the day-to-day commands.
 
 ## The three engineering rules, as enforced here
