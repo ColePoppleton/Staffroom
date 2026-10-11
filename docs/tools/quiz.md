@@ -76,9 +76,9 @@ On the command line `export` still makes a Kahoot file unless `--format`
 says otherwise:
 
 ```bash
-staff quiz export --bank bank.md --format donow --topics binary,cpu --n 10
-staff quiz retrieval --bank bank.md --log taught.csv --date 2026-10-08
-staff quiz check --bank bank.md
+staff quiz export bank.md --format donow --topics binary,cpu --n 10
+staff quiz retrieval bank.md --log taught.csv --date 2026-10-08
+staff quiz check bank.md
 staff quiz spec ocr
 ```
 

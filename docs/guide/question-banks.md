@@ -37,7 +37,7 @@ answer: 10
 | `time` | Seconds for Kahoot (snapped to 5, 10, 20, 30, 60, 90, 120 or 240). |
 | `why` | Explanation, printed in the do-now key. |
 
-`staff quiz check --bank bank.md` reports every problem with its line number and
+`staff quiz check bank.md` reports every problem with its line number and
 any spec tag that is not in the taxonomy.
 
 ## Taught log (for retrieval mode)
