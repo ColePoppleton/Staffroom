@@ -1,0 +1,76 @@
+name: Idea for a tool or change
+description: Suggest a new tool, or a change to one that already exists.
+title: "Idea: "
+labels: ["status:triage", "type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Describe it in your own words; a teacher's view of the problem is the most useful part.
+
+        **One rule shapes every idea: Staffroom never holds pupil data.** No names, class lists, seating plans, groups, or anything recorded per pupil (marks, targets, feedback, flags) goes in or comes out. Whole-class results are fine: mark distributions, how each question went, charts. If your idea needs a pupil's name, say what you are trying to achieve and we will look for a whole-class way to get there. The [Privacy page](https://colepoppleton.github.io/Staffroom/guide/privacy/) has the detail.
+
+        This page is public, so please attach nothing from school. If an example helps, invent one, or start from the [example files](https://github.com/ColePoppleton/Staffroom/tree/main/examples).
+  - type: checkboxes
+    id: no-pupil-data
+    attributes:
+      label: Before you start
+      description: This includes marks files, markbook exports, class lists and screenshots with names in them.
+      options:
+        - label: I have not attached real marks, names or any file from school; I made a small invented example instead.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The lesson or job this is for, before the solution.
+      placeholder: Before a mock I want to see which questions the whole class dropped marks on, without building a spreadsheet.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: What Staffroom could do, or what it should do differently.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: New tool, or a change to an existing one?
+      options:
+        - A new tool
+        - The launcher (sidebar, settings, opening a tool)
+        - Resource Library
+        - Classroom
+        - Worksheet
+        - Quiz
+        - Parsons
+        - Trace
+        - Bugs
+        - Fade
+        - Pseudocode
+        - Marks
+        - Not sure
+    validations:
+      required: false
+  - type: dropdown
+    id: course
+    attributes:
+      label: Which course is it for?
+      multiple: true
+      options:
+        - KS3
+        - GCSE OCR J277
+        - GCSE AQA 8525
+        - A-level
+        - Any
+    validations:
+      required: false
+  - type: textarea
+    id: example
+    attributes:
+      label: An example
+      description: A sketch, an invented example, or a link to something similar you have seen. Invented data only.
+    validations:
+      required: false

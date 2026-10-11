@@ -4,6 +4,22 @@ Staffroom is open source under the MIT licence. Bug reports, fixes and new tools
 are welcome. This page covers setting up, the rules every change keeps, and how
 a change gets in.
 
+## Report a problem or suggest an idea
+
+Choose a form on
+[New issue](https://github.com/ColePoppleton/Staffroom/issues/new/choose):
+**Bug report** when something went wrong, **Idea for a tool or change** for
+anything new. Plain words are fine. The issue tracker is public, so attach
+nothing from school: no marks files, markbook exports, class lists or
+screenshots with names. Make a small invented example instead, starting from
+the [example files](https://github.com/ColePoppleton/Staffroom/tree/main/examples).
+
+A new report is labelled `status:triage`; a maintainer reads it and turns it
+into work on the board. If you have found a privacy problem (Staffroom kept,
+showed or logged something it should not have), report it privately instead,
+as [SECURITY.md](https://github.com/ColePoppleton/Staffroom/blob/main/.github/SECURITY.md)
+describes.
+
 ## Set up
 
 You need macOS, [uv](https://docs.astral.sh/uv/) and
@@ -39,7 +55,8 @@ as CI runs them), `just screenshots`, `just docs`.
 
 ## How a change gets in
 
-1. Open an issue, or comment on an existing one, so work is not duplicated.
+1. Open an issue with one of the forms above, or comment on an existing one,
+   so work is not duplicated.
 2. Branch from `dev`: `feat/<issue>-<slug>`, `fix/…`, `docs/…` or `chore/…`.
 3. Add tests with the change and run `just check` until it is green.
 4. Add a line under `## [Unreleased]` in `CHANGELOG.md`.

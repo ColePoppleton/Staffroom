@@ -6,6 +6,12 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Added
+- *New issue* offers a **Bug report** and an **Idea for a tool or change** form
+  in teacher words, each with a required tick box that nothing from school
+  (real marks, names, class lists) is attached; reports are labelled
+  `status:triage` instead of going straight onto the board, blank issues are
+  off, and `SECURITY.md` says how to report a privacy problem privately (#15).
 ### Fixed
 - An installed copy (`uv tool install`, a wheel) never runs git: no fetch at start, and
   `staff update` and Settings › Updates say it was installed with uv and show
