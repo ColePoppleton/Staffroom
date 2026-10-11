@@ -94,7 +94,10 @@ NEW_NEEDS_CHECKOUT = (
 def new_tool(
     name: Annotated[str, typer.Argument(help="Tool name: lowercase, digits, underscores")],
 ) -> None:
-    """Scaffold a new tool package under src/staffroom/tools/ (in a checkout only)."""
+    """Scaffold a new tool package under src/staffroom/tools/ (in a checkout only).
+
+    Example: staff new my_tool
+    """
     from staffroom.core import install
 
     if not install.detect().is_checkout:

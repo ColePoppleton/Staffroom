@@ -25,7 +25,7 @@ runner = CliRunner()
 
 # Commands whose help still lacks an Example: paragraph, because a parallel
 # change owns their file (#46). Remove a name when its example lands.
-EXAMPLE_PENDING = {"staff new", "staff parsons make", "staff trace make"}
+EXAMPLE_PENDING = {"staff parsons make"}
 
 # The old command names as a word: not `tt-body` (a PDF style) or `.tt` (CSS).
 OLD_NAMES = re.compile(r"(?<![\w.$/-])tt(?:-gui)?(?![\w-])")
