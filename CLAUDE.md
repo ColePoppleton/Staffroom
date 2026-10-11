@@ -112,7 +112,7 @@ Discovery is `pkgutil` over `staffroom.tools`: a new folder appears in
 ## Process
 
 Branches, the Issues board, and the three skills (`/audit`, `/next-task`,
-`/merge-prs`) are described in `docs/process.md`. Task sessions work in a
+`/merge-prs`) are described in `.claude/process.md`. Task sessions work in a
 git worktree on a feature branch from `dev`; `main` is what the installed
 app runs. Nothing merges without a PR and green CI.
 

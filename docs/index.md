@@ -38,8 +38,7 @@ staffroom
 
 </div>
 
-The repository is private for now, so the first line works only if your
-GitHub account can see it. [Install](guide/install.md) has the details and
+No GitHub account is needed. [Install](guide/install.md) has the details and
 the alternatives.
 { .sr-install__note }
 

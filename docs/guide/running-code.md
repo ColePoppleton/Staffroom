@@ -50,6 +50,5 @@ exactly as you would before running it on the board.
 
 Containers, seccomp or network namespaces would cost a great deal, still
 would not be a boundary on macOS, and would protect against the wrong
-thing: these are your own files. The audit that raised this (decision #6,
-`docs/audits/2026-10-08.md`) chose to cap the output and write the limits
-down instead.
+thing: these are your own files. So Staffroom caps the output and writes
+the limits down instead.
