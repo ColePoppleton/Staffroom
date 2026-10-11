@@ -31,10 +31,10 @@ A CSV or XLSX with question columns `q1`, `q2`, … (see
 [Marks files](../guide/marks-files.md)). Once chosen, the file shows as a
 chip with what was found in it: how many scripts and questions, whether a
 `MAX` row gives the paper total, and which columns were dropped as
-identifiers or ignored. *Preview rows* opens the rows themselves. Max marks come from a row flagged
-`MAX` (the word can be in any cell, including a name column that is about
-to be dropped), from the *Max marks* option, or, with a warning, from the
-highest mark seen. Identifier columns are dropped on load; what that catches
+identifiers or ignored. *Preview rows* opens the rows themselves. Max marks come from the *Max marks*
+option when it is set, else from a row flagged `MAX` (the word can be in any
+cell, including a name column that is about to be dropped), else, with a
+warning, from the highest mark seen. Identifier columns are dropped on load; what that catches
 and what it does not is in [Privacy](../guide/privacy.md#what-the-identifier-filter-catches-and-what-it-does-not).
 
 ## Warnings
@@ -84,7 +84,9 @@ the launcher is using, so it can go straight into a report.
 Facility is the mean mark as a fraction of the max; discrimination is the
 difference between the top and bottom third's mean, over the max. Both are
 spelled out in the [Glossary](../guide/glossary.md#assessment). Files go
-next to the input unless Settings says otherwise ([Outputs](../guide/outputs.md)).
+next to the input, or to `~/TeachingSessions/outputs/marks/` when the input is
+in the resources folder, unless Settings names an output folder
+([Outputs](../guide/outputs.md)).
 
 ```bash
 staff marks run marks.csv --preset "OCR J277 (GCSE 9-1)" --unit percent --max 4,6,8,6,10,6

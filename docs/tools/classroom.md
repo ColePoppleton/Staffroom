@@ -22,7 +22,8 @@ and folders or files you put there by hand. Select one for *Diff vs original*,
 versioned name; never overwrites). Promote first compares the copy with the
 original and with the latest promoted version: an unchanged copy writes
 nothing, and the message says so (`Already promoted as resource_v2.py: the
-copy has not changed since`, or `No changes: the copy matches the original`).
+copy has not changed since`, or `No changes: the copy matches the original
+resource.py; nothing to promote`).
 Edit the copy again and the next promote makes `_v3`.
 
 Each session folder also holds a `.origin.json` with the lesson label and,
@@ -43,5 +44,6 @@ staff classroom reopen "2026-10-06/P3 Y9 loops/resource.py"
 
 ## Settings that matter
 
-Sessions folder (local by default), Editor command (`{file}` is replaced by
-the copy's path).
+Settings › Classroom: *Sessions folder* (local by default) and *Editor*
+(Thonny, IDLE, System default, or Custom with a *Command* in which `{file}`
+is replaced by the copy's path).

@@ -25,7 +25,7 @@ one plain house style. No pupil names, ever.
 Real first pages, made from the example files in this repository. Each comes with its answer
 key as a separate file, in PDF and Word.
 
-## Install (macOS)
+## Install (macOS 14 or later)
 
 Two lines in Terminal. The first installs [uv](https://docs.astral.sh/uv/), which fetches
 everything else; skip it if you have uv, or open a new Terminal window after it.

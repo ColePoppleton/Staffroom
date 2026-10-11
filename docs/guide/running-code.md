@@ -12,19 +12,24 @@ in Thonny anyway.
 ## What a run gets
 
 - **A time limit.** Trace allows 10 seconds, Bugs 4 seconds per variant.
-  When it is up the process is killed and the sheet or the log says
-  *timed out (infinite loop?)*. A CPU limit of the same size backs it up.
+  When it is up the process is killed. Trace writes nothing and says *The
+  program did not finish within 10s (infinite loop?)*; in Bugs that
+  version's key and card say *hangs (infinite loop)*. A CPU limit of the
+  same size backs it up.
 - **An output cap of 1 MB** (1024 KB) each for what the program prints and
   for its error messages. Anything past the cap is read and thrown away, so
   the app's memory stays flat however much the program prints. Capped
-  output ends with the line `[output truncated at 1024 KB]`, the run is
-  described as *output capped at 1024 KB* in the log, and the trace key
-  or the bugs key says so. Trace also caps what it collects inside the run
+  output ends with the line `[output truncated at 1024 KB]`: in Trace, the
+  key's program output ends with it; in Bugs, that version's *What happens*
+  adds *output capped at 1024 KB*. Trace also caps what it collects inside the run
   at 1 MB, so a `while True: print(i)` traced for 10 seconds stays small.
 - **A fresh, temporary working folder** that is deleted afterwards, a
   minimal environment, and `python -I` (no site packages, no `PYTHON*`
   variables from your shell). Inputs you type in the *Inputs* box are fed
-  to `input()`; when they run out, `input()` raises `EOFError`.
+  to `input()`, one line each. When they run out, Trace stops, writes
+  nothing and says which input was missing (*asked for a 2nd input but the
+  Inputs box has only 1 line*); in Bugs, `input()` raises
+  `EOFError` and that version crashes.
 - **A refusal to run files that import** networking or process modules:
   `socket`, `ssl`, `http`, `urllib`, `requests`, `subprocess`,
   `multiprocessing` and friends. The check reads the source before running

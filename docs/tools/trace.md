@@ -13,7 +13,7 @@ table and its line lights up in the program; click a line and the table
 selects every step that ran it.** The arrow keys move through the rows.
 
 On screen the completed table is made to fit the pane, whatever the window
-width. A value that never changes once set, and fills most of the table (the
+width. A value that never changes once set, and repeats on at least half the rows (the
 list of scores a program starts with), is lifted out into one line above it:
 *Never changes after line 2: `scores = [45, 62, 58, 71, 39]`*. Columns are as
 wide as their values; a value is **bold** on the row where it changed and
