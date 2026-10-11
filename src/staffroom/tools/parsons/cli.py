@@ -29,7 +29,10 @@ def register(app: typer.Typer) -> None:
             bool, typer.Option("--preview/--no-preview", help="Print the sheet and key")
         ] = True,
     ) -> None:
-        """Make a Parsons worksheet and answer key from SOURCE."""
+        """Make a Parsons worksheet and answer key from SOURCE.
+
+        Example: staff parsons make examples/year9.py --distractors 2
+        """
         from staffroom.tools.parsons import plugin
 
         if fmt not in ("both", "docx", "pdf"):

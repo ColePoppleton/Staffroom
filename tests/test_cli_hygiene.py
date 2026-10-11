@@ -23,10 +23,6 @@ ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = paths.examples_dir()
 runner = CliRunner()
 
-# Commands whose help still lacks an Example: paragraph, because a parallel
-# change owns their file (#46). Remove a name when its example lands.
-EXAMPLE_PENDING = {"staff parsons make"}
-
 # The old command names as a word: not `tt-body` (a PDF style) or `.tt` (CSS).
 OLD_NAMES = re.compile(r"(?<![\w.$/-])tt(?:-gui)?(?![\w-])")
 
@@ -100,8 +96,6 @@ def test_help_reads_as_sentences_with_an_example(path: str, cmd: click.Command) 
     for paragraph in text.split("\n\n"):
         assert "\n" not in paragraph, f"{path}: a hard line break in {paragraph!r}"
     example = _example(text)
-    if path in EXAMPLE_PENDING:
-        return
     assert example is not None, f"{path}: no 'Example: staff …' paragraph"
     assert example.startswith(path + " ") or example == path, f"{path}: example runs {example}"
     words = shlex.split(example)
