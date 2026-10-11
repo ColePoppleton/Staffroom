@@ -86,7 +86,8 @@ def build(out_dir: Path, repo: Path, uv: Path, version: str | None = None) -> Pa
         "CFBundlePackageType": "APPL",
         "CFBundleExecutable": "staffroom",
         "CFBundleIconFile": "icon.icns",
-        "LSMinimumSystemVersion": "12.0",
+        # The pinned Qt 6.12 wheels are built for macOS 14+ (#4).
+        "LSMinimumSystemVersion": "14.0",
         "NSHighResolutionCapable": True,
         # Never run the launcher (and so Python) under Rosetta.
         "LSRequiresNativeExecution": True,
