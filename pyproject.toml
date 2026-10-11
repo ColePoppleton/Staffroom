@@ -82,6 +82,9 @@ ignore = ["RUF012", "RUF001"]  # RUF001: we like × and … in UI text
 testpaths = ["tests", "src/staffroom/tools"]
 addopts = "-q"
 qt_api = "pyside6"
+# pytest's faulthandler plugin is on by default, so a crash prints every
+# thread's traceback (#39); a test stuck for five minutes dumps them too.
+faulthandler_timeout = 300
 filterwarnings = ["error::DeprecationWarning:staffroom.*"]
 
 # ---------------------------------------------------------------- mypy
