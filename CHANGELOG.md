@@ -112,6 +112,17 @@ later entries refer to this repository's issues.
   one line each*; *At least 1 input() call (in a loop)*), and `staff trace make` says
   to give the lines with `--stdin`. For tools: `ToolError(message, next_step=...,
   input_key=..., input_hint=...)` and `Inspection.placeholders`.
+- Parsons offers a **wrong variable** distractor (#29): a name the line reads, swapped
+  for another of the program's own variables of the same sort that is already set
+  when the line runs, the one set most recently (`total = total + count`,
+  `print("Average:", count)`). Lists are never swapped for numbers, and a
+  function's parameters, names inside a list or string, and called functions are
+  left alone. `examples/year9.py` at seed 1 now gives 4 distractors when asked for 4
+  (it gave 3, all missing colons), and the key's *Looks like* is the line the
+  distractor was made from. Sheets change for the same seed only for programs with
+  a wrong variable to offer, such as `year9.py` and programs with two loop
+  counters; programs with one variable (a single `while` counter, one mark read in)
+  keep their sheets.
 
 ## [0.8.1] - 2026-10-11
 

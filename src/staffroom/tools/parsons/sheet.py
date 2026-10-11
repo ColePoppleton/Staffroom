@@ -93,6 +93,8 @@ def build_document(
 
 
 def _closest(distractor: Block, problem: Problem) -> str:
+    if distractor.original:  # the real line it was made from
+        return distractor.original
     first = distractor.lines[0]
     best = max(problem.solution, key=lambda b: _overlap(b.lines[0], first))
     return best.lines[0]

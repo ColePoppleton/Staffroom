@@ -3,6 +3,7 @@
 
 import ast
 import io
+import keyword
 import random
 import re
 import tokenize
@@ -179,7 +180,23 @@ def _tokens(line: str) -> list[tokenize.TokenInfo]:
     return found
 
 
-def _explain(distractor: str, real_lines: list[str]) -> str:
+def _assigned(source: str) -> set[str]:
+    """Every name the program sets (a variable a pupil can see on the sheet)."""
+    tree = ast.parse(source.replace("\t", "    "))
+    return {
+        n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)
+    }
+
+
+def _parses(line: str) -> bool:
+    try:
+        ast.parse(line + "\n    pass" if line.endswith(":") else line)
+    except SyntaxError:
+        return False
+    return True
+
+
+def _explain(distractor: str, real_lines: list[str], assigned: set[str]) -> str:
     """Say independently of ``logic`` what is wrong with ``distractor``,
     or fail: the one token that differs from a real line, and where it sits."""
     if distractor + ":" in real_lines:
@@ -199,6 +216,15 @@ def _explain(distractor: str, real_lines: list[str]) -> str:
         ops = {"<", "<=", ">", ">=", "==", "!="}
         if a in ops and b in ops:
             return "wrong comparison"
+        if mine[i].type == tokenize.NAME and theirs[i].type == tokenize.NAME:
+            # Another of the program's own variables, read where the real one
+            # was: not an attribute, not a function called, and still Python.
+            assert a in assigned and b in assigned, (distractor, real)
+            assert not keyword.iskeyword(a) and not keyword.iskeyword(b), distractor
+            assert i == 0 or mine[i - 1].string != ".", distractor
+            assert i + 1 == len(mine) or mine[i + 1].string != "(", distractor
+            assert _parses(distractor), distractor
+            return "wrong variable"
         assert mine[i].type == tokenize.NUMBER and abs(int(a) - int(b)) == 1, (distractor, real)
         before = [t.string for t in mine[:i]]
         assert before[-1:] not in (["+"], ["-"]) or a != "0", distractor  # no "+ 0"
@@ -217,9 +243,11 @@ def _explain(distractor: str, real_lines: list[str]) -> str:
 def test_every_distractor_in_the_corpus_is_wrong_in_a_way_the_sheet_shows(name: str) -> None:
     real_lines = [b.lines[0] for b in logic.split(CORPUS[name], "line")]
     real_lines += [b.lines[0] for b in logic.split(CORPUS[name], "statement")]
+    assigned = _assigned(CORPUS[name])
     for block in _distractors(name):
         assert block.kind in logic.KINDS
-        assert _explain(block.lines[0], real_lines) == block.kind, block
+        assert _explain(block.lines[0], real_lines, assigned) == block.kind, block
+        assert block.original in real_lines, block  # the key's "Looks like"
 
 
 def test_the_corpus_uses_these_kinds_and_no_others() -> None:
@@ -229,47 +257,134 @@ def test_the_corpus_uses_these_kinds_and_no_others() -> None:
         "if_elif_else": ["missing colon", "wrong comparison"],
         "function": ["missing colon"],
         "try": ["missing colon"],
-        "nested": ["missing colon", "off by one in range()", "wrong comparison"],
+        "nested": [
+            "missing colon",
+            "off by one in range()",
+            "wrong comparison",
+            "wrong variable",
+        ],
         "multiline_stmt": [],
-        "comments_and_blanks": [],
-        "year9": ["missing colon", "wrong comparison"],
-        "year9_tabs": ["missing colon", "wrong comparison"],
+        "comments_and_blanks": ["wrong variable"],
+        "year9": ["missing colon", "wrong comparison", "wrong variable"],
+        "year9_tabs": ["missing colon", "wrong comparison", "wrong variable"],
         "plugin": ["missing colon", "off by one in a loop condition", "wrong comparison"],
     }
 
 
 def test_the_default_year9_sheet_changes_no_data() -> None:
     problem = logic.make_problem(CORPUS["year9"], logic.Options())
-    made = [b.lines[0] for b in problem.shuffled if b.distractor]
+    made = [b for b in problem.shuffled if b.distractor]
     assert len(made) == 2
-    assert not [m for m in made if m.startswith(("scores =", "total =", "count ="))]
+    for block in made:
+        # Only names or punctuation differ: every number and string is as written.
+        literals = [
+            t.string
+            for t in _tokens(block.lines[0])
+            if t.type in (tokenize.NUMBER, tokenize.STRING)
+        ]
+        original = [
+            t.string
+            for t in _tokens(block.original)
+            if t.type in (tokenize.NUMBER, tokenize.STRING)
+        ]
+        assert literals == original, block
+
+
+def test_year9_at_seed_1_has_wrong_variables() -> None:
+    """A straight-line program gets as many distractors as asked, not just colons (#29)."""
+    for granularity in ("statement", "line"):
+        options = logic.Options(seed=1, distractors=4, granularity=granularity)
+        problem = logic.make_problem(CORPUS["year9"], options)
+        assert [(b.lines[0], b.kind) for b in problem.shuffled if b.distractor] == [
+            ("if average >= 50", "missing colon"),
+            ('print("Average:", count)', "wrong variable"),
+            ("count = total + 1", "wrong variable"),
+            ("average = count / count", "wrong variable"),
+        ]
+
+
+def test_wrong_variables_in_year9() -> None:
+    """Each name read is swapped for the number most recently set before its
+    line; the list, the loop's own header and the literals are left alone."""
+    swaps = logic.variable_swaps(logic.normalise(CORPUS["year9"]))
+    assert {line: [(s.old, s.new) for s in found] for line, found in swaps.items()} == {
+        6: [("total", "score"), ("score", "count")],  # total = total + score
+        7: [("count", "total")],  # count = count + 1
+        8: [("total", "count"), ("count", "total")],  # average = total / count
+        9: [("average", "count")],  # if average >= 50:
+        13: [("average", "count")],  # print("Average:", average)
+    }
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        # Not set yet when the line runs: no stand-in.
+        "total = 0\nprint(total)\ncount = 0\n",
+        # A different kind: never the list for a number, or a string for a number.
+        "scores = [1, 2]\nname = 'Sam'\ntotal = 0\nprint(total)\n",
+        # Data and calls are left alone: names in a list, an f-string, a call's function.
+        "a = 1\nb = 2\npair = [a, b]\nprint(f'{a}')\n",
+        # A parameter's kind is unknown, so it is never swapped or swapped in.
+        "def area(w, h):\n    return w * h\n",
+        # The loop variable of a comprehension lives only inside it.
+        "n = 3\nsquares = [i * i for i in range(n)]\n",
+    ],
+)
+def test_no_wrong_variable_without_a_plausible_stand_in(source: str) -> None:
+    assert logic.variable_swaps(source) == {}
+
+
+def test_wrong_variables_stay_in_their_function() -> None:
+    source = (
+        "rate = 2\n"
+        "def pay(hours):\n"
+        "    base = 10\n"
+        "    extra = 5\n"
+        "    return base + extra\n"
+        "bonus = 3\n"
+        "print(rate + bonus)\n"
+    )
+    swaps = logic.variable_swaps(source)
+    # Inside the function: its own numbers, and rate from the top level; never
+    # bonus, set after it. At the top level, never the function's locals.
+    assert [(s.old, s.new) for s in swaps[5]] == [("base", "extra"), ("extra", "base")]
+    assert [(s.old, s.new) for s in swaps[7]] == [("rate", "bonus"), ("bonus", "rate")]
+
+
+def test_wrong_variables_are_seed_reproducible() -> None:
+    for seed in (1, 2, 3):
+        options = logic.Options(seed=seed, distractors=4)
+        first = logic.make_problem(CORPUS["year9"], options)
+        again = logic.make_problem(CORPUS["year9"], options)
+        assert [b.text for b in first.shuffled] == [b.text for b in again.shuffled]
 
 
 def test_a_program_whose_distractors_did_not_change_keeps_its_sheet() -> None:
-    """``nested`` only had off-by-ones in ``range()``: its sheets are as before #19."""
-    statement = logic.make_problem(PROGRAMS["nested"], logic.Options(seed=3, distractors=2))
+    """``while`` and ``if_elif_else`` have one variable each, so no wrong
+    variable: their sheets are as before #29 (and #19)."""
+    statement = logic.make_problem(PROGRAMS["while"], logic.Options(seed=3, distractors=2))
     assert [(b.text, b.distractor) for b in statement.shuffled] == [
-        ("for i in range(3):", False),
-        ("for i in range(3)", True),
-        ("if i == j:", False),
-        ("print(i)", False),
-        ("print(j)", False),
-        ("for j in range(3):", False),
-        ("if i != j:", True),
-        ("else:", False),
+        ("count = 0", False),
+        ("while count < 9:", True),
+        ("print(count)", False),
+        ("count += 1", False),
+        ("while count < 11:", True),
+        ("while count < 10:", False),
     ]
     options = logic.Options(seed=7, distractors=3, granularity="line")
-    line = logic.make_problem(PROGRAMS["nested"], options)
+    line = logic.make_problem(PROGRAMS["if_elif_else"], options)
     assert [(b.text, b.distractor) for b in line.shuffled] == [
-        ("if i == j:", False),
-        ("print(j)", False),
+        ("elif mark >= 50", True),
+        ("print('A')", False),
         ("else:", False),
-        ("for i in range(2):", True),
-        ("for j in range(3)", True),
+        ("elif mark >= 50:", False),
+        ("print('B')", False),
+        ("mark = int(input('Mark: '))", False),
         ("else", True),
-        ("print(i)", False),
-        ("for j in range(3):", False),
-        ("for i in range(3):", False),
+        ("if mark >= 70:", False),
+        ("if mark >= 70", True),
+        ("print('U')", False),
     ]
 
 
