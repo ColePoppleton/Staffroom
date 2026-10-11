@@ -510,6 +510,10 @@ class ToolPanel(QWidget):
         )
         try:
             result = self.plugin.act(action, {"name": name, "table": table}, ctx)
+        except ToolError as exc:  # already a message for the teacher (#74)
+            self.strip.show_failure(str(exc))
+            self.results.append_log(str(exc))
+            return
         except Exception as exc:
             self.strip.show_failure(f"Could not save preset: {exc}")
             return

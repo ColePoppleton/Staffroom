@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 
 from staffroom import __version__
 from staffroom.core import paths
-from staffroom.core.config import Config
+from staffroom.core.config import Config, NotSaved
 from staffroom.core.launch import EDITOR_PRESETS, preset_for
 from staffroom.core.library.exclude import IGNORE_FILE
 from staffroom.core.library.service import library_db_path
@@ -60,6 +60,11 @@ class SettingsPage(QWidget):
         layout.addWidget(
             make_label("Shell-wide preferences. Saved as you change them.", "subtitle")
         )
+        # Shown while config.toml cannot be written (#74): changes still apply.
+        self.save_notice = make_label("", "danger", wrap=True)
+        self.save_notice.setObjectName("SettingsSaveNotice")
+        self.save_notice.setVisible(False)
+        layout.addWidget(self.save_notice)
 
         appearance = Card("Appearance")
         form = QFormLayout()
@@ -241,24 +246,34 @@ class SettingsPage(QWidget):
         label.setProperty("role", "muted")
         return label
 
+    def _save(self) -> None:
+        self.show_save_result(self.config.save())
+
+    def show_save_result(self, problem: NotSaved | None) -> None:
+        """Say under the title when the last save failed; a later save that
+        works (the folder was unlocked) clears it. The change itself already
+        applies in memory either way."""
+        self.save_notice.setText(str(problem) if problem else "")
+        self.save_notice.setVisible(problem is not None)
+
     def _on_theme(self, theme: str) -> None:
         if theme in ("dark", "light"):
             self.config.general.theme = theme  # type: ignore[assignment]
-            self.config.save()
+            self._save()
             self.theme_changed.emit(theme)
 
     def _on_resources_root(self, path: object) -> None:
         text = str(path) if path else ""
         if text and text != self.config.general.resources_root:
             self.config.general.resources_root = text
-            self.config.save()
+            self._save()
             self.resources_root_changed.emit(text)
 
     def _on_library_exclude(self, values: object) -> None:
         patterns = [str(v) for v in values] if isinstance(values, list) else []
         if patterns != self.config.general.library_exclude:
             self.config.general.library_exclude = patterns
-            self.config.save()
+            self._save()
             self.library_exclude_changed.emit(patterns)
 
     # -- updates ---------------------------------------------------------
@@ -320,18 +335,18 @@ class SettingsPage(QWidget):
 
     def _on_board(self, index: int) -> None:
         self.config.general.board = str(self.board.itemData(index))
-        self.config.save()
+        self._save()
 
     def _on_house(self) -> None:
         header, footer = self.house_header.text().strip(), self.house_footer.text().strip()
         if (header, footer) != (self.config.general.house_header, self.config.general.house_footer):
             self.config.general.house_header = header
             self.config.general.house_footer = footer
-            self.config.save()
+            self._save()
 
     def _on_sessions_root(self, path: object) -> None:
         self.config.general.sessions_root = str(path) if path else ""
-        self.config.save()
+        self._save()
 
     def _on_editor_preset(self, name: str) -> None:
         if name in EDITOR_PRESETS:
@@ -342,7 +357,7 @@ class SettingsPage(QWidget):
         command = self.editor_command.text().strip()
         if command and command != self.config.general.editor_command:
             self.config.general.editor_command = command
-            self.config.save()
+            self._save()
             preset = preset_for(command)
             if self.editor_preset.currentText() != preset:
                 self.editor_preset.blockSignals(True)
@@ -351,11 +366,11 @@ class SettingsPage(QWidget):
 
     def _on_output_dir(self, path: object) -> None:
         self.config.general.output_dir = str(path) if path else ""
-        self.config.save()
+        self._save()
 
     def _on_log_level(self, level: str) -> None:
         self.config.general.log_level = level
-        self.config.save()
+        self._save()
 
     @staticmethod
     def _reveal(folder: object) -> None:

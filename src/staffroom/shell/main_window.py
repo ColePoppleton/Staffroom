@@ -83,7 +83,6 @@ class MainWindow(QMainWindow):
         super().__init__()
         load_fonts()  # the brand type, before any widget measures text
         self.config = config
-        self._config_save_warned = False
         # Every loadable tool; hidden ones can still be opened by name
         # (``staffroom --tool hello``) but are not listed or on a shortcut.
         self.plugins = plugins if plugins is not None else discover_plugins()
@@ -244,18 +243,10 @@ class MainWindow(QMainWindow):
 
     def _save_config(self) -> None:
         """Remember a choice (last tool, sidebar mode, theme…) in config.toml.
-        A config home that cannot be written (#65) keeps the choice for this
-        session and says so once in the log instead of a traceback per click."""
-        try:
-            self.config.save()
-        except OSError as exc:
-            if not self._config_save_warned:
-                self._config_save_warned = True
-                log.warning(
-                    "Cannot save %s (%s); choices last for this session only",
-                    self.config.path,
-                    exc.strerror or exc,
-                )
+        A config home that cannot be written (#65, #74) keeps the choice for
+        this session: ``Config.save`` logs it once and the Settings page says
+        so, instead of a traceback per click."""
+        self.settings.show_save_result(self.config.save())
 
     def show_settings(self) -> None:
         self._show(self.settings, SETTINGS)

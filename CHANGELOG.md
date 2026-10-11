@@ -33,6 +33,12 @@ with every change; `just release <part>` turns it into a version.
   may run the same: read the code*. When fewer visible bugs exist than asked
   for, a warning and the result strip say so. The seed is now in the sheet's
   header.
+- A config home that cannot be written no longer turns Settings changes or
+  *Save as preset* in Marks into a bug traceback (#74). `Config.save()` never
+  raises `OSError`: it logs one warning per session and returns what went
+  wrong, the change still applies until you quit, Settings says "Settings could
+  not be saved: <path> is read-only. Changes last until you quit." under its
+  title, and Marks says the preset could not be saved in the result strip.
 
 ## [0.7.0] - 2026-10-09
 ### Changed

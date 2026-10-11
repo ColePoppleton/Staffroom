@@ -6,6 +6,8 @@ table per tool. Tools read their section through :meth:`Config.tool`.
 
 from __future__ import annotations
 
+import errno
+import logging
 import tomllib
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
@@ -15,7 +17,32 @@ import tomli_w
 
 from staffroom.core import paths
 
+log = logging.getLogger(__name__)
+
 Theme = Literal["dark", "light"]
+
+#: errno values that mean "this file or folder may not be written".
+_READ_ONLY_ERRNOS = frozenset({errno.EACCES, errno.EPERM, errno.EROFS})
+
+
+@dataclass(frozen=True)
+class NotSaved:
+    """Why ``config.toml`` was not written (#74). ``str()`` is the line for
+    the teacher; ``reason`` reads after the path ("is read-only")."""
+
+    path: Path
+    reason: str
+
+    @classmethod
+    def from_error(cls, path: Path, exc: OSError) -> NotSaved:
+        if exc.errno in _READ_ONLY_ERRNOS:
+            return cls(path, "is read-only")
+        return cls(path, f"cannot be written ({exc.strerror or exc})")
+
+    def __str__(self) -> str:
+        return (
+            f"Settings could not be saved: {self.path} {self.reason}. Changes last until you quit."
+        )
 
 
 @dataclass
@@ -47,6 +74,8 @@ class Config:
     tools: dict[str, dict[str, Any]] = field(default_factory=dict)
     path: Path = field(default_factory=paths.config_file)
     read_only: bool = False  # set for one-off runs (screenshots) that must not persist
+    # One log warning per session when saving fails, however many settings change.
+    _save_warned: bool = field(default=False, init=False, repr=False, compare=False)
 
     def tool(self, name: str) -> dict[str, Any]:
         return self.tools.setdefault(name, {})
@@ -62,14 +91,30 @@ class Config:
             tool=tool,
         )
 
-    def save(self) -> Path:
+    def save(self) -> NotSaved | None:
+        """Write ``config.toml``. Returns ``None`` when it was written (or the
+        config is ``read_only``), else a :class:`NotSaved` the caller can show
+        the teacher. Never raises ``OSError``: a config home that cannot be
+        written (a locked-down school account, #74) keeps every change in
+        memory for the session and logs one warning, not a traceback per click."""
         if self.read_only:
-            return self.path
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+            return None
         payload: dict[str, Any] = {"general": asdict(self.general), "tools": self.tools}
-        with self.path.open("wb") as fh:
-            tomli_w.dump(payload, fh)
-        return self.path
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open("wb") as fh:
+                tomli_w.dump(payload, fh)
+        except OSError as exc:
+            failure = NotSaved.from_error(self.path, exc)
+            if not self._save_warned:
+                self._save_warned = True
+                log.warning(
+                    "Cannot save %s (%s); changes last for this session only",
+                    self.path,
+                    exc.strerror or exc,
+                )
+            return failure
+        return None
 
 
 def load_config(path: Path | None = None) -> Config:
