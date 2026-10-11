@@ -55,7 +55,15 @@ class RunWorker(QThread):
             if self.job_is_run:
                 record_run(self.plugin.name)
         except ToolError as exc:
-            self.failed.emit(str(exc), False, exc)
+            # A fresh copy, never raised: the raised one's traceback would keep
+            # this run's frames (and this worker) alive in a reference cycle.
+            detail = ToolError(
+                str(exc),
+                next_step=exc.next_step,
+                input_key=exc.input_key,
+                input_hint=exc.input_hint,
+            )
+            self.failed.emit(str(exc), False, detail)
         except Exception:
             self.failed.emit(traceback.format_exc(), True, None)
         else:
