@@ -6,6 +6,17 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Added
+- The Library's column has a **Tags ▾** filter beside *All types* (#111). Its menu
+  lists the tags on the files the Library shows, each with how many carry it;
+  choosing one narrows the tree (opened all the way down) and the search results
+  to files carrying it, and choosing more narrows further. It combines with the
+  type filter and the query, follows tag edits in the preview at once, and the
+  footer says how many files it leaves. Tags are still read from the sidecar
+  (`.staffroom/tags.json`); the resources folder is never written.
+  `LibraryService.tag_counts()` and a `tags=` argument on `resources()` and
+  `search()` back it, over pure `count_tags` / `paths_with_tags` helpers.
+
 ### Changed
 - The date in a sheet's header can be pinned with `STAFFROOM_DATE=YYYY-MM-DD` (#107),
   read in one place (`core/export/dating.py`); every sheet builder falls back to it
@@ -14,6 +25,7 @@ with every change; `just release <part>` turns it into a version.
   to day, and `scripts/screenshots.sh outputs` redoes just those pages. A teacher's
   own runs never set it and still print today's date. `worksheet-sample.png` is
   re-rendered once: it still showed the truth tables from before #43.
+
 ### Fixed
 - `just install` updates an installed Staffroom.app in place (overwriting its files,
   removing ones the build no longer has, then re-signing and re-registering it)

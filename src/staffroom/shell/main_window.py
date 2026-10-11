@@ -143,12 +143,14 @@ class MainWindow(QMainWindow):
         res = self.resources
         res.search_changed.connect(self._on_search)
         res.kind_changed.connect(self.library_page.set_kind)
+        res.tags_changed.connect(self._on_tags_changed)
         res.show_hidden_toggled.connect(self._on_show_hidden)
         res.resource_selected.connect(self._on_resource_selected)
         res.reindex_requested.connect(self.library_page.reindex)
         res.hidden.setChecked(config.general.show_hidden)
         self.library_page.indexed.connect(self._on_indexed)
         self.library_page.resource_shown.connect(res.select)
+        self.library_page.preview.tags_saved.connect(self._on_tags_saved)
         self._build_use_bar()
         self.use_bar.open_for_class.connect(self._open_shown_for_class)
         self.use_bar.tool_requested.connect(self._hand_shown_to)
@@ -406,6 +408,20 @@ class MainWindow(QMainWindow):
         self.library_page.set_show_hidden(show)
         self.refresh_resources()
 
+    def _on_tags_changed(self, _tags: object) -> None:
+        """The tag filter changed (#111): narrow the tree and the results."""
+        self.refresh_resources()
+        self.library_page.refresh_search()
+
+    def _on_tags_saved(self, _rel_path: str) -> None:
+        """A file's tags changed: the filter's counts follow at once, and
+        while it is on, so do the tree and the results."""
+        if self.resources.chosen_tags():
+            self._on_tags_changed(None)
+        else:
+            show_hidden = self.config.general.show_hidden
+            self.resources.set_tag_counts(self.library.tag_counts(include_hidden=show_hidden))
+
     def _on_resource_selected(self, rel_path: str) -> None:
         self.show_library()
         self.library_page.show_resource(rel_path)
@@ -433,7 +449,16 @@ class MainWindow(QMainWindow):
             status, detail = "No folder chosen: set it in Settings", ""
         elif not self.library.root_exists:
             status, detail = "Folder not found: set it in Settings", ""
-        self.resources.set_resources(resources, status, detail)
+        # The tag filter (#111): its counts are over the files listed, and it
+        # narrows the tree only; the counts above stay the library's own.
+        self.resources.set_tag_counts(self.library.tag_counts(include_hidden=show_hidden))
+        chosen = self.resources.chosen_tags()
+        shown = resources
+        if chosen:
+            shown = self.library.resources(include_hidden=show_hidden, tags=chosen)
+            n = len(shown)
+            status = f"{n} file{'s' if n != 1 else ''} tagged {' + '.join(chosen)}\n{status}"
+        self.resources.set_resources(shown, status, detail, filtered=bool(chosen))
         self.resources.set_library_state(
             can_index=self.library.available, can_search=self.library.searchable
         )

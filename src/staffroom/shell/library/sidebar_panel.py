@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
 )
 
 from staffroom.core.library.model import KIND_BY_EXT, Resource
+from staffroom.core.library.tags import TagCount
+from staffroom.shell.library.tag_filter import TagFilterButton
 from staffroom.shell.library.tree import REL_PATH_ROLE, ResourceTreeModel
 
 ALL_KINDS = ["all", *sorted(set(KIND_BY_EXT.values())), "other"]
@@ -26,6 +28,7 @@ ALL_KINDS = ["all", *sorted(set(KIND_BY_EXT.values())), "other"]
 class ResourcesPanel(QWidget):
     search_changed = Signal(str)
     kind_changed = Signal(str)
+    tags_changed = Signal(list)  # list[str], the tag filter's choice (#111)
     show_hidden_toggled = Signal(bool)
     resource_selected = Signal(str)
     reindex_requested = Signal()
@@ -50,12 +53,16 @@ class ResourcesPanel(QWidget):
         self.kind.currentIndexChanged.connect(
             lambda i: self.kind_changed.emit(str(self.kind.itemData(i)))
         )
+        # Tags ▾ beside the type filter, as in the R6 mockup (#111).
+        self.tag_filter = TagFilterButton()
+        self.tag_filter.tags_changed.connect(self.tags_changed.emit)
         self.hidden = QPushButton("Hidden")
         self.hidden.setProperty("role", "ghost")
         self.hidden.setCheckable(True)
         self.hidden.setToolTip("Show .DS_Store, __pycache__, zips and other cruft")
         self.hidden.toggled.connect(self.show_hidden_toggled.emit)
         filters.addWidget(self.kind, 1)
+        filters.addWidget(self.tag_filter)
         filters.addWidget(self.hidden)
         layout.addLayout(filters)
 
@@ -99,16 +106,30 @@ class ResourcesPanel(QWidget):
         """The results list in place of the tree (True), or the tree back."""
         self.views.setCurrentWidget(self.results if show else self.tree)
 
-    def set_resources(self, resources: list[Resource], status: str, detail: str = "") -> None:
+    def set_resources(
+        self, resources: list[Resource], status: str, detail: str = "", *, filtered: bool = False
+    ) -> None:
         """``detail`` is the longer explanation behind a terse status (shown as
-        a tooltip), e.g. why some files are indexed by name only."""
+        a tooltip), e.g. why some files are indexed by name only. A
+        ``filtered`` list (the tag filter is on) is opened all the way down:
+        the few files it leaves should not hide in closed folders."""
         current = self.current_rel_path()
         self.model.set_resources(resources)
         self.status.setText(status)
         self.status.setToolTip(detail)
-        self.tree.expandToDepth(0)
+        if filtered:
+            self.tree.expandAll()
+        else:
+            self.tree.expandToDepth(0)
         if current:
             self.select(current)
+
+    # -- the tag filter (#111) -------------------------------------------
+    def chosen_tags(self) -> list[str]:
+        return self.tag_filter.chosen()
+
+    def set_tag_counts(self, counts: list[TagCount]) -> None:
+        self.tag_filter.set_counts(counts)
 
     def set_indexing(self, running: bool, text: str = "") -> None:
         self.reindex.setEnabled(not running and self._can_index)

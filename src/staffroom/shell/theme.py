@@ -255,6 +255,16 @@ QListWidget#ResultList::item:selected, QListWidget#StringList::item:selected {{
 QListWidget#StringList::item {{ padding: 3px 6px; }}
 
 /* the Library page: results in the column, the file's title, tags, the use bar */
+/* Tags ▾ beside the type filter (#111). On, it reads as ink, not accent:
+   the accent is kept for selection, primary actions, links and focus. */
+QPushButton#TagFilter {{
+    color: {p.text_muted}; padding: 4px 9px; min-height: 18px; font-size: 12.5px;
+}}
+QPushButton#TagFilter::menu-indicator {{ image: none; width: 0px; }}
+QPushButton#TagFilter:hover {{ color: {p.text}; }}
+QPushButton#TagFilter[active="true"] {{
+    color: {p.text}; background: {p.surface}; border-color: {p.text_faint}; font-weight: 600;
+}}
 QWidget#LibraryColumn QListWidget#ResultList {{
     background: transparent; border: none; padding: 2px 6px;
 }}
