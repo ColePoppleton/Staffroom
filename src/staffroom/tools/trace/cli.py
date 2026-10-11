@@ -32,7 +32,10 @@ def register(app: typer.Typer) -> None:
             bool, typer.Option("--preview/--no-preview", help="Print the sheet and key")
         ] = True,
     ) -> None:
-        """Trace SOURCE in the sandbox and write blank + completed trace tables."""
+        """Trace SOURCE in the sandbox and write blank + completed trace tables.
+
+        Example: staff trace make examples/year9.py --vars total,count,score
+        """
         from staffroom.tools.trace import MissingInputError, plugin
 
         config = load_config()

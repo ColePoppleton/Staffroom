@@ -57,7 +57,10 @@ def index(
         bool, typer.Option("--full", help="Re-extract every file, not just changed")
     ] = False,
 ) -> None:
-    """Index (or incrementally re-index) the resources root."""
+    """Index the resources folder; later runs only read what changed.
+
+    Example: staff library index
+    """
     svc = _service()
     _require_writable(svc)
     _require_root(svc)
@@ -84,7 +87,10 @@ def search(
     hidden: Annotated[bool, typer.Option("--hidden", help="Include hidden cruft")] = False,
     limit: Annotated[int, typer.Option("--limit", "-n")] = 25,
 ) -> None:
-    """Search file names and extracted text."""
+    """Search the indexed file names and text.
+
+    Example: staff library search "bubble sort" --kind python
+    """
     svc = _service()
     if not svc.searchable:
         _require_writable(svc)  # "index is empty; run index" would send them nowhere
@@ -112,7 +118,10 @@ def tags(
     set_tags: Annotated[str | None, typer.Option("--set", help="Comma-separated tags")] = None,
     notes: Annotated[str | None, typer.Option("--notes")] = None,
 ) -> None:
-    """Show or set the tags and notes for one resource."""
+    """Show or set the tags and notes for one resource.
+
+    Example: staff library tags "Year 9/loops.py" --set loops,y9
+    """
     svc = _service()
     rel = _relative(svc, path)
     if set_tags is not None or notes is not None:
@@ -130,7 +139,10 @@ def tags(
 
 @library_app.command()
 def status() -> None:
-    """Where the root is and when it was last indexed."""
+    """Show where the resources folder is and when it was last indexed.
+
+    Example: staff library status
+    """
     svc = _service()
     last = svc.last_indexed()
     when = datetime.fromisoformat(last).astimezone().strftime("%Y-%m-%d %H:%M") if last else "never"
@@ -177,7 +189,10 @@ def exclude(
 
     Names match at any depth ("Pupil work", "*assessment*"); paths match from the
     root ("Year 11/Mocks"). Patterns in <root>/.staffroom/ignore are also honoured.
-    Re-index afterwards: staff library index."""
+    Re-index afterwards: staff library index.
+
+    Example: staff library exclude --add "Old schemes"
+    """
     from staffroom.core.library.exclude import normalise_patterns
 
     cfg = load_config()

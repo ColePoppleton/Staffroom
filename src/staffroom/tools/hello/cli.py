@@ -23,7 +23,12 @@ def register(app: typer.Typer) -> None:
         out: Annotated[Path | None, typer.Option("--out", "-o", help="Output folder")] = None,
         prefix: Annotated[str, typer.Option(help="Question column prefix")] = "q",
     ) -> None:
-        """Summarise SOURCE per question into the output folder (or --out)."""
+        """Summarise SOURCE per question (answered, mean, highest) into the output folder.
+
+        Nothing per script is saved; --out picks a different folder for this run only.
+
+        Example: staff hello run examples/marks_10x.csv
+        """
         from staffroom.tools.hello import plugin
 
         config = load_config()
@@ -45,7 +50,10 @@ def register(app: typer.Typer) -> None:
 
     @app.command()
     def preview(source: SourceArg, rows: int = 10) -> None:
-        """Print the first ROWS rows of SOURCE (on screen only; nothing is saved)."""
+        """Print the first ROWS rows of SOURCE on screen; nothing is saved.
+
+        Example: staff hello preview examples/marks_10x.csv --rows 5
+        """
         table = read_table(source)
         if table.dropped_columns:
             typer.secho("dropped identifier columns: " + ", ".join(table.dropped_columns), err=True)

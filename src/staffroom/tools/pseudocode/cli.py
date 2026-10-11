@@ -53,19 +53,28 @@ def register(app: typer.Typer) -> None:
     def to_ocr(
         source: SourceArg, from_: FromOpt = "", out: OutOpt = None, save: bool = False
     ) -> None:
-        """Translate SOURCE (Python or AQA) to OCR Exam Reference Language."""
+        """Translate SOURCE (Python or AQA) to OCR Exam Reference Language.
+
+        Example: staff pseudocode to-ocr examples/year9.py
+        """
         _run(source, from_, "ocr", out, save)
 
     @app.command("to-aqa")
     def to_aqa(
         source: SourceArg, from_: FromOpt = "", out: OutOpt = None, save: bool = False
     ) -> None:
-        """Translate SOURCE (Python or OCR) to AQA pseudocode."""
+        """Translate SOURCE (Python or OCR) to AQA pseudocode.
+
+        Example: staff pseudocode to-aqa examples/year9.py
+        """
         _run(source, from_, "aqa", out, save)
 
     @app.command("to-python")
     def to_python(
         source: SourceArg, from_: FromOpt = "", out: OutOpt = None, save: bool = False
     ) -> None:
-        """Translate SOURCE (OCR or AQA pseudocode) to Python."""
+        """Translate SOURCE (OCR or AQA pseudocode) to Python.
+
+        Example: staff pseudocode to-python loops_ocr.txt --from ocr
+        """
         _run(source, from_, "python", out, save)

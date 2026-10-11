@@ -1,8 +1,10 @@
 """Logging setup shared by the CLI and the shell.
 
 The shell attaches an extra handler that feeds its log drawer; the CLI gets
-stderr. Both also write to a rotating file under the config directory when
-that directory can be written; when it cannot, they carry on with stderr.
+stderr only with ``staff -v`` (#20), because each command already prints a plain
+line for anything the teacher needs to know. Both also write to a rotating file
+under the config directory when that directory can be written; when it cannot,
+they carry on with stderr.
 """
 
 from __future__ import annotations

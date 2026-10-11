@@ -255,7 +255,10 @@ def register(app: typer.Typer) -> None:
         source: Annotated[Path, typer.Argument(exists=True, dir_okay=False)],
         out: Annotated[Path | None, typer.Option("--out", "-o", help="Output folder")] = None,
     ) -> None:
-        """Summarise SOURCE per question into the output folder (or --out)."""
+        """Summarise SOURCE per question into the output folder (or --out).
+
+        Example: staff $name run examples/marks_10x.csv
+        """
         from staffroom.tools.$name import plugin
 
         config = load_config()
@@ -277,7 +280,10 @@ def register(app: typer.Typer) -> None:
 
     @app.command()
     def preview(source: Annotated[Path, typer.Argument(exists=True, dir_okay=False)]) -> None:
-        """Print the first rows of SOURCE (on screen only; nothing is saved)."""
+        """Print the first rows of SOURCE (on screen only; nothing is saved).
+
+        Example: staff $name preview examples/marks_10x.csv
+        """
         table = read_table(source)
         typer.echo(" | ".join(table.columns))
         for row in table.rows[:10]:

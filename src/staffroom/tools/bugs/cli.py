@@ -32,7 +32,10 @@ def register(app: typer.Typer) -> None:
         out: Annotated[Path | None, typer.Option("--out", "-o")] = None,
         preview: Annotated[bool, typer.Option("--preview")] = False,
     ) -> None:
-        """Write COUNT buggy copies of SOURCE plus a key saying what each one does."""
+        """Write COUNT buggy copies of SOURCE plus a key saying what each one does.
+
+        Example: staff bugs make examples/year9.py --count 4
+        """
         from staffroom.tools.bugs import plugin
 
         options = Options(count=count, seed=seed, silent=silent, formats=fmt)  # type: ignore[arg-type]
@@ -67,6 +70,9 @@ def register(app: typer.Typer) -> None:
 
     @app.command("kinds")
     def kinds_() -> None:
-        """List the error classes."""
+        """List the kinds of bug that make can add.
+
+        Example: staff bugs kinds
+        """
         for k, label in KIND_LABELS.items():
             typer.echo(f"{k:<18} {label}")

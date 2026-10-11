@@ -30,6 +30,12 @@ later entries refer to this repository's issues.
   on an installed copy instead of writing into `site-packages`. The contributing guide says
   to fork first, how to try changes in throwaway folders, that `just check` takes about
   three minutes, and where to ask (#18).
+- The old command names `tt` and `tt-gui` are gone; use `staff` and `staffroom` (#20).
+  `staff --help` reads as sentences, one line per command, and each command's help ends
+  with an example. `staff quiz check|export|retrieval|list` take the bank as the first
+  argument (`staff quiz check examples/question_bank.md`); `--bank`/`-b` still works.
+  Commands print only their own plain lines; the timestamped log lines show with
+  `staff -v` and always go to the log file.
 - Settings › Updates › What changed shows the release's short summary for teachers;
   the full list stays on the release page.
 - The README, the repository's front page on GitHub, is written for a teacher: what
