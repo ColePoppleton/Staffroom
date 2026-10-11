@@ -98,7 +98,7 @@ shot marks-dark                --tool marks --open examples/marks_10x_max.csv --
 shot marks-warnings-light      --tool marks --open examples/marks_messy.csv --run --expand --theme light
 shot worksheet-light           --tool worksheet --run --theme light
 shot parsons-dark              --tool parsons --open examples/year9.py --run --theme dark
-shot quiz-light                --tool quiz --open examples/question_bank.md --run --theme light
+shot quiz-light                --tool quiz --open examples/question_bank.md --option topics=binary,cpu,loops --option count=8 --run --theme light
 shot trace-dark                --tool trace --open examples/year9.py --run --select-row 8 --theme dark
 shot trace-preset-dark         --tool trace --open examples/year9.py --preset "Year 9" --theme dark --size 1240x1500
 shot trace-missing-input-dark  --tool trace --open "$fixtures/Python/Year 10/temperature.py" --run --theme dark
