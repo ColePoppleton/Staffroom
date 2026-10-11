@@ -24,6 +24,7 @@ from staffroom.core.library.exclude import IGNORE_FILE
 from staffroom.core.library.service import library_db_path
 from staffroom.core.library.tags import SIDECAR_DIR
 from staffroom.core.panel import FolderPicker
+from staffroom.shell.updates_card import InstalledUpdatesCard
 from staffroom.shell.widgets import Card, PathPickerWidget, StringListEditor, make_label
 
 LIBRARY_STORED_STATEMENT = (
@@ -40,16 +41,17 @@ class SettingsPage(QWidget):
     theme_changed = Signal(str)
     resources_root_changed = Signal(str)
     library_exclude_changed = Signal(object)  # list[str]
-    # True / False after a check; None for an installed copy or a failed check,
-    # so the sidebar never says "up to date" without having checked.
-    update_available = Signal(object)
+    # (True / False after a check, None before one or after a failure, the
+    # footer link's words): "update" for a checkout, "0.9.0 out" for an
+    # installed copy (#11). The sidebar never says "up to date" unchecked.
+    update_available = Signal(object, str)
 
     def __init__(self, config: Config, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.config = config
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        scroll = QScrollArea()
+        scroll = self.scroll_area = QScrollArea()
         scroll.setWidgetResizable(True)
         content = QWidget()
         layout = QVBoxLayout(content)
@@ -191,41 +193,19 @@ class SettingsPage(QWidget):
         house.body.addLayout(form3)
         layout.addWidget(house)
 
-        release = config.general.release_branch or "main"
         self.installation = install.detect()
+        self.installed_updates: InstalledUpdatesCard | None = None
         if self.installation.is_checkout:
-            updates_help = (
-                f"The app runs straight from the git checkout and follows the released "
-                f"branch ({release}). An update is a fast-forward pull plus a dependency "
-                f"sync; nothing is pulled while the checkout is on another branch, has local "
-                f"edits or has diverged. Restart afterwards."
-            )
+            self.updates_card: Card = self._checkout_updates_card(config)
         else:
-            # Minimal until the Updates card for installed copies (#11) lands.
-            updates_help = (
-                "This copy is installed, not a git checkout: Staffroom never rewrites its "
-                "own files and does not check for updates."
+            # An installed copy never runs git (#9); it asks GitHub's
+            # Releases API for the newest release and shows the command (#11).
+            self.installed_updates = InstalledUpdatesCard(
+                config, self.installation, save=self._save
             )
-        updates = Card("Updates", updates_help)
-        self.version_label = make_label(self._version_text(__version__))
-        self.version_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        updates.body.addWidget(self.version_label)
-        update_row = QHBoxLayout()
-        self.update_status = make_label("Checking…", "muted")
-        self.check_button = QPushButton("Check for updates")
-        self.check_button.setProperty("role", "ghost")
-        self.check_button.clicked.connect(lambda: self.check_updates(fetch=True))
-        self.update_button = QPushButton("Update now")
-        self.update_button.setProperty("role", "primary")
-        self.update_button.setEnabled(False)
-        self.update_button.clicked.connect(self.apply_update)
-        update_row.addWidget(self.update_status, 1)
-        update_row.addWidget(self.check_button)
-        update_row.addWidget(self.update_button)
-        updates.body.addLayout(update_row)
-        layout.addWidget(updates)
-        if not self.installation.is_checkout:
-            self._show_installed()
+            self.installed_updates.state_changed.connect(self._on_release_state)
+            self.updates_card = self.installed_updates
+        layout.addWidget(self.updates_card)
 
         logging_card = Card("Logging")
         log_form = QFormLayout()
@@ -251,6 +231,35 @@ class SettingsPage(QWidget):
         logging_card.add(path_label)
         layout.addWidget(logging_card)
         layout.addStretch(1)
+
+    def _checkout_updates_card(self, config: Config) -> Card:
+        """Updates for this project's own git checkout (the owner's launcher):
+        a fast-forward of the release branch, as before #11."""
+        release = config.general.release_branch or "main"
+        updates = Card(
+            "Updates",
+            f"The app runs straight from the git checkout and follows the released "
+            f"branch ({release}). An update is a fast-forward pull plus a dependency "
+            f"sync; nothing is pulled while the checkout is on another branch, has local "
+            f"edits or has diverged. Restart afterwards.",
+        )
+        self.version_label = make_label(self._version_text(__version__))
+        self.version_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        updates.body.addWidget(self.version_label)
+        update_row = QHBoxLayout()
+        self.update_status = make_label("Checking…", "muted")
+        self.check_button = QPushButton("Check for updates")
+        self.check_button.setProperty("role", "ghost")
+        self.check_button.clicked.connect(lambda: self.check_updates(fetch=True))
+        self.update_button = QPushButton("Update now")
+        self.update_button.setProperty("role", "primary")
+        self.update_button.setEnabled(False)
+        self.update_button.clicked.connect(self.apply_update)
+        update_row.addWidget(self.update_status, 1)
+        update_row.addWidget(self.check_button)
+        update_row.addWidget(self.update_button)
+        updates.body.addLayout(update_row)
+        return updates
 
     @staticmethod
     def _label(text: str) -> QLabel:
@@ -290,10 +299,13 @@ class SettingsPage(QWidget):
 
     # -- updates ---------------------------------------------------------
     def check_updates(self, *, fetch: bool = True) -> None:
+        """The start check (and a checkout's *Check for updates*). A checkout
+        asks its git remote; an installed copy asks GitHub for the newest
+        release, at most once a day and only while its tick box is on."""
         from staffroom.shell.update_worker import UpdateWorker
 
-        if not self.installation.is_checkout:
-            self._show_installed()  # an installed copy never runs git (#9)
+        if self.installed_updates is not None:
+            self.installed_updates.check_on_start()  # never git (#9)
             return
         self.check_button.setEnabled(False)
         self.update_status.setText("Checking…")
@@ -303,13 +315,33 @@ class SettingsPage(QWidget):
         self._update_worker = worker
         worker.start()
 
+    def announce_update_state(self) -> None:
+        """Tell the sidebar what an installed copy already knows (the last
+        check, kept on disk). The window calls this once it is listening."""
+        if self.installed_updates is not None:
+            self.installed_updates.announce()
+
+    def show_updates(self) -> None:
+        """Scroll so the Updates card is at the top (the footer's link)."""
+        bar = self.scroll_area.verticalScrollBar()
+        bar.setValue(min(bar.maximum(), max(0, self.updates_card.y() - 16)))
+
+    def wait_for_workers(self, timeout_ms: int = 10_000) -> bool:
+        """Wait for a release check still running (it gives up in seconds)."""
+        if self.installed_updates is None:
+            return True
+        return self.installed_updates.wait(timeout_ms)
+
+    def _on_release_state(self, newer: str, up_to_date: object) -> None:
+        if newer:
+            self.update_available.emit(True, f"{newer} out")
+        else:
+            self.update_available.emit(False if up_to_date else None, "")
+
     def _on_update_status(self, status: object) -> None:
         from staffroom.core.update import UpdateStatus
 
         assert isinstance(status, UpdateStatus)
-        if status.installed:
-            self._show_installed(status.installed)
-            return
         self.check_button.setEnabled(True)
         self.version_label.setText(self._version_text(status.running_version(__version__)))
         self.update_status.setText(status.describe())
@@ -326,20 +358,7 @@ class SettingsPage(QWidget):
             self.update_button.setToolTip(f"Not updating: {why}.")
         else:
             self.update_button.setToolTip("")
-        self.update_available.emit(None if status.error else status.available)
-
-    def _show_installed(self, line: str = "") -> None:
-        """An installed copy: say how to update it, offer no check or pull,
-        and leave the sidebar showing just the version."""
-        self.update_status.setText(line or self.installation.update_hint())
-        self.update_status.setWordWrap(True)
-        self.update_status.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.update_status.setProperty("role", "muted")
-        self.update_status.style().unpolish(self.update_status)
-        self.update_status.style().polish(self.update_status)
-        self.check_button.hide()
-        self.update_button.hide()
-        self.update_available.emit(None)
+        self.update_available.emit(None if status.error else status.available, "update")
 
     @staticmethod
     def _version_text(running: str) -> str:
@@ -362,7 +381,7 @@ class SettingsPage(QWidget):
         self.update_status.style().unpolish(self.update_status)
         self.update_status.style().polish(self.update_status)
         if ok:
-            self.update_available.emit(False)
+            self.update_available.emit(False, "")
 
     def _on_board(self, index: int) -> None:
         self.config.general.board = str(self.board.itemData(index))

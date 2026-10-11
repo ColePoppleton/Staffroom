@@ -27,8 +27,17 @@ def test_sidebar_footer_shows_the_version_and_update_state(qtbot: QtBot) -> None
     sidebar.set_update_available(True)
     assert sidebar.version_label.text().startswith(f"v{__version__}")
     assert not sidebar.update_button.isHidden()
-    with qtbot.waitSignal(sidebar.settings_requested):
+    assert sidebar.update_button.text() == "update"
+    with qtbot.waitSignal(sidebar.updates_requested):
         sidebar.update_button.click()
+    # An installed copy names the release (#11), and only while it is out.
+    sidebar.set_update_available(True, "0.9.0 out")
+    assert sidebar.version_label.text() == f"v{__version__} ·"
+    assert sidebar.update_button.text() == "0.9.0 out"
+    assert "0.9.0 is out" in sidebar.update_button.toolTip()
+    sidebar.set_update_available(None, "")
+    assert sidebar.version_label.text() == f"v{__version__}"
+    assert sidebar.update_button.isHidden()
 
 
 def test_settings_updates_card_states_the_running_version(qtbot: QtBot) -> None:
