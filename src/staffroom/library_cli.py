@@ -195,13 +195,12 @@ def exclude(
             typer.secho(f"not in the list: {pattern}", fg=typer.colors.YELLOW, err=True)
     if changed:
         cfg.general.library_exclude = patterns
-        try:
-            cfg.save()
-        except OSError as exc:
+        problem = cfg.save()
+        if problem is not None:
             typer.secho(
-                f"cannot save {cfg.path}: {exc.strerror or exc}", fg=typer.colors.RED, err=True
+                f"cannot save {problem.path}: it {problem.reason}", fg=typer.colors.RED, err=True
             )
-            raise typer.Exit(1) from None
+            raise typer.Exit(1)
         typer.echo(f"saved to {cfg.path}; run  staff library index  to apply")
     svc = LibraryService(Path(cfg.general.resources_root), exclude=patterns)
     typer.echo("configured:  " + (", ".join(patterns) or "-"))

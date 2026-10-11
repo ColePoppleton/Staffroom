@@ -7,7 +7,7 @@ from pathlib import Path
 
 from openpyxl import Workbook
 
-from staffroom.core.export import Document, HouseStyle, Numbered, Paragraph, export
+from staffroom.core.export import Document, HouseStyle, Numbered, Paragraph, export, sheet_date
 from staffroom.tools.quiz.logic import KAHOOT_HEADERS, Question, forms_text, kahoot_csv
 
 KAHOOT_HEADER_ROW = 8  # the official template has instructions above, headers on row 8
@@ -60,7 +60,7 @@ def donow_document(questions: list[Question], title: str, today: date | None = N
     doc = Document(
         title=title,
         topic="Computer Science",
-        date=today or date.today(),
+        date=today or sheet_date(),
         subtitle=f"{len(questions)} questions",
     )
     sheet = doc.section()

@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 from staffroom.core.panel import (
+    OUTPUT_FORMAT_LABELS,
     CodeSource,
     LogArea,
     OptionsForm,
     PagePreview,
     PanelSpec,
+    shown_when,
 )
 from staffroom.tools.fade.logic import Options
+
+ORDER_LABELS = {
+    "bottom_up": "Last lines first",
+    "top_down": "First lines first",
+    "ranges": "Only the lines I list",
+}
 
 
 def panel_spec() -> PanelSpec:
@@ -22,7 +30,13 @@ def panel_spec() -> PanelSpec:
         ),
         inputs=(
             CodeSource(key="source", label="Worked solution", required=False),
-            OptionsForm(key="options", schema=Options),
+            OptionsForm(
+                key="options",
+                schema=Options,
+                shown_when={"ranges": shown_when("order", "ranges")},
+                choice_labels={"order": ORDER_LABELS, "formats": OUTPUT_FORMAT_LABELS},
+                switches=("formats",),
+            ),
         ),
         outputs=(PagePreview(key="pages", label="Faded versions"), LogArea()),
         run_label="Make versions",

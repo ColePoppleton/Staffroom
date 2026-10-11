@@ -59,7 +59,9 @@ class ElidedLabel(QLabel):
         shown = self._elide(self._full, max(self.contentsRect().width(), 40))
         super().setText(shown)
         if self.auto_tooltip:
-            self.setToolTip(self._full if shown.replace("\n", " ") != self._full else "")
+            # Cut, not just wrapped (a path may wrap inside itself, no space).
+            cut = "".join(shown.split()) != "".join(self._full.split())
+            self.setToolTip(self._full if cut else "")
         self.setMaximumHeight(self.fontMetrics().lineSpacing() * self.max_lines + 6)
 
     def _elide(self, text: str, width: int) -> str:

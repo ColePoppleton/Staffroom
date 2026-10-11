@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date
 
 from staffroom.core.codeinput import numbered_listing
-from staffroom.core.export import Code, Document, Paragraph, TableBlock
+from staffroom.core.export import Code, Document, Paragraph, TableBlock, sheet_date
 from staffroom.core.table import Table
 
 
@@ -28,7 +28,7 @@ def build_document(
     doc = Document(
         title=f"Trace table: {name}",
         topic="Python",
-        date=today or date.today(),
+        date=today or sheet_date(),
         subtitle=f"{preset} · {steps}" if preset else steps,
     )
     sheet = doc.section()

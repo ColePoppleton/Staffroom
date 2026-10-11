@@ -6,6 +6,117 @@ All notable changes are recorded here. The format follows
 with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
+### Added
+- Quiz shows the *Taught log* picker only while *Retrieval mode* is ticked, under
+  the options it follows, and a hidden log is never handed to the run (#123).
+  Any panel can do the same: `PanelSpec.shown_when` hides a whole input while a
+  field of an options form (`"options.retrieval"`) or a `Choice` does not hold
+  the given values; a hidden input passes its empty value and is not asked for,
+  and `core.panel` refuses unknown keys, impossible values and loops when the
+  spec is built.
+- The Library's column has a **Tags ▾** filter beside *All types* (#111). Its menu
+  lists the tags on the files the Library shows, each with how many carry it;
+  choosing one narrows the tree (opened all the way down) and the search results
+  to files carrying it, and choosing more narrows further. It combines with the
+  type filter and the query, follows tag edits in the preview at once, and the
+  footer says how many files it leaves. Tags are still read from the sidecar
+  (`.staffroom/tags.json`); the resources folder is never written.
+  `LibraryService.tag_counts()` and a `tags=` argument on `resources()` and
+  `search()` back it, over pure `count_tags` / `paths_with_tags` helpers.
+
+### Changed
+- The date in a sheet's header can be pinned with `STAFFROOM_DATE=YYYY-MM-DD` (#107),
+  read in one place (`core/export/dating.py`); every sheet builder falls back to it
+  instead of reading the clock. `scripts/screenshots.sh` pins it, so the docs pages
+  (`docs/output-*.png`, `docs/worksheet-sample.png`) stay byte-identical from day
+  to day, and `scripts/screenshots.sh outputs` redoes just those pages. A teacher's
+  own runs never set it and still print today's date. `worksheet-sample.png` is
+  re-rendered once: it still showed the truth tables from before #43.
+- Options forms show only the fields that apply and say their choices in words
+  (#91). `OptionsForm` gains `shown_when` (a field shows only while another
+  holds given values), `choice_labels` and `switches` (a segmented switch for a
+  short choice). Worksheet shows *Level* only for truth tables and *Boolean
+  laws* only for simplification, with topic names, *Easy / Medium / Hard* and
+  *Word + PDF / Word / PDF*; the quiz shows *Title* only for Forms and do-now
+  and *As of* only in retrieval mode; Fade shows *Line ranges* only for *Only
+  the lines I list*; Parsons, Trace, Bugs and Pseudocode get readable output
+  choices. A hidden field keeps what was set in it, but the tool is handed its
+  default, so a value the teacher cannot see never changes or breaks a run.
+- `docs/classroom-dark.png` no longer changes every day (#116): the launcher's
+  screenshot mode takes `--today YYYY-MM-DD`, which pins only the day Classroom's
+  run bar shows (`Copies to …/sessions/<day>`), and `scripts/screenshots.sh` passes
+  it `STAFFROOM_DATE`. It is a separate, display-only flag because the session
+  folder decides where real lesson copies go: the launcher refuses it without
+  `--screenshot`, it is never saved, and *Open for class* always copies into
+  today's folder.
+
+### Fixed
+- Bugs: a *wrong variable name* bug now swaps in a name a pupil might really
+  type (#127): one of the same apparent kind (number, string, list…) that is
+  already assigned in the same scope, the most recently assigned first, instead
+  of always the program's first name. In `examples/year9.py` that was the list
+  `scores`, so seven of the eight wrong-name bugs were TypeErrors; now seven run
+  with the wrong output (`if count >= 50:`), and only `for score in score:`
+  crashes. Still deterministic, so a seed gives the same sheet.
+- Bugs: the key shows an indentation slip (#130). Its two lines used to read the
+  same (`count = count + 1` twice) because the key trimmed the indent; now each
+  space of indentation shows as `·` when the indent is what changed, and the
+  *Bug* cell says how far it moved (*indentation slip (4 spaces to 0)*), in the
+  PDF, docx and text key and the panel's *What each bug does* table. The printed
+  key adds a one-line legend for the dots.
+- Bugs aims for a mix of outcomes (#118): at the defaults all four `year9.py`
+  versions crashed, two of them with SyntaxErrors. With two or more versions the
+  sheet now includes a *runs, but the output is wrong* bug when the program has
+  one, and at most one SyntaxError unless nothing else can make up the count;
+  still one bug per version, chosen in the seed's order, so the same seed gives
+  the same sheet. A program that cannot offer the mix gets its sheet and a warning.
+- Saving settings can no longer leave `config.toml` truncated (#125). The file is
+  written to a hidden temporary file beside it and swapped in with `os.replace`,
+  so a disk that fills or a folder that turns read-only mid-write leaves the old
+  settings whole; the temporary file is removed and the teacher sees the same
+  *Settings could not be saved* line as before (#74). The file keeps its
+  permissions, a symlinked config stays a symlink, and a config made read-only on
+  purpose is still left alone. `usage.toml` and the Library's tags sidecar now use
+  the same helper (`core/atomic.py`), so they cannot be truncated either.
+- In the Library, the type filter (*All types*) narrows the folder tree too, not
+  only the search results (#122): with no query, choosing *python* now leaves just
+  the Python files, opened all the way down, as the Tags filter does. Type, tags
+  and query always combine, and the footer says what is shown
+  (`3 Python files tagged loops`) above the library's own count, which the
+  sidebar and the header keep (#30). `LibraryService.resources()` takes `kinds=`,
+  and `core/library/filters.py`'s `LibraryFilter` words the footer line.
+- A long failure in the result strip is shown whole, and the strip grows to fit it
+  (#121). A failure now wraps to as many lines as it needs (up to six; past that it
+  is cut between words, with the full text in the tooltip and behind *Details*), so
+  a message naming a file path keeps its last sentence: *"… config.toml is
+  read-only. You can use it until you quit."* Outcomes still wrap to two lines. The
+  strip lays itself out as soon as its text changes, so no frame shows the new
+  lines squeezed into the old height, and a path that wraps inside itself no
+  longer counts as cut (no needless tooltip).
+- `just install` updates an installed Staffroom.app in place (overwriting its files,
+  removing ones the build no longer has, then re-signing and re-registering it)
+  instead of deleting and recopying it, so Spotlight keeps listing the app rather
+  than dropping it until it re-indexes (#79).
+- `just release` re-pins the documented install line
+  (`git+https://github.com/ColePoppleton/Staffroom@vX.Y.Z`) and the wheel
+  filename in README.md and docs/ to the new version in the release commit, so
+  the docs no longer go on installing the previous release (#100). The pins now
+  point at v0.7.0, and a test holds them equal to the package version.
+- Bugs no longer fills a find-the-bug sheet with versions that run exactly like
+  the original (#92): at the defaults two of the four `year9.py` variants did.
+  Each candidate is run while choosing and a silent one is swapped for the next
+  bug in the seed's order, so the same seed still gives the same sheet. *Silent
+  bugs allowed* (`--silent N`, default 0) keeps up to N for a read-the-code
+  lesson; the key says *silent* and the pupil sheet marks each one *this version
+  may run the same: read the code*. When fewer visible bugs exist than asked
+  for, a warning and the result strip say so. The seed is now in the sheet's
+  header.
+- A config home that cannot be written no longer turns Settings changes or
+  *Save as preset* in Marks into a bug traceback (#74). `Config.save()` never
+  raises `OSError`: it logs one warning per session and returns what went
+  wrong, the change still applies until you quit, Settings says "Settings could
+  not be saved: <path> is read-only. Changes last until you quit." under its
+  title, and Marks says the preset could not be saved in the result strip.
 
 ## [0.7.0] - 2026-10-09
 ### Changed

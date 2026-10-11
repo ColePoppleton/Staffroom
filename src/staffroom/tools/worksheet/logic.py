@@ -74,14 +74,14 @@ class Options:
         default="gcse",
         metadata={
             "label": "Level",
-            "help": "Truth tables: GCSE follows the board; A-level adds XOR, and NAND/NOR at hard",
+            "help": "GCSE follows the board; A level adds XOR, and NAND/NOR at Hard",
         },
     )
     laws: Laws = field(
         default="absorption",
         metadata={
             "label": "Boolean laws",
-            "help": "Simplification: 'identities' allows X AND X, NOT NOT X and 0/1 on the sheet",
+            "help": "Identities allows X AND X, NOT NOT X and 0/1 on the sheet",
         },
     )
     formats: Literal["both", "docx", "pdf"] = field(default="both", metadata={"label": "Output"})

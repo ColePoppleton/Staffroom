@@ -18,6 +18,12 @@ def register(app: typer.Typer) -> None:
         source: Annotated[Path, typer.Argument(exists=True, dir_okay=False, help="A .py file")],
         count: Annotated[int, typer.Option("--count", "-n")] = 4,
         seed: Annotated[int, typer.Option("--seed", "-s")] = 1,
+        silent: Annotated[
+            int,
+            typer.Option(
+                "--silent", help="Keep up to N bugs that leave the output unchanged (default 0)"
+            ),
+        ] = 0,
         kinds: Annotated[
             str, typer.Option("--kinds", help="Comma list; see  staff bugs kinds")
         ] = "",
@@ -29,7 +35,7 @@ def register(app: typer.Typer) -> None:
         """Write COUNT buggy copies of SOURCE plus a key saying what each one does."""
         from staffroom.tools.bugs import plugin
 
-        options = Options(count=count, seed=seed, formats=fmt)  # type: ignore[arg-type]
+        options = Options(count=count, seed=seed, silent=silent, formats=fmt)  # type: ignore[arg-type]
         if kinds:
             wanted = {k.strip() for k in kinds.split(",")}
             unknown = wanted - set(KIND_LABELS)
@@ -54,7 +60,7 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(1) from None
         table = result.tables["key"]
         for row in table.rows:
-            typer.echo(f"  v{row[0]}  line {row[1]:<3} {row[2]:<28} {row[5]}")
+            typer.echo(f"  v{row[0]}  line {row[1]:<3} {row[2]:<32} {row[5]}")
         if preview:
             typer.echo(result.texts["preview"])
         typer.echo(result.summary)

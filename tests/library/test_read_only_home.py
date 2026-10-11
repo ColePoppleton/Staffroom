@@ -194,3 +194,20 @@ def test_tools_still_run(read_only_home: Path, example_marks: Path, tmp_path: Pa
     r = runner.invoke(app, ["hello", "run", str(example_marks), "--out", str(out)])
     assert r.exit_code == 0, r.output
     assert (out / "marks_10x_totals.csv").exists()
+
+
+def test_library_exclude_with_a_locked_config_exits_one_with_the_reason(
+    locked_home_with_root: Path,
+) -> None:
+    """``Config.save`` returns what went wrong instead of raising (#74); the
+    CLI still turns it into one red line and exit code 1."""
+    config_file = locked_home_with_root / "config.toml"
+    config_file.chmod(0o400)
+    try:
+        r = runner.invoke(app, ["library", "exclude", "--add", "Pupil work"])
+    finally:
+        config_file.chmod(0o600)
+    assert r.exit_code == 1, r.output
+    assert "Traceback" not in r.output
+    assert f"cannot save {config_file}: it is read-only" in r.stderr
+    assert "Pupil work" not in load_config().general.library_exclude

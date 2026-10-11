@@ -187,13 +187,22 @@ class LibraryPage(QWidget):
         self.refresh_status()
         self._run_search()
 
+    def refresh_search(self) -> None:
+        """Run the query again: the tag filter or the tags themselves changed."""
+        self._run_search()
+
     def _run_search(self) -> None:
         self.results.clear()  # invalidates the row wrappers too, unlike QStandardItemModel (#54)
         if not self.query:
             self.column.show_results(False)
             return
         kinds: list[Kind] | None = None if self.kind == "all" else [self.kind]  # type: ignore[list-item]
-        hits = self.service.search(self.query, kinds=kinds, include_hidden=self.show_hidden)
+        hits = self.service.search(
+            self.query,
+            kinds=kinds,
+            tags=self.column.chosen_tags(),
+            include_hidden=self.show_hidden,
+        )
         for hit in hits:
             add_result_row(self.results, hit, REL_ROLE)
         if not hits:

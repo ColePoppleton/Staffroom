@@ -6,9 +6,11 @@ next save writes the new location."""
 from __future__ import annotations
 
 import json
-import os
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+from staffroom.core.atomic import atomic_write_text
 
 SIDECAR_DIR = ".staffroom"
 LEGACY_SIDECAR_DIR = ".teaching-tools"
@@ -33,6 +35,42 @@ def normalise_tags(tags: list[str] | str) -> list[str]:
         if t:
             seen.setdefault(t, None)
     return list(seen)
+
+
+@dataclass(frozen=True)
+class TagCount:
+    """A tag in use and how many files carry it."""
+
+    tag: str
+    count: int
+
+    @property
+    def label(self) -> str:
+        """``loops  3``: how the Library's tag filter lists it."""
+        return f"{self.tag}  {self.count}"
+
+
+def count_tags(
+    tags_by_path: Mapping[str, Iterable[str]], within: Iterable[str] | None = None
+) -> list[TagCount]:
+    """The tags in use, most-used first, then by name. ``within`` limits the
+    count to those paths (the files the Library lists), so a sidecar entry
+    for a file that is gone or excluded does not count."""
+    allowed = None if within is None else set(within)
+    counts: dict[str, int] = {}
+    for rel, tags in tags_by_path.items():
+        if allowed is not None and rel not in allowed:
+            continue
+        for t in tags:
+            counts[t] = counts.get(t, 0) + 1
+    return [TagCount(t, n) for t, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
+def paths_with_tags(tags_by_path: Mapping[str, Iterable[str]], chosen: Iterable[str]) -> set[str]:
+    """The paths carrying every chosen tag (each choice narrows further).
+    Choices are normalised the way the sidecar stores tags."""
+    wanted = set(normalise_tags(list(chosen)))
+    return {rel for rel, tags in tags_by_path.items() if wanted <= set(tags)}
 
 
 class TagStore:
@@ -66,9 +104,7 @@ class TagStore:
             "version": 1,
             "entries": {rel: asdict(e) for rel, e in sorted(self._entries.items()) if not e.empty},
         }
-        tmp = self.path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        os.replace(tmp, self.path)
+        atomic_write_text(self.path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
         return self.path
 
     # -- access ----------------------------------------------------------
@@ -85,13 +121,12 @@ class TagStore:
         self.save()
         return entry
 
+    def tags_by_path(self) -> dict[str, list[str]]:
+        """Every tagged path and its tags (copies: editing them changes nothing)."""
+        return {rel: list(e.tags) for rel, e in self._entries.items() if e.tags}
+
     def all_tags(self) -> list[str]:
-        counts: dict[str, int] = {}
-        for e in self._entries.values():
-            for t in e.tags:
-                counts[t] = counts.get(t, 0) + 1
-        return sorted(counts, key=lambda t: (-counts[t], t))
+        return [c.tag for c in count_tags(self.tags_by_path())]
 
     def paths_with_tag(self, tag: str) -> set[str]:
-        tag = tag.strip().lower()
-        return {rel for rel, e in self._entries.items() if tag in e.tags}
+        return paths_with_tags(self.tags_by_path(), [tag])

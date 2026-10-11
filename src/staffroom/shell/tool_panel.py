@@ -6,7 +6,8 @@ Below a one-line header (title and description), two panes side by side:
   at the window's minimum width) with its own scroll. Each input widget is a
   hairline-separated :class:`InputGroup`, and the run button sits at the
   pane's foot (:class:`RunBar`, ⌘↵ from anywhere in the window) with where the
-  next run will write.
+  next run will write. A group whose ``PanelSpec.shown_when`` does not hold is
+  hidden with its hairline, and the tool gets its empty value.
 * the **output pane** filling the rest (:class:`OutputPane`): the result strip
   on top (how the run went, the files it wrote as buttons), the main output(s)
   as tabs, secondary outputs under them, the run log behind *Details*.
@@ -107,6 +108,7 @@ class ToolPanel(QWidget):
         self.previews: dict[str, TablePreviewWidget] = {}
         self.summaries: dict[str, LoadSummaryWidget] = {}
         self.groups: dict[str, InputGroup] = {}
+        self.dividers: dict[str, Divider] = {}  # the hairline over each group but the first
         self.worker: RunWorker | None = None
         self.last_result: RunResult | None = None
         self._last_ok = False
@@ -143,6 +145,12 @@ class ToolPanel(QWidget):
         inputs_layout.addWidget(self.inputs_scroll, 1)
         self._build_inputs()
         self.inputs_layout.addStretch(1)
+        if self.spec.shown_when:
+            for form in self.forms.values():
+                form.changed.connect(self._sync_shown)
+            for choice in self.choices.values():
+                choice.changed.connect(self._sync_shown)
+            self._sync_shown()
 
         writes_to = self.spec.writes_to
         self.run_bar = (
@@ -267,7 +275,7 @@ class ToolPanel(QWidget):
                 self.choices[spec.key] = choice
             elif isinstance(spec, OptionsForm):
                 group = InputGroup(spec.label)
-                form = OptionsFormWidget(spec.schema, spec.presets, fields=spec.fields)
+                form = OptionsFormWidget.for_spec(spec)
                 group.add(form)
                 self.forms[spec.key] = form
             elif isinstance(spec, EditableTable):
@@ -292,9 +300,31 @@ class ToolPanel(QWidget):
                 msg = f"unknown input widget {spec!r}"
                 raise TypeError(msg)
             if self.groups:
-                self.inputs_layout.addWidget(Divider())
+                self.dividers[spec.key] = Divider()
+                self.inputs_layout.addWidget(self.dividers[spec.key])
             self.groups[spec.key] = group
             self.inputs_layout.addWidget(group)
+
+    def hidden_inputs(self) -> frozenset[str]:
+        """The inputs whose ``PanelSpec.shown_when`` does not hold just now."""
+        return self.spec.hidden_inputs(self.collect_inputs())
+
+    def _sync_shown(self, *_: object) -> None:
+        """Show the groups that apply and hide the rest, each with the hairline
+        over it; the first group shown never has one."""
+        hidden = self.hidden_inputs()
+        first = True
+        seen: set[int] = set()
+        for key, group in self.groups.items():
+            if id(group) in seen:  # a compact preview shares its picker's group
+                continue
+            seen.add(id(group))
+            shown = key not in hidden
+            group.setVisible(shown)
+            divider = self.dividers.get(key)
+            if divider is not None:
+                divider.setVisible(shown and not first)
+            first = first and not shown
 
     def _link_lines(self) -> None:
         """Results tables whose rows name lines of the program (trace steps,
@@ -373,7 +403,8 @@ class ToolPanel(QWidget):
             values[key] = grid.value()
         for key, choice in self.choices.items():
             values[key] = choice.value()
-        return values
+        # An input that does not apply hands over its empty value (#123).
+        return self.spec.passed(values)
 
     def set_input_path(self, key: str, path: Path | None) -> None:
         if key in self.code_sources:
@@ -407,7 +438,10 @@ class ToolPanel(QWidget):
 
     def missing_inputs(self, inputs: dict[str, Any]) -> list[str]:
         missing: list[str] = []
+        hidden = self.spec.hidden_inputs(inputs)  # what is not shown is not asked for
         for s in self.spec.inputs:
+            if s.key in hidden:
+                continue
             if isinstance(s, FilePicker | FolderPicker | ResourcePicker) and s.required:
                 if inputs.get(s.key) is None:
                     missing.append(s.label)
@@ -510,6 +544,10 @@ class ToolPanel(QWidget):
         )
         try:
             result = self.plugin.act(action, {"name": name, "table": table}, ctx)
+        except ToolError as exc:  # already a message for the teacher (#74)
+            self.strip.show_failure(str(exc))
+            self.results.append_log(str(exc))
+            return
         except Exception as exc:
             self.strip.show_failure(f"Could not save preset: {exc}")
             return

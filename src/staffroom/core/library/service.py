@@ -12,7 +12,14 @@ from staffroom.core.library.db import LibraryDB
 from staffroom.core.library.exclude import ExclusionList, ignore_file_path, read_ignore_file
 from staffroom.core.library.index import Indexer, Progress
 from staffroom.core.library.model import IndexStats, Kind, LibraryCounts, Resource, SearchHit
-from staffroom.core.library.tags import TagEntry, TagStore
+from staffroom.core.library.tags import (
+    TagCount,
+    TagEntry,
+    TagStore,
+    count_tags,
+    normalise_tags,
+    paths_with_tags,
+)
 from staffroom.core.log import get_logger
 
 log = get_logger(__name__)
@@ -189,12 +196,28 @@ class LibraryService:
     def last_indexed(self) -> str | None:
         return self.db.get_meta("last_indexed")
 
-    def resources(self, *, include_hidden: bool = False) -> list[Resource]:
+    def resources(
+        self,
+        *,
+        include_hidden: bool = False,
+        kinds: Sequence[Kind] | None = None,
+        tags: Sequence[str] = (),
+    ) -> list[Resource]:
         """Everything indexed, minus anything the current exclusion list rules
-        out (so a freshly excluded folder vanishes before the re-index lands)."""
+        out (so a freshly excluded folder vanishes before the re-index lands).
+        ``kinds`` keeps only those file types (#122); ``tags`` keeps only the
+        files carrying every one of them (#111)."""
         rows = self.db.all(include_hidden=include_hidden)
         excl = self.exclusions()
-        return [r for r in rows if not excl.matches(r.rel_path)] if excl else rows
+        if excl:
+            rows = [r for r in rows if not excl.matches(r.rel_path)]
+        if kinds:
+            wanted = set(kinds)
+            rows = [r for r in rows if r.kind in wanted]
+        if tags:
+            allowed = paths_with_tags(self.tags.tags_by_path(), tags)
+            rows = [r for r in rows if r.rel_path in allowed]
+        return rows
 
     def get(self, rel_path: str) -> Resource | None:
         if self.exclusions().matches(rel_path):
@@ -208,15 +231,20 @@ class LibraryService:
         *,
         kinds: Sequence[Kind] | None = None,
         tag: str | None = None,
+        tags: Sequence[str] = (),
         include_hidden: bool = False,
         limit: int = 200,
     ) -> list[SearchHit]:
+        """Hits for ``query``, narrowed by kind and by tag: ``tag`` (the CLI's
+        one ``--tag``) and ``tags`` (the Library's filter) together, every
+        one of them required."""
         hits = self.db.search(query, kinds=kinds, include_hidden=include_hidden, limit=limit)
         excl = self.exclusions()
         if excl:
             hits = [h for h in hits if not excl.matches(h.resource.rel_path)]
-        if tag:
-            allowed = self.tags.paths_with_tag(tag)
+        chosen = normalise_tags([*tags, *([tag] if tag else [])])
+        if chosen:
+            allowed = paths_with_tags(self.tags.tags_by_path(), chosen)
             hits = [h for h in hits if h.resource.rel_path in allowed]
         return hits
 
@@ -226,6 +254,12 @@ class LibraryService:
 
     def set_tags(self, rel_path: str, tags: list[str] | str, notes: str = "") -> TagEntry:
         return self.tags.set_entry(rel_path, tags, notes)
+
+    def tag_counts(self, *, include_hidden: bool = False) -> list[TagCount]:
+        """The tags on the files the Library lists, with how many carry each,
+        most-used first: what the tag filter offers."""
+        listed = [r.rel_path for r in self.resources(include_hidden=include_hidden)]
+        return count_tags(self.tags.tags_by_path(), listed)
 
     # -- opening ---------------------------------------------------------
     def absolute(self, rel_path: str) -> Path:

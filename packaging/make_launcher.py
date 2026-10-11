@@ -3,7 +3,7 @@ straight from this checkout with uv. Updating the code updates the app;
 there is nothing to rebuild or reinstall.
 
     uv run python packaging/make_launcher.py            # -> dist/Staffroom.app
-    uv run python packaging/make_launcher.py --install  # also copy into /Applications
+    uv run python packaging/make_launcher.py --install  # also install into /Applications
 """
 
 from __future__ import annotations
@@ -107,23 +107,67 @@ def sign(app: Path) -> None:
 
 def install(app: Path, target_dirs: tuple[Path, ...] | None = None) -> Path:
     """Copy the bundle into /Applications (or ~/Applications when that is not
-    writable) and make it the one copy Launch Services knows about."""
+    writable) and make it the one copy Launch Services knows about.
+
+    An existing bundle is updated in place rather than deleted and recopied:
+    macOS treats a new bundle folder as a new app, and Spotlight drops the
+    old entry at once but lists the new one only after it re-indexes, which
+    can take hours when indexing is paused (#79)."""
     if target_dirs is None:
         target_dirs = (Path("/Applications"), Path.home() / "Applications")
     for target_dir in target_dirs:
         target = target_dir / app.name
         try:
-            if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(app, target, symlinks=True)
+            if target.is_dir() and not target.is_symlink():
+                sync_tree(app, target)
+            else:
+                if target.exists() or target.is_symlink():
+                    target.unlink()
+                shutil.copytree(app, target, symlinks=True)
         except PermissionError:
             continue
         subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(target)], check=False)
+        sign(target)
         unregister(app)
         register(target)
         return target
     msg = "could not write to /Applications or ~/Applications"
     raise SystemExit(msg)
+
+
+def sync_tree(src: Path, dst: Path) -> None:
+    """Make the existing folder ``dst`` match ``src`` without replacing it:
+    overwrite every file from ``src``, create missing folders, and remove
+    anything ``src`` no longer has. ``dst`` itself (and every folder both
+    share) keeps its inode."""
+    wanted = {child.name for child in src.iterdir()}
+    for child in dst.iterdir():
+        if child.name not in wanted:
+            _remove(child)
+    for child in src.iterdir():
+        out = dst / child.name
+        if child.is_symlink():
+            if out.exists() or out.is_symlink():
+                _remove(out)
+            out.symlink_to(os.readlink(child))
+        elif child.is_dir():
+            if out.is_symlink() or (out.exists() and not out.is_dir()):
+                _remove(out)
+            if not out.exists():
+                out.mkdir()
+                shutil.copystat(child, out)
+            sync_tree(child, out)
+        else:
+            if out.is_symlink() or out.is_dir():
+                _remove(out)
+            shutil.copy2(child, out)
+
+
+def _remove(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
 
 
 def unregister(app: Path) -> None:

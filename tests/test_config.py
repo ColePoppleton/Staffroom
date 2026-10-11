@@ -1,9 +1,12 @@
+import errno
+import os
+import stat
 from pathlib import Path
 
 import pytest
 
-from staffroom.core import paths
-from staffroom.core.config import load_config
+from staffroom.core import atomic, paths
+from staffroom.core.config import NotSaved, load_config
 
 
 def test_defaults_when_missing(isolated_home: Path) -> None:
@@ -103,3 +106,59 @@ def test_library_exclude_round_trips() -> None:
     cfg.save()
     assert load_config().general.library_exclude == ["Pupil work", "Year 11/Mocks"]
     assert load_config().general.library_exclude is not cfg.general.library_exclude
+
+
+# --- a failed write cannot truncate config.toml (#125) ---------------------------
+
+
+def _no_space(fd: int) -> None:
+    raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+
+def test_a_failed_write_leaves_config_toml_unchanged(
+    isolated_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = load_config()
+    config.general.board = "aqa"
+    assert config.save() is None
+    before = config.path.read_bytes()
+
+    monkeypatch.setattr(atomic.os, "fsync", _no_space)  # the disk fills mid-write
+    config.general.theme = "light"
+    config.general.house_header = "x" * 10_000
+    problem = config.save()
+
+    assert isinstance(problem, NotSaved)
+    assert problem.path == config.path
+    assert problem.reason == f"cannot be written ({os.strerror(errno.ENOSPC)})"
+    assert config.path.read_bytes() == before
+    assert load_config().general.board == "aqa"
+    assert sorted(p.name for p in config.path.parent.iterdir()) == ["config.toml"]
+    assert config.general.theme == "light"  # still applies for the session
+
+
+def test_saving_keeps_the_config_file_mode(isolated_home: Path) -> None:
+    config = load_config()
+    assert config.save() is None
+    config.path.chmod(0o600)
+    config.general.board = "aqa"
+    assert config.save() is None
+    assert stat.S_IMODE(config.path.stat().st_mode) == 0o600
+    assert load_config().general.board == "aqa"
+
+
+def test_screenshot_day_is_never_read_from_or_written_to_the_file(isolated_home: Path) -> None:
+    """Only ``staffroom --screenshot --today`` sets it, for one process: a
+    config file can never pin the day a teacher's launcher shows."""
+    from datetime import date
+
+    paths.config_file().parent.mkdir(parents=True)
+    paths.config_file().write_text(
+        'screenshot_day = "2001-01-01"\n[general]\nscreenshot_day = "2001-01-01"\n'
+    )
+    cfg = load_config()
+    assert cfg.screenshot_day is None
+    cfg.screenshot_day = date(2026, 10, 9)
+    assert cfg.save() is None  # written, through the atomic writer (#125)
+    assert "screenshot_day" not in cfg.path.read_text()
+    assert load_config().screenshot_day is None

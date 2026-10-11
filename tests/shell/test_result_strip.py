@@ -12,12 +12,17 @@ from pytestqt.qtbot import QtBot
 
 from staffroom.core.config import load_config
 from staffroom.core.outcome import file_chips
-from staffroom.core.plugin import RunResult
+from staffroom.core.plugin import RunResult, ToolError
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.tool_panel import ToolPanel
 from staffroom.shell.widgets import output_pane
 from staffroom.shell.widgets.elided_label import ElidedLabel
-from staffroom.shell.widgets.result_strip import IDLE_TEXT, MAX_CHIPS, ResultStrip
+from staffroom.shell.widgets.result_strip import (
+    FAILURE_LINES,
+    IDLE_TEXT,
+    MAX_CHIPS,
+    ResultStrip,
+)
 
 
 @pytest.fixture
@@ -32,6 +37,15 @@ def window(qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Mai
     win.resize(1240, 780)
     win.show()
     return win
+
+
+@pytest.fixture
+def narrow_window(window: MainWindow) -> MainWindow:
+    """The launcher at its minimum size (``MainWindow.setMinimumSize``)."""
+    window.resize(window.minimumSize())
+    QApplication.processEvents()
+    assert window.width() == 1040
+    return window
 
 
 def open_tool(window: MainWindow, name: str) -> ToolPanel:
@@ -212,3 +226,86 @@ def test_elided_label_whole_words(qtbot: QtBot) -> None:
     shown = QLabel.text(label)
     assert shown.endswith(" …") and shown != label.text()
     assert all(w in label.text().split() for w in shown.removesuffix(" …").split())
+
+
+# A failure the teacher must read to the end: three sentences, the last one
+# saying what to do (#121). Longer than two lines at the minimum window width.
+LONG_FAILURE = (
+    "Could not read marks_week3.csv: the column q7 has a value that is not a number "
+    "on row 12. Check the file in Numbers or Excel, fix that value or leave it blank, "
+    "and save it as CSV again. Then choose the file here and press Analyse."
+)
+
+
+def _assert_fits(strip: ResultStrip) -> list[str]:
+    """Every line of the message is inside the label, and the label inside
+    the strip: no glyph is clipped at either edge. Returns the lines."""
+    label = strip.message
+    lines = QLabel.text(label).split("\n")
+    metrics = label.fontMetrics()
+    inside = label.contentsRect()
+    assert inside.height() >= len(lines) * metrics.lineSpacing(), (inside, lines)
+    assert all(metrics.horizontalAdvance(line) <= inside.width() for line in lines), lines
+    box = label.geometry()
+    assert box.top() >= 0 and box.bottom() < strip.height(), (box, strip.height())
+    return lines
+
+
+def test_a_long_failure_shows_whole_and_the_strip_grows(
+    narrow_window: MainWindow, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch, example_marks: Path
+) -> None:
+    panel = open_tool(narrow_window, "marks")
+    one_line = panel.strip.height()
+
+    def fail(*_args: object) -> RunResult:
+        raise ToolError(LONG_FAILURE)
+
+    monkeypatch.setattr(panel.plugin, "run", fail)
+    panel.set_input_path("marks", example_marks)
+    run(panel, qtbot, ok=False)
+    strip = panel.strip
+    assert strip.state == "danger" and strip.text() == LONG_FAILURE
+    lines = _assert_fits(strip)
+    # Whole: every word, in order, nothing cut; as many lines as it needs.
+    assert 2 < len(lines) <= FAILURE_LINES
+    assert " ".join(lines) == LONG_FAILURE
+    assert strip.message.toolTip() == ""
+    assert strip.height() > one_line
+    # Wider, then back: it rewraps each time and the strip follows.
+    narrow_window.resize(1600, 900)
+    QApplication.processEvents()
+    assert " ".join(_assert_fits(strip)) == LONG_FAILURE
+    narrow_window.resize(narrow_window.minimumSize())
+    QApplication.processEvents()
+    assert len(_assert_fits(strip)) == len(lines)
+    # The next run puts the strip back to one line.
+    monkeypatch.undo()
+    run(panel, qtbot)
+    assert strip.message.max_lines == 2
+    assert len(_assert_fits(strip)) == 1
+
+
+def test_a_failure_past_the_cap_is_cut_between_words_with_a_tooltip(qtbot: QtBot) -> None:
+    strip = ResultStrip()
+    qtbot.addWidget(strip)
+    strip.resize(520, 60)
+    strip.show()
+    endless = " ".join([LONG_FAILURE] * 6)
+    strip.show_failure(endless)
+    QApplication.processEvents()
+    lines = _assert_fits(strip)
+    assert len(lines) == FAILURE_LINES and lines[-1].endswith(" …")
+    words = set(endless.split())
+    assert all(w in words for w in " ".join(lines).removesuffix(" …").split())
+    assert strip.message.toolTip() == endless  # and the whole text is in Details
+
+
+def test_a_200_character_failure_is_whole_at_the_default_width(
+    window: MainWindow, qtbot: QtBot
+) -> None:
+    panel = open_tool(window, "marks")
+    message = (LONG_FAILURE * 2)[:200].rsplit(" ", 1)[0] + "."
+    panel.strip.show_failure(message)
+    QApplication.processEvents()
+    lines = _assert_fits(panel.strip)
+    assert " ".join(lines) == message and "…" not in message

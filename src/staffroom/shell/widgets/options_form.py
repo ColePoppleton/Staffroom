@@ -8,12 +8,17 @@ With ``presets`` (:class:`~staffroom.core.panel.OptionsPreset`) the form
 starts with a Preset dropdown. Choosing a preset sets the fields it pins;
 editing any field afterwards moves the dropdown to whichever preset still
 matches the values, or to "Custom" when none does.
+
+Built from an :class:`~staffroom.core.panel.OptionsForm` (:meth:`OptionsFormWidget.for_spec`)
+the form also hides the fields that do not apply (``shown_when``), shows a
+choice's values by their labels (``choice_labels``) and draws the
+``switches`` as segmented switches. A hidden field keeps what was set in it;
+:meth:`OptionsFormWidget.value` hands the tool its default instead.
 """
 
 from __future__ import annotations
 
 import dataclasses
-import enum
 import types
 import typing
 from collections.abc import Callable, Iterable
@@ -27,11 +32,20 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QLabel,
     QLineEdit,
+    QSizePolicy,
     QSpinBox,
     QWidget,
 )
 
-from staffroom.core.panel import OptionsPreset, matching_preset
+from staffroom.core.panel import (
+    Choice,
+    OptionsForm,
+    OptionsPreset,
+    choice_key,
+    choice_values,
+    matching_preset,
+)
+from staffroom.shell.widgets.choice import ChoiceWidget
 
 CUSTOM = "Custom"
 LABEL_MAX_WIDTH = 112
@@ -54,18 +68,23 @@ class OptionsFormWidget(QWidget):
         parent: QWidget | None = None,
         *,
         fields: Iterable[str] = (),
+        spec: OptionsForm | None = None,
     ) -> None:
         super().__init__(parent)
         if not dataclasses.is_dataclass(schema):
             msg = f"OptionsForm schema must be a dataclass, got {schema!r}"
             raise TypeError(msg)
         self.schema = schema
+        # The spec carries shown_when, choice_labels and switches; a form built
+        # from a bare schema has none of them.
+        self.spec = spec if spec is not None else OptionsForm(key="options", schema=schema)
+        self._defaults = schema()
         self.presets: tuple[OptionsPreset, ...] = tuple(presets)
         self.widgets: dict[str, QWidget] = {}
         self._getters: dict[str, Callable[[], Any]] = {}
         self._setters: dict[str, Callable[[Any], None]] = {}
         self._syncing = False
-        layout = QFormLayout(self)
+        self._layout = layout = QFormLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setHorizontalSpacing(16)
         layout.setVerticalSpacing(10)
@@ -89,15 +108,21 @@ class OptionsFormWidget(QWidget):
             layout.addRow(label, self.preset_combo)
 
         hints = typing.get_type_hints(schema)
-        defaults = schema()
         shown = set(fields)
         for f in dataclasses.fields(schema):
             if shown and f.name not in shown:
                 continue  # left at its default (another input may set it)
             label_text = f.metadata.get("label", f.name.replace("_", " ").capitalize())
-            widget, getter, setter, edited = self._make_widget(
-                hints[f.name], getattr(defaults, f.name), f.metadata
-            )
+            default = getattr(self._defaults, f.name)
+            values = choice_values(schema, f.name)
+            if values is not None:
+                widget, getter, setter, edited = self._make_choice(
+                    f.name, label_text, values, default, f.metadata
+                )
+            else:
+                widget, getter, setter, edited = self._make_widget(
+                    hints[f.name], default, f.metadata
+                )
             if help_text := f.metadata.get("help"):
                 widget.setToolTip(help_text)
             label = QLabel(label_text)
@@ -113,14 +138,36 @@ class OptionsFormWidget(QWidget):
             self._getters[f.name] = getter
             self._setters[f.name] = setter
             edited.connect(lambda *_: self._field_edited())
+        self._sync_visibility()
         self._sync_preset_combo()
 
-    def value(self) -> Any:
+    @classmethod
+    def for_spec(cls, spec: OptionsForm, parent: QWidget | None = None) -> OptionsFormWidget:
+        return cls(spec.schema, spec.presets, parent, fields=spec.fields, spec=spec)
+
+    def held(self) -> Any:
+        """Everything the form holds, hidden fields included."""
         return self.schema(**{name: get() for name, get in self._getters.items()})
 
+    def value(self) -> Any:
+        """The options for the tool: what the form holds, with every field
+        that does not apply (hidden) at its default."""
+        return self.spec.passed(self.held())
+
     def set_field(self, name: str, value: Any) -> None:
-        """Set one shown field, as if the teacher had edited it."""
+        """Set one field of the form, as if the teacher had edited it."""
         self._setters[name](value)
+
+    def shown_fields(self) -> list[str]:
+        """The fields whose rows are on screen, in form order."""
+        return [n for n, w in self.widgets.items() if self._layout.isRowVisible(w)]
+
+    def _sync_visibility(self) -> None:
+        hidden = self.spec.hidden(self.held())
+        for name in self.spec.shown_when:
+            widget = self.widgets.get(name)
+            if widget is not None:
+                self._layout.setRowVisible(widget, name not in hidden)
 
     # -- presets -----------------------------------------------------------
     def current_preset(self) -> str:
@@ -138,6 +185,7 @@ class OptionsFormWidget(QWidget):
                 self._setters[field_name](value)
         finally:
             self._syncing = False
+        self._sync_visibility()
         self._sync_preset_combo()
         self.changed.emit()
 
@@ -148,6 +196,7 @@ class OptionsFormWidget(QWidget):
     def _field_edited(self) -> None:
         if self._syncing:
             return
+        self._sync_visibility()
         self._sync_preset_combo()
         self.changed.emit()
 
@@ -172,41 +221,59 @@ class OptionsFormWidget(QWidget):
             combo.blockSignals(False)
 
     # -- widget factory --------------------------------------------------
+    def _make_choice(
+        self,
+        name: str,
+        label: str,
+        values: tuple[Any, ...],
+        default: Any,
+        meta: typing.Mapping[str, Any],
+    ) -> tuple[QWidget, Callable[[], Any], Callable[[Any], None], SignalInstance]:
+        """A ``Literal`` or ``Enum`` field: a dropdown, or a segmented switch
+        when the spec lists it in ``switches``, showing each value's label.
+        The getter returns the value itself (the member, for an ``Enum``); the
+        setter takes the value, or its text (``--option level=a_level``)."""
+        keys = [choice_key(v) for v in values]
+        by_key = dict(zip(keys, values, strict=True))
+
+        if name in self.spec.switches:
+            switch = ChoiceWidget(
+                Choice(
+                    key=name,
+                    label=label,
+                    choices=tuple((k, self.spec.label_for(name, v)) for k, v in by_key.items()),
+                    default=choice_key(default),
+                    help=meta.get("help", ""),
+                )
+            )
+            return (
+                switch,
+                lambda: by_key[switch.value()],
+                lambda v: switch.set_value(choice_key(v)),
+                switch.changed,
+            )
+
+        combo = QComboBox()
+        _narrow(combo)
+        # A labelled choice reads as words, not a code value: let it use the
+        # width of the field column so the label is not cut short.
+        combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        for v in values:
+            combo.addItem(self.spec.label_for(name, v), v)
+
+        def select(v: Any) -> None:
+            if choice_key(v) in keys:  # an unknown value leaves the choice as it was
+                combo.setCurrentIndex(keys.index(choice_key(v)))
+
+        select(default)
+        return combo, lambda: values[combo.currentIndex()], select, combo.currentIndexChanged
+
     def _make_widget(
         self, hint: Any, default: Any, meta: typing.Mapping[str, Any]
     ) -> tuple[QWidget, Callable[[], Any], Callable[[Any], None], SignalInstance]:
         """The widget for a field, its getter, its setter and its "edited" signal."""
-        origin = typing.get_origin(hint)
-        if origin in (typing.Union, types.UnionType):
-            args = [a for a in typing.get_args(hint) if a is not type(None)]
-            hint, origin = args[0], typing.get_origin(args[0])
-
-        if origin is typing.Literal:
-            choices = [str(c) for c in typing.get_args(hint)]
-            combo = QComboBox()
-            _narrow(combo)
-            combo.addItems(choices)
-            combo.setCurrentText(str(default))
-            return (
-                combo,
-                combo.currentText,
-                lambda v: combo.setCurrentText(str(v)),
-                combo.currentIndexChanged,
-            )
-
-        if isinstance(hint, type) and issubclass(hint, enum.Enum):
-            members = list(hint)
-            combo = QComboBox()
-            _narrow(combo)
-            for m in members:
-                combo.addItem(str(m.value), m)
-            combo.setCurrentIndex(members.index(default))
-            return (
-                combo,
-                combo.currentData,
-                lambda v: combo.setCurrentIndex(members.index(v)),
-                combo.currentIndexChanged,
-            )
+        if typing.get_origin(hint) in (typing.Union, types.UnionType):
+            hint = next(a for a in typing.get_args(hint) if a is not type(None))
 
         if hint is bool:
             box = QCheckBox()

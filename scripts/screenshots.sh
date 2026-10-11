@@ -7,7 +7,30 @@
 # fixture root in scripts/screenshots/resources/, and tool outputs go to
 # folders that die with the process (the launcher does that in --screenshot
 # mode; the two CLI renders below use a scratch folder under the same home).
+#
+# Every sheet prints a date in its header. STAFFROOM_DATE pins it (read in
+# core/export/dating.py), so the renders are the same bytes whichever day they
+# are made and a re-run only changes the images whose content changed. Keep it
+# at the day the committed renders show; a teacher's own runs never set it and
+# print today's date.
+#
+# The launcher shots also pass `--today` with the same day, so the Classroom
+# run bar's "Copies to …/sessions/<day>" is pinned too (#116). That is a
+# separate, screenshot-only flag on purpose: STAFFROOM_DATE never decides
+# where a lesson copy goes, and `--today` only changes what the run bar says
+# (the launcher refuses it without --screenshot; a run still copies into
+# today's folder).
+#
+#   scripts/screenshots.sh           every screenshot (what `just screenshots` runs)
+#   scripts/screenshots.sh outputs   only the rendered files ("Rendered files" below)
 set -euo pipefail
+
+only="${1:-all}"
+case "$only" in
+    all | outputs) ;;
+    *) echo "usage: $0 [outputs]" >&2; exit 2 ;;
+esac
+export STAFFROOM_DATE="${STAFFROOM_DATE:-2026-10-09}"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
@@ -31,13 +54,15 @@ board = "ocr"
 [tools]
 TOML
 
+if [[ "$only" == all ]]; then
+
 # Index the fixture root up front so the Resources screenshots do not race the
 # first-index worker and the name-only banner is already there.
 uv run staff library index >/dev/null
 
 shot() {
     local name="$1"; shift
-    uv run staffroom --size "$size" "$@" --screenshot "docs/$name.png"
+    uv run staffroom --size "$size" --today "$STAFFROOM_DATE" "$@" --screenshot "docs/$name.png"
 }
 
 # Launcher and the first-run card
@@ -49,7 +74,7 @@ shot settings       --settings --theme dark
 # a full launcher render so it always matches the real window.
 footer() {
     local theme="$1"
-    uv run staffroom --size "$size" --tool marks --theme "$theme" \
+    uv run staffroom --size "$size" --today "$STAFFROOM_DATE" --tool marks --theme "$theme" \
         --screenshot "$home/launcher-$theme.png" >/dev/null
     uv run python - "$home/launcher-$theme.png" "docs/sidebar-footer-$theme.png" "${size%x*}" <<'PY'
 import sys
@@ -84,6 +109,8 @@ shot pseudocode-dark           --tool pseudocode --open examples/year9.py --run 
 shot library-python-dark --resource "Python/Year 9/average.py" --theme dark
 shot library-name-only   --resource "Admin/mock_cover_sheet.txt" --theme dark
 
+fi  # end of the launcher screenshots
+
 # Rendered files: the marks chart and one worksheet page
 uv run staff marks run examples/marks_10x_max.csv --out "$home/out/marks" >/dev/null
 cp "$home/out/marks/marks_10x_max_distribution.png" docs/marks-chart.png
@@ -91,7 +118,8 @@ echo "saved docs/marks-chart.png"
 
 # The pages the tools print, for the home page's fan and its "What comes out"
 # gallery: page 1 of each PDF, made from the example files by the same
-# commands a teacher would type. The date in each page's header is today's.
+# commands a teacher would type. The date in each page's header is
+# STAFFROOM_DATE (set at the top), so these do not churn from day to day.
 page() {
     local pdf="$1" name="$2" dpi="${3:-90}"
     if command -v pdftoppm >/dev/null; then

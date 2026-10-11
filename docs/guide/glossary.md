@@ -82,7 +82,8 @@ term has a precise meaning in the code, this is that meaning.
 **Variant** (Bugs)
 : A copy of the input program with exactly one line changed to introduce
   one error. Each is run, so the key can say *crashes*, *runs but the
-  output is wrong*, *hangs* or *no visible change*. Written as
+  output is wrong*, *hangs* or *silent* (no visible change; skipped unless
+  *Silent bugs allowed* keeps it). Written as
   `<stem>_bug1.py`, `_bug2.py`, …
 
 **Faded (worked) example**

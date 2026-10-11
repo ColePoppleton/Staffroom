@@ -66,7 +66,14 @@ def panel_spec() -> PanelSpec:
                 choice=FROM,
             ),
             TO,
-            OptionsForm(key="options", schema=Options, label="Save", fields=("formats",)),
+            OptionsForm(
+                key="options",
+                schema=Options,
+                label="Save",
+                fields=("formats",),
+                choice_labels={"formats": {"txt": "Text file", "none": "Don't save"}},
+                switches=("formats",),
+            ),
         ),
         outputs=(
             TextView(key="output", label="Translation", copy_button=True, code=True),

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from staffroom.core.config import Config
 from staffroom.core.panel import PresetRows
+from staffroom.core.plugin import ToolError
 from staffroom.core.table import Table
 
 #: Percent-of-paper minimums. Illustrative: real boundaries change every
@@ -70,10 +71,18 @@ def all_presets(config: Config) -> dict[str, PresetRows]:
 
 
 def save_preset(config: Config, name: str, table: Table) -> None:
+    """Keep ``name`` in the config and write it. The preset is in memory (and
+    in the panel's list) whether or not the write works; when it does not,
+    the teacher gets a ``ToolError`` saying so rather than a traceback (#74)."""
     rows = [[str(r[0]), float(r[1] or 0)] for r in table.rows if r and r[0] is not None]
     presets = config.tool("marks").setdefault("presets", {})
     presets[name] = rows
-    config.save()
+    problem = config.save()
+    if problem is not None:
+        raise ToolError(
+            f"Preset {name!r} could not be saved: {problem.path} {problem.reason}. "
+            "You can use it until you quit."
+        )
 
 
 def preset_table(rows: PresetRows) -> Table:

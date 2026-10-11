@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from staffroom.core.export import Document, Numbered, Paragraph, TableBlock
+from staffroom.core.export import Document, Numbered, Paragraph, TableBlock, sheet_date
 from staffroom.tools.worksheet.logic import TOPIC_TITLES, Options, Question, header_note
 
 
@@ -18,7 +18,7 @@ def build_document(
     doc = Document(
         title=f"Worksheet: {title}",
         topic="Computer Science",
-        date=today or date.today(),
+        date=today or sheet_date(),
         subtitle=subtitle,
     )
     sheet = doc.section()

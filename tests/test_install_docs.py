@@ -5,6 +5,9 @@ staffroom``) fails for a colleague, or installs someone else's package if the
 name is ever registered. The flag ``extra.published_on_pypi`` in mkdocs.yml
 says whether that form is allowed; until it is true, every install line must
 point at the GitHub repository, pinned to a released tag.
+
+``scripts/release.py bump`` rewrites the pins and the wheel filename (#100),
+so on every commit they equal the version in pyproject.toml exactly.
 """
 
 import re
@@ -27,6 +30,7 @@ BY_NAME = re.compile(
     r"\s+[\"']?staffroom\b(?![\w./@-])"
 )
 GIT_PIN = re.compile(r"git\+https://github\.com/ColePoppleton/Staffroom@v(\d+\.\d+\.\d+)")
+WHEEL = re.compile(r"\bstaffroom-(\d+\.\d+\.\d+)-py3-none-any\.whl")
 
 
 def _pages() -> list[Path]:
@@ -43,10 +47,6 @@ def _published_on_pypi() -> bool:
     match = re.search(r"^\s+published_on_pypi:\s*(true|false)\s*$", text, re.MULTILINE)
     assert match, "mkdocs.yml must set extra.published_on_pypi: true or false"
     return match.group(1) == "true"
-
-
-def _version(tag: str) -> tuple[int, ...]:
-    return tuple(int(part) for part in tag.split("."))
 
 
 def test_pattern_catches_install_by_name() -> None:
@@ -92,13 +92,16 @@ def test_home_page_readme_and_install_lead_with_a_pinned_github_install() -> Non
 
 def test_install_pins_agree_and_are_released() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    current = _version(project["project"]["version"])
+    version = project["project"]["version"]
     pins = {
         (pin, path.relative_to(ROOT).as_posix())
         for path in _pages()
-        for pin in GIT_PIN.findall(path.read_text(encoding="utf-8"))
+        for rx in (GIT_PIN, WHEEL)
+        for pin in rx.findall(path.read_text(encoding="utf-8"))
     }
-    tags = {pin for pin, _ in pins}
-    assert len(tags) == 1, f"install lines pin different tags: {sorted(pins)}"
-    (tag,) = tags
-    assert _version(tag) <= current, f"v{tag} is newer than the package version"
+    assert pins, "no pinned install line found"
+    stale = sorted((f"v{pin}", name) for pin, name in pins if pin != version)
+    assert not stale, (
+        f"install lines must pin v{version}, the version in pyproject.toml "
+        f"(scripts/release.py bump rewrites them): {stale}"
+    )

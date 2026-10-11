@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from staffroom.core.panel import (
+    OUTPUT_FORMAT_LABELS,
     CodeSource,
     LogArea,
     OptionsForm,
@@ -18,7 +19,15 @@ def panel_spec() -> PanelSpec:
         description="Working code → a Parsons problem worksheet and answer key.",
         inputs=(
             CodeSource(key="source", label="Working program", required=False),
-            OptionsForm(key="options", schema=Options),
+            OptionsForm(
+                key="options",
+                schema=Options,
+                choice_labels={
+                    "granularity": {"statement": "Statements", "line": "Lines"},
+                    "formats": OUTPUT_FORMAT_LABELS,
+                },
+                switches=("granularity", "formats"),
+            ),
         ),
         outputs=(PagePreview(key="pages", label="Parsons problem"), LogArea()),
         run_label="Make worksheet",

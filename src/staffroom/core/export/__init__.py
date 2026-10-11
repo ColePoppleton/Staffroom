@@ -1,7 +1,8 @@
 """The house style: one document model rendered to docx, PDF or plain text.
 
 Every worksheet, key and report in the project goes through here so they all
-look the same: a header with title, topic and date; a footer with page
+look the same: a header with title, topic and date (today's, or
+``STAFFROOM_DATE`` for reproducible renders: see ``dating``); a footer with page
 numbers; monospace blocks for code; answer sections that split off into a
 separate key file.
 """
@@ -11,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from staffroom.core.export.dating import DATE_ENV, sheet_date
 from staffroom.core.export.docx import write_docx
 from staffroom.core.export.model import (
     AnswerGrid,
@@ -33,6 +35,7 @@ from staffroom.core.export.text import to_text
 FORMATS = ("docx", "pdf")
 
 __all__ = [
+    "DATE_ENV",
     "FORMATS",
     "AnswerGrid",
     "Block",
@@ -50,6 +53,7 @@ __all__ = [
     "export",
     "house_style_from",
     "render",
+    "sheet_date",
     "to_text",
     "write_docx",
     "write_pdf",

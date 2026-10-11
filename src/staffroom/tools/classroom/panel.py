@@ -24,9 +24,13 @@ from staffroom.tools.classroom.logic import session_folder
 
 def copies_to(inputs: Mapping[str, Any], config: Config, *, today: date | None = None) -> Path:
     """Where "Open for class" will put the copy: ``<sessions root>/<today>/<label>``,
-    or just ``<sessions root>/<today>`` until the label is valid."""
+    or just ``<sessions root>/<today>`` until the label is valid.
+
+    A docs screenshot pins the day shown with ``config.screenshot_day`` (#116).
+    That only changes this label: ``plugin.run`` ignores it and always copies
+    into today's folder."""
     root = paths.sessions_root(config.general.sessions_root)
-    day = today or date.today()
+    day = today or config.screenshot_day or date.today()
     try:
         return root / session_folder(day, str(inputs.get("label") or ""))
     except ValueError:

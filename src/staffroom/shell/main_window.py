@@ -83,7 +83,6 @@ class MainWindow(QMainWindow):
         super().__init__()
         load_fonts()  # the brand type, before any widget measures text
         self.config = config
-        self._config_save_warned = False
         # Every loadable tool; hidden ones can still be opened by name
         # (``staffroom --tool hello``) but are not listed or on a shortcut.
         self.plugins = plugins if plugins is not None else discover_plugins()
@@ -143,13 +142,15 @@ class MainWindow(QMainWindow):
         self.settings.update_available.connect(self.sidebar.set_update_available)
         res = self.resources
         res.search_changed.connect(self._on_search)
-        res.kind_changed.connect(self.library_page.set_kind)
+        res.kind_changed.connect(self._on_kind_changed)
+        res.tags_changed.connect(self._on_tags_changed)
         res.show_hidden_toggled.connect(self._on_show_hidden)
         res.resource_selected.connect(self._on_resource_selected)
         res.reindex_requested.connect(self.library_page.reindex)
         res.hidden.setChecked(config.general.show_hidden)
         self.library_page.indexed.connect(self._on_indexed)
         self.library_page.resource_shown.connect(res.select)
+        self.library_page.preview.tags_saved.connect(self._on_tags_saved)
         self._build_use_bar()
         self.use_bar.open_for_class.connect(self._open_shown_for_class)
         self.use_bar.tool_requested.connect(self._hand_shown_to)
@@ -244,18 +245,10 @@ class MainWindow(QMainWindow):
 
     def _save_config(self) -> None:
         """Remember a choice (last tool, sidebar mode, theme…) in config.toml.
-        A config home that cannot be written (#65) keeps the choice for this
-        session and says so once in the log instead of a traceback per click."""
-        try:
-            self.config.save()
-        except OSError as exc:
-            if not self._config_save_warned:
-                self._config_save_warned = True
-                log.warning(
-                    "Cannot save %s (%s); choices last for this session only",
-                    self.config.path,
-                    exc.strerror or exc,
-                )
+        A config home that cannot be written (#65, #74) keeps the choice for
+        this session: ``Config.save`` logs it once and the Settings page says
+        so, instead of a traceback per click."""
+        self.settings.show_save_result(self.config.save())
 
     def show_settings(self) -> None:
         self._show(self.settings, SETTINGS)
@@ -415,6 +408,26 @@ class MainWindow(QMainWindow):
         self.library_page.set_show_hidden(show)
         self.refresh_resources()
 
+    def _on_kind_changed(self, kind: str) -> None:
+        """The type filter changed (#122): narrow the results and the tree,
+        as the tag filter does, with or without a query."""
+        self.library_page.set_kind(kind)
+        self.refresh_resources()
+
+    def _on_tags_changed(self, _tags: object) -> None:
+        """The tag filter changed (#111): narrow the tree and the results."""
+        self.refresh_resources()
+        self.library_page.refresh_search()
+
+    def _on_tags_saved(self, _rel_path: str) -> None:
+        """A file's tags changed: the filter's counts follow at once, and
+        while it is on, so do the tree and the results."""
+        if self.resources.chosen_tags():
+            self._on_tags_changed(None)
+        else:
+            show_hidden = self.config.general.show_hidden
+            self.resources.set_tag_counts(self.library.tag_counts(include_hidden=show_hidden))
+
     def _on_resource_selected(self, rel_path: str) -> None:
         self.show_library()
         self.library_page.show_resource(rel_path)
@@ -442,7 +455,18 @@ class MainWindow(QMainWindow):
             status, detail = "No folder chosen: set it in Settings", ""
         elif not self.library.root_exists:
             status, detail = "Folder not found: set it in Settings", ""
-        self.resources.set_resources(resources, status, detail)
+        # The type and tag filters (#111, #122) narrow the tree only; the
+        # counts above stay the library's own. The tag counts are over every
+        # file listed, so switching type never drops a chosen tag.
+        self.resources.set_tag_counts(self.library.tag_counts(include_hidden=show_hidden))
+        view = self.resources.current_filter()
+        shown = resources
+        if view.active:
+            shown = self.library.resources(
+                include_hidden=show_hidden, kinds=view.kinds, tags=view.tags
+            )
+            status = f"{view.describe(len(shown))}\n{status}"
+        self.resources.set_resources(shown, status, detail, filtered=view.active)
         self.resources.set_library_state(
             can_index=self.library.available, can_search=self.library.searchable
         )

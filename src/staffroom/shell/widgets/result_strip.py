@@ -11,8 +11,12 @@ last run went.
 * **After a failure**: a cross and the message in the teacher's words; no
   chips.
 
-The outcome wraps to two lines and is then cut between words, never inside
-one; the full text is in the tooltip and in the run log behind *Details*.
+Text wraps, and the strip grows to fit the lines it shows; a line is never
+clipped (#121). An outcome wraps to two lines (the files are the chips); a
+failure wraps to as many as it needs, up to :data:`FAILURE_LINES`, because
+its last sentence is usually what to do. Past that, the text is cut between
+words, never inside one; the full text is in the tooltip and in the run log
+behind *Details*.
 The strip only reports: what the chips do is the panel's job (it connects
 ``open_requested``, ``reveal_requested`` and ``folder_requested``).
 """
@@ -40,6 +44,8 @@ from staffroom.shell.widgets.elided_label import ElidedLabel
 MAX_CHIPS = 5  # file chips shown at most; the rest (or what does not fit) under "+N more"
 CHIP_LABEL_MAX = 26  # characters; longer labels are cut in the middle
 HEADLINE_MAX = 40  # characters; a longer headline wraps with the rest instead
+OUTCOME_LINES = 2  # an outcome, progress or "Not run yet": then cut, the rest in the tooltip
+FAILURE_LINES = 6  # a failure is read to the end; only a runaway message is cut
 IDLE_TEXT = "Not run yet"
 
 ICONS = {"idle": "", "running": "…", "success": "✓", "danger": "✕"}
@@ -120,12 +126,12 @@ class ResultStrip(QWidget):
         self.icon.setFixedSize(20, 20)
         row.addWidget(self.icon, 0, Qt.AlignmentFlag.AlignTop)
 
-        # The headline (bold) and the rest (muted, wraps to two lines).
+        # The headline (bold) and the rest (muted, wraps; see OUTCOME_LINES).
         self.headline = QLabel()
         self.headline.setObjectName("StripHeadline")
         self.headline.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         row.addWidget(self.headline, 0, Qt.AlignmentFlag.AlignTop)
-        self.message = ElidedLabel(max_lines=2, whole_words=True)
+        self.message = ElidedLabel(max_lines=OUTCOME_LINES, whole_words=True)
         self.message.setObjectName("StripMessage")
         row.addWidget(self.message, 1, Qt.AlignmentFlag.AlignTop)
 
@@ -246,9 +252,24 @@ class ResultStrip(QWidget):
     def _set_text(self, head: str, rest: str, *, role: str) -> None:
         self.headline.setText(head)
         self.headline.setVisible(bool(head))
+        self.message.max_lines = FAILURE_LINES if role == "danger" else OUTCOME_LINES
+        before = self.message.sizeHint().height()
         self.message.setText(rest)
         self.message.setProperty("role", role)
         _repolish(self.message)
+        if self.message.sizeHint().height() != before:
+            self._settle()
+
+    def _settle(self) -> None:
+        """Lay the strip and the panels around it out now, not on the next
+        pass of the event loop, so no frame shows the new lines squeezed into
+        the old height (half a line cut off top and bottom, #121)."""
+        widget: QWidget | None = self
+        while widget is not None and widget.isVisible():
+            layout = widget.layout()
+            if layout is not None:
+                layout.activate()
+            widget = widget.parentWidget()
 
     def _set_chips(self, files: list[FileChip]) -> None:
         for chip in self.chips:
