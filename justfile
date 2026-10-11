@@ -76,7 +76,7 @@ release PART="patch":
 
 # Serve the documentation site locally
 docs:
-    cp CHANGELOG.md docs/changelog.md
+    uv run python scripts/release.py site > docs/changelog.md
     uv run --only-group docs mkdocs serve
 
 # Everything CI would do
