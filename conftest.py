@@ -1,5 +1,6 @@
 """Root conftest: shared fixtures for tests/ and every tool's tests/. Every test
-gets an isolated config/log home so nothing touches ~/.config/staffroom."""
+gets an isolated config/log home and an isolated default sessions folder, so
+nothing touches ~/.config/staffroom or ~/TeachingSessions (#37)."""
 
 from __future__ import annotations
 
@@ -14,13 +15,51 @@ from staffroom.core import paths
 from staffroom.core.library.service import LibraryService
 
 EXAMPLES = paths.examples_dir()
+# Read once, before any test can monkeypatch HOME.
+REAL_HOME = Path.home().resolve()
+UNRECORDED_SESSIONS_ROOT = paths.sessions_root
 
 
 @pytest.fixture(autouse=True)
-def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+def isolated_home(
+    tmp_path: Path, tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[Path]:
+    """``STAFFROOM_HOME`` and ``STAFFROOM_SESSIONS`` point into this test's
+    temp folder. Both are environment variables, so a ``staff`` or
+    ``staffroom`` subprocess a test starts inherits them too.
+
+    Every sessions root resolved during the test is recorded; one under the
+    real home (and outside pytest's temp folders) fails the test, so a test
+    that sets ``sessions_root`` to ``~/…`` cannot slip through either."""
     home = tmp_path / "staffroom-home"
     monkeypatch.setenv("STAFFROOM_HOME", str(home))
+    monkeypatch.setenv(paths.SESSIONS_ENV, str(tmp_path / "sessions"))
+    resolved: list[Path] = []
+    real = UNRECORDED_SESSIONS_ROOT
+
+    def recording(configured: str) -> Path:
+        root = real(configured)
+        resolved.append(root)
+        return root
+
+    monkeypatch.setattr(paths, "sessions_root", recording)
     yield home
+    escaped = sessions_roots_under_real_home(resolved, tmp_path_factory.getbasetemp())
+    if escaped:
+        pytest.fail(f"a sessions root resolved under the real home: {escaped}", pytrace=False)
+
+
+def sessions_roots_under_real_home(roots: list[Path], allowed: Path) -> list[Path]:
+    """The roots that are under the real home folder and not under ``allowed``
+    (pytest's temp folder, which a ``--basetemp`` may put inside the home)."""
+    allowed_root = allowed.resolve()
+    escaped = []
+    for root in roots:
+        # abspath, not resolve(): no filesystem access to a real folder.
+        full = Path(os.path.abspath(root))
+        if full.is_relative_to(REAL_HOME) and not full.is_relative_to(allowed_root):
+            escaped.append(root)
+    return escaped
 
 
 @pytest.fixture(autouse=True)

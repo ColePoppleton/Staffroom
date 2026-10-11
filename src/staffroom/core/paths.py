@@ -1,5 +1,15 @@
-"""Where things live on disk. Everything hangs off one root so tests can
-redirect it with the ``STAFFROOM_HOME`` environment variable."""
+"""Where things live on disk. Two environment variables redirect the two
+folders a run can write to, so tests, the screenshot script and a
+contributor's try-out never touch a teacher's real ones:
+
+* ``STAFFROOM_HOME`` replaces ``~/.config/staffroom`` (config, logs, the
+  library index, usage);
+* ``STAFFROOM_SESSIONS`` replaces the default sessions folder
+  (``~/TeachingSessions``: lesson copies and ``outputs/<tool>``), but only
+  while Settings leaves the sessions folder empty. A folder the teacher chose
+  always wins.
+
+A teacher sets neither, and gets exactly the defaults."""
 
 from __future__ import annotations
 
@@ -64,12 +74,17 @@ def examples_dir() -> Path:
 
 
 DEFAULT_SESSIONS_ROOT = "~/TeachingSessions"
+SESSIONS_ENV = "STAFFROOM_SESSIONS"
 
 
 def sessions_root(configured: str) -> Path:
     """Where ``classroom`` keeps lesson copies. Local by default; the user may
-    point it anywhere in Settings. Never auto-detected from cloud folders."""
-    return Path(configured or DEFAULT_SESSIONS_ROOT).expanduser()
+    point it anywhere in Settings. Never auto-detected from cloud folders.
+
+    Order: the folder set in Settings; else ``$STAFFROOM_SESSIONS`` (tests and
+    throwaway runs, see the module docstring); else ``~/TeachingSessions``."""
+    override = os.environ.get(SESSIONS_ENV, "")
+    return Path(configured or override or DEFAULT_SESSIONS_ROOT).expanduser()
 
 
 OUTPUTS_SUBDIR = "outputs"
