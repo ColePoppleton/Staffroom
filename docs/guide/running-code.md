@@ -26,10 +26,11 @@ in Thonny anyway.
 - **A fresh, temporary working folder** that is deleted afterwards, a
   minimal environment, and `python -I` (no site packages, no `PYTHON*`
   variables from your shell). Inputs you type in the *Inputs* box are fed
-  to `input()`, one line each. When they run out, Trace stops, writes
-  nothing and says which input was missing (*asked for a 2nd input but the
-  Inputs box has only 1 line*); in Bugs, `input()` raises
-  `EOFError` and that version crashes.
+  to `input()`, one line each. When they run out, Trace stops and
+  writes nothing: the result strip says which input was missing (*asked for
+  a 2nd input, but was given only 1 line*), the result pane says how many
+  lines to type, and the Inputs box is outlined ([Trace](../tools/trace.md)).
+  In Bugs, `input()` raises `EOFError` and that version crashes.
 - **A refusal to run files that import** networking or process modules:
   `socket`, `ssl`, `http`, `urllib`, `requests`, `subprocess`,
   `multiprocessing` and friends. The check reads the source before running

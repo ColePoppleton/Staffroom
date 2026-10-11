@@ -69,10 +69,6 @@ they are on the roadmap, not a priority yet.
 
 ## For developers
 
-```bash
-git clone https://github.com/ColePoppleton/Staffroom
-cd Staffroom
-just setup      # uv sync + pre-commit hooks
-just test
-just gui
-```
+To change the code, fork the repository and work from a clone of your fork:
+[How to contribute](../contributing.md) has the setup, and how to try a
+change in throwaway folders without touching your own Staffroom.
