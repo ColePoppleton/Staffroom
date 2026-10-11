@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1240">
+<title>Release notes for teachers</title>
+<!-- Audit 2026-10-11 mockup: Release notes for teachers. GitHub-like page, ?theme=light|dark. Words and images invented for the mockup. -->
+<script>document.documentElement.dataset.theme=(new URLSearchParams(location.search).get('theme')||'light');</script>
+<style>
+:root{--bg:#ffffff;--bg2:#f6f8fa;--fg:#1f2328;--muted:#59636e;--border:#d1d9e0;--link:#0969da;--code:#eff2f5;--accent:#c8322b;--note:#fff8c5;--green:#1a7f37}
+:root[data-theme=dark]{--bg:#0d1117;--bg2:#151b23;--fg:#f0f6fc;--muted:#9198a1;--border:#3d444d;--link:#4493f8;--code:#262c36;--accent:#ff6b5e;--note:#bb800926;--green:#3fb950}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1240px;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif}
+.top{height:64px;background:#010409;display:flex;align-items:center;padding:0 32px;color:#f0f6fc;font-weight:600;gap:10px}
+.top .o{width:30px;height:30px;border-radius:50%;background:#f0f6fc}
+.crumb{padding:16px 32px 0;font-size:18px} .crumb b{font-weight:600}
+.tabsr{display:flex;gap:22px;padding:12px 32px 0;border-bottom:1px solid var(--border);font-size:14px}
+.tabsr span{padding-bottom:10px} .tabsr .on{border-bottom:2px solid #fd8c73;font-weight:600}
+.wrap{display:flex;gap:24px;padding:24px 32px}
+.readme{flex:1;border:1px solid var(--border);border-radius:6px}
+.readme .bar{padding:10px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600}
+.md{padding:28px 32px}
+.md h1{font-size:32px;font-weight:600;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.md h2{font-size:24px;font-weight:600;padding-bottom:5px;border-bottom:1px solid var(--border);margin:22px 0 12px}
+.md h3{font-size:18px;font-weight:600;margin:16px 0 8px}
+.md p{margin-bottom:12px} .md ul{margin:0 0 12px 24px} .md li{margin:3px 0}
+.md a{color:var(--link);text-decoration:none}
+.md pre{background:var(--bg2);border-radius:6px;padding:14px 16px;font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;margin-bottom:14px;overflow:hidden}
+.md code{background:var(--code);border-radius:5px;padding:1px 5px;font:85% ui-monospace,Menlo,monospace}
+.md pre code{background:none;padding:0;font-size:inherit}
+.shot{display:flex;gap:12px;margin:6px 0 16px}
+.shot img{border:1px solid var(--border);border-radius:6px;display:block} .shot .ph{border:1px solid var(--border);border-radius:6px}
+.ph{background:var(--bg2);display:grid;place-items:center;color:var(--muted);font-size:13px}
+.tag{font-size:12px;color:var(--muted)}
+.note{position:absolute;background:#fff3a8;color:#2b2a24;font-size:13px;line-height:1.35;padding:8px 10px;border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,.25);width:240px;transform:rotate(-1deg);z-index:9}
+.note b{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#a82820;margin-bottom:2px}
+.aside{width:290px;font-size:14px;color:var(--muted)} .aside h4{color:var(--fg);font-size:16px;margin-bottom:8px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0 14px}
+.three div{border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:14px}
+.three b{display:block;margin-bottom:3px}
+details{border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:8px 0 14px;font-size:14px}
+summary{font-weight:600;cursor:pointer}
+.rel{flex:1;border:1px solid var(--border);border-radius:6px;padding:20px 28px}
+.rel h1{font-size:32px;font-weight:600;margin-bottom:4px}
+.meta{font-size:14px;color:var(--muted);padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.latest{display:inline-block;border:1px solid var(--green);color:var(--green);border-radius:999px;font-size:12px;padding:0 8px;margin-left:8px;vertical-align:middle}
+</style></head><body>
+<div class="top"><span class="o"></span>&nbsp;GitHub</div><div class="crumb">ColePoppleton / <b>Staffroom</b></div>
+<div class="tabsr"><span class="on">Code</span><span>Issues</span><span>Pull requests</span><span>Actions</span></div>
+<div class="wrap"><div class="rel">
+<h1>Staffroom 0.8.0 <span class="latest">Latest</span></h1>
+<div class="meta">11 Oct 2026 · Install or update: <code>uv tool upgrade staffroom</code> · <a style="color:var(--link)">Full changelog</a></div>
+<div class="md" style="padding:0">
+<h3>For teachers</h3>
+<ul>
+<li><b>Forms only ask what matters.</b> Worksheet shows <i>Level</i> only for truth tables; Quiz shows the taught log only in retrieval mode; choices read <i>Easy / Medium / Hard</i>.</li>
+<li><b>Find files by tag.</b> The Library has a Tags filter beside the type filter; both narrow the folder tree as well as search.</li>
+<li><b>Better bug-hunt sheets.</b> Bugs mixes crashes with programs that run but print the wrong thing, and the key shows an indentation slip with dots.</li>
+<li><b>Settings are safer.</b> A full disk can no longer leave your settings half-written.</li>
+</ul>
+<div class="shot"><div class="ph" style="width:300px;height:170px">screenshot: Worksheet options, before / after</div><div class="ph" style="width:300px;height:170px">screenshot: Library Tags filter</div></div>
+<details><summary>For contributors (8 changes)</summary>
+<p style="margin-top:8px"><code>PanelSpec.shown_when</code>, <code>OptionsForm(choice_labels=…, switches=…)</code>, <code>core/atomic.py</code>, <code>STAFFROOM_DATE</code> … Earlier issue numbers refer to <a style="color:var(--link)">Staffroom-archive</a>, e.g. <a style="color:var(--link)">archive#123</a>.</p></details>
+</div></div>
+<div class="aside"><h4>Assets</h4><p>staffroom-0.8.0-py3-none-any.whl · 1 MB<br>Source code (zip)</p></div></div>
+<div class="note" style="left:930px;top:340px"><b>Today</b>The changelog pasted as-is: 1,334 words and 51 code identifiers in 0.8.0; hard-wrapped lines break mid-sentence; “(#123)”, “(#16)” link to <i>this</i> repo's issues, which are now unrelated (#1 is the Kahoot check; Phase 10 takes #2 onwards).</div>
+<div class="note" style="left:940px;top:610px;transform:rotate(1deg)"><b>Proposed</b>Four lines a teacher reads, the update command, two pictures; the developer detail folded; old numbers point at the archive.</div>
+</body></html>
