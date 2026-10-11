@@ -35,10 +35,16 @@ LEAKS = ("/Users/", "/home/", "/var/folders/", "/private/", "worktrees", "/tmp/"
 Aliases = list[tuple[str, str]]
 
 
-def aliases(config: Config, tool: str | None = None) -> Aliases:
-    """Real path prefixes and what to show instead, longest first. The
-    screenshot output folder stands for the tool's default outputs folder."""
-    outputs = f"{NEUTRAL_SESSIONS}/{paths.OUTPUTS_SUBDIR}" + (f"/{tool}" if tool else "")
+def aliases(config: Config, default_output: Path | None = None) -> Aliases:
+    """Real path prefixes and what to show instead, longest first.
+
+    Screenshot mode writes into a throwaway folder; it is shown as
+    ``default_output``, where the run would have written with no output folder
+    set (next to the input, or ``<sessions>/outputs/<tool>``), itself made
+    neutral by the other aliases."""
+    outputs = f"{NEUTRAL_SESSIONS}/{paths.OUTPUTS_SUBDIR}"
+    if default_output is not None:
+        outputs = neutral(str(default_output), aliases(config))
     pairs: list[tuple[str, str]] = []
     for real, shown in (
         (config.general.output_dir, outputs),
@@ -63,12 +69,17 @@ def neutral(text: str, table: Aliases) -> str:
     return text
 
 
-def neutralise(window: QWidget, table: Aliases) -> None:
-    """Rewrite every path the window shows. The run bar's folder is rebuilt
-    from its path, since the label holds an already shortened form."""
+def neutralise(window: QWidget, table: Aliases, blank: str = "") -> None:
+    """Rewrite every path the window shows. A field holding exactly ``blank``
+    (the throwaway output folder, which is not a setting) is shown empty, as
+    a fresh install has it. The run bar's folder is rebuilt from its path,
+    since the label holds an already shortened form."""
     for widget in window.findChildren(QLabel) + window.findChildren(QAbstractButton):
         _replace(widget, widget.text(), widget.setText, table)
     for edit in window.findChildren(QLineEdit):
+        if blank and edit.text() == blank:
+            with QSignalBlocker(edit):
+                edit.clear()
         _replace(edit, edit.text(), edit.setText, table)
         _replace(edit, edit.placeholderText(), edit.setPlaceholderText, table)
     for bar in window.findChildren(RunBar):

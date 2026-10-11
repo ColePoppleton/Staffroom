@@ -49,7 +49,7 @@ def test_settings_screenshot_shows_home_relative_folders(
     assert exits == [0] and shot.exists()
     assert settings.resources_root.edit.text() == "~/Documents/Teaching resources"
     assert settings.sessions_root.edit.text() == "~/TeachingSessions"
-    assert settings.output_dir.edit.text() == "~/TeachingSessions/outputs"
+    assert settings.output_dir.edit.text() == ""  # the default: next to the input
     assert "~/.config/staffroom/library.db" in settings.library_statement.text()
     assert screenshot_paths.leaks(window) == []
     # Only the pixels changed: nothing was saved over the real settings.
@@ -57,9 +57,12 @@ def test_settings_screenshot_shows_home_relative_folders(
     assert load_config().general.resources_root != "~/Documents/Teaching resources"
 
 
-def test_tool_screenshot_shows_the_tools_outputs_folder(
+def test_tool_screenshot_shows_where_a_fresh_install_would_write(
     qtbot: QtBot, qapp: QApplication, tmp_path: Path, exits: list[int], example_marks: Path
 ) -> None:
+    """Next to the input (here the repository's examples folder), not the
+    screenshot's throwaway folder; a tool with no input file shows
+    ``~/TeachingSessions/outputs/<tool>``."""
     _configure(tmp_path)
     shot = tmp_path / "marks.png"
     args = parse_args(["--tool", "marks", "--open", str(example_marks), "--screenshot", str(shot)])
@@ -68,8 +71,16 @@ def test_tool_screenshot_shows_the_tools_outputs_folder(
     window.show()
     _save_screenshot(qapp, window, shot)
     assert exits == [0] and shot.exists()
-    bar = window.panel_for("marks").run_bar
-    assert bar.folder.text().endswith("~/TeachingSessions/outputs/marks")
+    assert window.panel_for("marks").run_bar.folder.text() == "Writes to ~/Staffroom/examples"
+
+    exits.clear()
+    window = build_window(parse_args(["--tool", "worksheet", "--screenshot", str(shot)]))
+    qtbot.addWidget(window)
+    window.show()
+    _save_screenshot(qapp, window, shot)
+    assert exits == [0]
+    bar = window.panel_for("worksheet").run_bar
+    assert bar.folder.text() == "Writes to ~/TeachingSessions/outputs/worksheet"
 
 
 @pytest.mark.parametrize(
@@ -97,8 +108,8 @@ def test_a_screenshot_that_would_show_a_machine_path_is_refused(
     # Set after neutralising would run, as a path the aliases do not know.
     original = screenshot_paths.neutralise
 
-    def neutralise_then_leak(win: object, table: screenshot_paths.Aliases) -> None:
-        original(win, table)  # type: ignore[arg-type]
+    def neutralise_then_leak(win: object, table: screenshot_paths.Aliases, blank: str) -> None:
+        original(win, table, blank)  # type: ignore[arg-type]
         stray.setText(text)
 
     with pytest.MonkeyPatch.context() as patch:

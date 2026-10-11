@@ -229,13 +229,25 @@ def _save_when_drawn(
     QTimer.singleShot(150, lambda: _save_screenshot(app, window, path))  # the large page too
 
 
+def _default_output(panel: ToolPanel) -> Path:
+    """Where the panel would write with no output folder set, as on a fresh
+    install: the screenshot's throwaway folder is shown as this."""
+    general = panel.config.general
+    saved, general.output_dir = general.output_dir, ""
+    try:
+        return panel.destination(panel.collect_inputs())
+    finally:
+        general.output_dir = saved
+
+
 def _save_screenshot(app: QApplication, window: MainWindow, path: Path) -> None:
     app.processEvents()
     # Show the folders a teacher would see, not this machine's temp and
     # checkout paths, and refuse an image that still names one (#14).
     current = window.stack.currentWidget()
-    tool = current.plugin.name if isinstance(current, ToolPanel) else None
-    screenshot_paths.neutralise(window, screenshot_paths.aliases(window.config, tool))
+    default = _default_output(current) if isinstance(current, ToolPanel) else None
+    table = screenshot_paths.aliases(window.config, default)
+    screenshot_paths.neutralise(window, table, blank=window.config.general.output_dir)
     app.processEvents()
     leaked = screenshot_paths.leaks(window)
     if leaked:
