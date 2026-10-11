@@ -4,7 +4,6 @@ seed, invent distractors, and put it all back together for the key."""
 from __future__ import annotations
 
 import ast
-import io
 import random
 import re
 import tokenize
@@ -221,7 +220,7 @@ def _comparison_columns(line: str) -> set[int]:
     """Columns where a real comparison operator starts (not inside a string)."""
     found: set[int] = set()
     try:
-        for tok in tokenize.generate_tokens(io.StringIO(line).readline):
+        for tok in tokenize.generate_tokens(iter([line]).__next__):  # one line, no I/O
             if tok.type == tokenize.OP and tok.string in _COMPARISONS:
                 found.add(tok.start[1])
     except (tokenize.TokenError, SyntaxError):
