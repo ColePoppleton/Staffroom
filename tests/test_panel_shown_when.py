@@ -135,13 +135,13 @@ def test_a_loop_between_two_inputs_is_refused() -> None:
         spec({"a": shown_when("b", "x"), "b": shown_when("a", "x")}, (a, b))
 
 
-def test_quiz_shows_its_taught_log_only_in_retrieval_mode() -> None:
-    from staffroom.tools.quiz.logic import Options
+def test_quiz_shows_its_taught_log_only_when_questions_come_from_it() -> None:
     from staffroom.tools.quiz.panel import panel_spec
 
     quiz = panel_spec()
-    assert quiz.hidden_inputs({"options": Options()}) == {"taught_log"}
-    on = {"options": Options(retrieval=True), "taught_log": Path("log.csv")}
-    assert quiz.hidden_inputs(on) == set()
-    off = {"options": Options(), "taught_log": Path("log.csv")}
-    assert quiz.passed(off)["taught_log"] is None
+    assert quiz.hidden_inputs({}) == {"taught_log", "as_of"}  # Topics I pick, by default
+    on = {"pick": "taught", "taught_log": Path("log.csv"), "topics": ("cpu",)}
+    assert quiz.hidden_inputs(on) == {"topics"}
+    assert quiz.passed(on)["topics"] == ()
+    off = {"pick": "topics", "taught_log": Path("log.csv"), "as_of": "2026-10-08"}
+    assert quiz.passed(off)["taught_log"] is None and quiz.passed(off)["as_of"] == ""

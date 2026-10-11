@@ -1,4 +1,10 @@
-"""Pick a file from the Resource Library, or anywhere via a dialog."""
+"""Pick a file from the Resource Library, or anywhere via a dialog.
+
+A path field over *From library…* and *Browse…*; or, for a
+:class:`~staffroom.core.panel.ResourcePicker` with ``chip``, a chip like a
+code tool's: before a file, *From library…* and *Browse…*; with one, its
+type, name and folder (the library folder for a library file, the full path
+in the tooltip) and *Change ▾*."""
 
 from __future__ import annotations
 
@@ -7,8 +13,11 @@ from pathlib import Path
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFileDialog,
+    QFrame,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
+    QMenu,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -16,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from staffroom.core.library.service import ResourceService
 from staffroom.core.panel import ResourcePicker
+from staffroom.shell.widgets.elided_label import ElidedLabel
 
 
 class ResourcePickerWidget(QWidget):
@@ -51,6 +61,75 @@ class ResourcePickerWidget(QWidget):
         buttons.addStretch(1)
         layout.addWidget(self.edit)
         layout.addLayout(buttons)
+        self.chip: QFrame | None = None
+        if spec.chip:
+            self._build_chip(layout, buttons)
+
+    def _build_chip(self, layout: QVBoxLayout, buttons: QHBoxLayout) -> None:
+        """The chip replaces the field and the button row; the field still
+        holds the value."""
+        self.edit.hide()
+        for button in (self.library_button, self.browse_button):
+            buttons.removeWidget(button)
+        layout.removeItem(buttons)
+        chip = QFrame()
+        chip.setObjectName("FileChip")
+        row = QHBoxLayout(chip)
+        row.setContentsMargins(8, 5, 6, 5)
+        row.setSpacing(8)
+        self.badge = QLabel("")
+        self.badge.setObjectName("FileBadge")
+        self.name = QLabel("")
+        self.name.setObjectName("FileName")
+        self.folder = ElidedLabel("")
+        self.folder.setProperty("role", "faint")
+        self.change = QPushButton("Change ▾")
+        self.change.setObjectName("CodeChange")  # the ▾ is in the text: no menu arrow
+        self.change.setProperty("role", "ghost")
+        self.change.setToolTip("Choose a different file")
+        menu = QMenu(self.change)
+        library = menu.addAction("From library…", self.pick_from_library)
+        library.setEnabled(self.resources is not None)
+        menu.addAction("Browse…", self.browse)
+        self.change.setMenu(menu)
+        row.addWidget(self.badge)
+        row.addWidget(self.name)
+        row.addWidget(self.folder, 1)
+        row.addWidget(self.library_button)
+        row.addWidget(self.browse_button)
+        row.addWidget(self.change)
+        layout.addWidget(chip)
+        self.chip = chip
+        self._show_chip()
+
+    def _folder(self, path: Path) -> str:
+        """The library folder of a library file (``Computing/Year 10``),
+        else the parent folder's name."""
+        if self.resources is not None:
+            try:
+                rel = path.resolve().relative_to(self.resources.root.resolve())
+                return rel.parent.as_posix() if rel.parent != Path(".") else "Library"
+            except (ValueError, OSError):
+                pass
+        return path.parent.name
+
+    def _show_chip(self) -> None:
+        if self.chip is None:
+            return
+        path = self.value()
+        has_file = path is not None
+        for widget in (self.badge, self.name, self.change):
+            widget.setVisible(has_file)
+        for widget in (self.library_button, self.browse_button):
+            widget.setVisible(not has_file)
+        if path is None:
+            self.folder.setText("No file yet")
+            self.chip.setToolTip("")
+            return
+        self.badge.setText((path.suffix.lstrip(".") or "file").upper()[:4])
+        self.name.setText(path.name)
+        self.folder.setText(self._folder(path))
+        self.chip.setToolTip(str(path))
 
     def value(self) -> Path | None:
         """Absolute path. Text typed or shown relative to the library root is
@@ -66,6 +145,7 @@ class ResourcePickerWidget(QWidget):
     def set_path(self, path: Path | None) -> None:
         self.edit.setText(self._display(path) if path else "")
         self.edit.setToolTip(str(path) if path else "")
+        self._show_chip()
         self._emit()
 
     def _display(self, path: Path) -> str:

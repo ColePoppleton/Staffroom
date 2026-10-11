@@ -49,6 +49,19 @@ later entries refer to this repository's issues.
   versions up to 0.8.1, where they opened unrelated issues here; a test (and
   `scripts/release.py check`) fails if one comes back or a version lacks its summary, and
   `just release` refuses an Unreleased section without one (#10).
+- Quiz starts from the bank: it shows as a chip that says what was found in it
+  (*13 questions · 6 topics · OCR and AQA spec points · no problems*, or the first problem
+  with its line) with *Preview questions*; *Make* is a switch with the **do-now sheet**
+  first (the default until the Kahoot import is checked, #1); *Questions from* is either
+  the bank's own topics as chips with counts and a running total (no more typing tag
+  names) or *Taught 1, 3 and 6 weeks ago*, which shows the taught log, the date and what
+  each week held instead of a *Retrieval mode* tick box. *Questions* and *Seed* share a
+  row; spec points and the title are under *More*; the button says what it makes. The
+  do-now's *Sheet* and *Key* come first, then the chosen questions as numbered on the
+  sheet. The command line's flags, defaults and file names are unchanged. For tools: a
+  `ChipChoice` input, `PanelSpec.inspect` (what a tool found in its inputs, shown beside
+  them), `PanelSpec.joined`, `ResourcePicker(chip=True)`, and `OptionsForm(inline=...,
+  more=...)` (#17).
 
 ### Changed
 - Trace's completed table and the bugs key fit the screen (#16). Trace lifts a value

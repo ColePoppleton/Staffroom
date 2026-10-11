@@ -23,6 +23,7 @@ class TextFieldWidget(QWidget):
         self.edit.textChanged.connect(self._update_counter)
         layout.addWidget(self.edit, 1)
         layout.addWidget(self.counter)
+        self.counter.setVisible(spec.counter)
         self._update_counter("")
 
     def _update_counter(self, text: str) -> None:

@@ -74,13 +74,13 @@ def test_fade_ranges_show_only_for_the_listed_order(window: MainWindow, qtbot: Q
     assert blocker.args == [True], panel.strip.text()
 
 
-def test_quiz_hides_what_its_format_and_mode_do_not_use(window: MainWindow) -> None:
+def test_quiz_folds_spec_points_and_title_under_more(window: MainWindow) -> None:
+    """#17: the format and the source of questions are switches of their own;
+    the form keeps the count and seed on one row, the rest under More."""
     form = _panel(window, "quiz").forms["options"]
-    assert {"title", "today"}.isdisjoint(form.shown_fields())  # Kahoot, no retrieval
-    form.set_field("fmt", "donow")
-    assert "title" in form.shown_fields()
-    form.set_field("retrieval", True)
-    assert "today" in form.shown_fields()
+    assert form.shown_fields() == ["count", "seed"]
+    form.set_more_open(True)
+    assert form.shown_fields() == ["count", "seed", "spec", "title"]
 
 
 def test_parsons_granularity_is_a_switch(window: MainWindow) -> None:

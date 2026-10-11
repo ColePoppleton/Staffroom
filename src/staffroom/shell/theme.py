@@ -500,6 +500,18 @@ QPushButton#Segment:checked {{
     background: {p.surface}; color: {p.text}; border-bottom: 2px solid {p.accent};
 }}
 QPushButton#Segment:hover:!checked {{ color: {p.text}; }}
+/* toggle chips (ChipChoice): a pill each; on, it takes the accent (a selection) */
+QPushButton#ToggleChip {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: 13px;
+    padding: 0px; min-height: 0px;
+}}
+QPushButton#ToggleChip:hover {{ border-color: {p.text_faint}; }}
+QPushButton#ToggleChip[on="true"] {{ background: {p.accent_soft}; border-color: {p.accent}; }}
+QPushButton#ToggleChip:focus {{ border-color: {p.accent}; }}
+QLabel#ChipName {{ font-weight: 600; background: transparent; }}
+QLabel#ChipName[on="true"] {{ color: {p.accent}; }}
+QLabel#ChipCount {{ color: {p.text_faint}; font-size: 11px; background: transparent; }}
+QLabel#ChipCount[on="true"] {{ color: {p.accent}; }}
 QFrame#GridCell {{
     background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
 }}

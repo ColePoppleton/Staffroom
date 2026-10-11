@@ -50,7 +50,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=[],
         metavar="FIELD=VALUE",
-        help="set a field of the tool's options form, e.g. formats=docx (for --screenshot)",
+        help="set an option, a switch, chips (a,b), a text field or a file, e.g. formats=docx "
+        "(for --screenshot)",
     )
     parser.add_argument("--run", action="store_true", help="run the tool before --screenshot")
     parser.add_argument(
@@ -114,11 +115,20 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         for form in window.panel_for(args.tool).forms.values():
             form.apply_preset(args.preset)
     if args.option and args.tool:
+        panel = window.panel_for(args.tool)
         for item in args.option:
             name, _, value = item.partition("=")
-            for form in window.panel_for(args.tool).forms.values():
+            for form in panel.forms.values():
                 if name in form.widgets:
                     form.set_field(name, int(value) if value.isdigit() else value)
+            if name in panel.choices:
+                panel.choices[name].set_value(value)
+            if name in panel.chip_choices:  # a comma-separated list of chips
+                panel.chip_choices[name].set_value(v.strip() for v in value.split(","))
+            if name in panel.text_fields:
+                panel.set_text(name, value)
+            if name in panel.pickers:  # a second file, such as quiz's taught log
+                panel.set_input_path(name, Path(value).resolve())
     if args.resource is not None:
         window.show_library()
         if args.resource:

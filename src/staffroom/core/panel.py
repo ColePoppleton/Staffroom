@@ -22,6 +22,7 @@ CodeSource         :class:`CodeValue` ``(path, text)``: the file shown, or paste
 TextField          ``str``
 TextArea           ``str`` (multi-line)
 Choice             ``str`` (the chosen value)
+ChipChoice         ``tuple[str, ...]`` (the values of the chips that are on)
 OptionsForm        an instance of the given dataclass
 EditableTable      :class:`~staffroom.core.table.Table` (and its ``choice``, if
                    any, under the choice's own key)
@@ -75,6 +76,12 @@ segmented switch (``switches``); see :class:`OptionsForm`. A whole input can
 hide the same way: ``PanelSpec.shown_when`` maps an input's key to the
 condition under which it applies, read from a field of an options form
 (``"options.retrieval"``) or a ``Choice``; see :class:`PanelSpec`.
+
+A panel's ``inspect`` says what the tool found in its inputs while the
+teacher fills them in: a load summary under a file, the chips of a
+:class:`ChipChoice` taken from it (a bank's topics, with counts), the run
+button's words; see :class:`PanelSpec`. ``joined`` draws an input as part of
+the group above it.
 
 A panel's ``suggest`` lets a choice follow the code or file picked (e.g.
 pseudocode's *From* shows the language it guessed): a pure function from the
@@ -166,13 +173,20 @@ class ResourcePicker:
     ``(".py", ".txt")``) narrows the library list; None allows any kind.
 
     The same extensions put the tool on the Library's use bar for files of
-    that type (see :func:`main_file_input`)."""
+    that type (see :func:`main_file_input`).
+
+    ``chip`` shows the chosen file as a chip, as a :class:`CodeSource` does:
+    its type, its name and its folder (the library folder for a library
+    file; the full path in the tooltip) and *Change ▾*, with *From library…*
+    and *Browse…* before a file is chosen. What the tool found in the file
+    (``PanelSpec.inspect``) shows under it."""
 
     key: str
     label: str
     filter_ext: str | tuple[str, ...] | None = None
     help: str = ""
     required: bool = True
+    chip: bool = False
 
     @property
     def extensions(self) -> tuple[str, ...]:
@@ -216,7 +230,9 @@ class CodeSource:
 
 @dataclass(frozen=True)
 class TextField:
-    """One short line of free text."""
+    """One short line of free text. ``counter`` shows how much of
+    ``max_length`` is used (a label that must fit); off for a value of a
+    known shape, such as a date."""
 
     key: str
     label: str
@@ -224,6 +240,7 @@ class TextField:
     help: str = ""
     max_length: int = 80
     required: bool = True
+    counter: bool = True
 
 
 @dataclass(frozen=True)
@@ -260,6 +277,42 @@ class Choice:
     @property
     def initial(self) -> str:
         return self.default if self.default is not None else self.choices[0][0]
+
+
+@dataclass(frozen=True)
+class ChipOption:
+    """One chip of a :class:`ChipChoice`: the ``value`` handed to the tool,
+    the ``text`` shown (the value itself when empty) and an optional
+    ``count`` shown small after it (how many questions carry the topic)."""
+
+    value: str
+    text: str = ""
+    count: int | None = None
+
+    @property
+    def shown(self) -> str:
+        return self.text or self.value
+
+
+@dataclass(frozen=True)
+class ChipChoice:
+    """Toggle chips, any number on at once: the topics of a question bank.
+    Value: the ``value`` of each chip that is on, in chip order, as a tuple;
+    ``()`` when none is (a tool reads that as "no filter", and says so).
+
+    ``options`` are the chips when they are fixed. Usually they come from a
+    file the teacher picked: ``PanelSpec.inspect`` returns them as
+    ``Found(chips=...)`` for this key whenever the inputs change, and the
+    chips that are on stay on while the new options still have them.
+    ``empty_text`` shows while there are no chips ("Choose a bank to see its
+    topics"); the notes ``inspect`` returns for this key show under the chips
+    (a running total)."""
+
+    key: str
+    label: str
+    options: tuple[ChipOption, ...] = ()
+    help: str = ""
+    empty_text: str = ""
 
 
 @dataclass(frozen=True)
@@ -376,7 +429,15 @@ class OptionsForm:
     shown for each value (``{"formats": OUTPUT_FORMAT_LABELS}``); a value with
     no label shows as itself. ``switches`` names choice fields drawn as a
     segmented switch instead of a dropdown: keep those to two to four short
-    labels (Easy / Medium / Hard)."""
+    labels (Easy / Medium / Hard).
+
+    ``inline`` names fields drawn side by side on one row, under the first
+    one's label, each after its own (two or three short numbers: *Questions*
+    and *Seed*); they always show. ``more`` names fields folded behind a
+    *More* link at the foot of the form, for what few runs need (a spec-point
+    filter); the link opens them, and they open by themselves while one of
+    them holds a value other than its default, so nothing that steers a run
+    is out of sight."""
 
     key: str
     schema: type
@@ -386,6 +447,8 @@ class OptionsForm:
     shown_when: Mapping[str, ShownWhen] = field(default_factory=dict)
     choice_labels: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
     switches: tuple[str, ...] = ()
+    inline: tuple[str, ...] = ()
+    more: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not dataclasses.is_dataclass(self.schema):
@@ -429,6 +492,20 @@ class OptionsForm:
                 if unknown:
                     msg = f"OptionsForm {self.key!r}: {name!r} labels values it lacks: {unknown}"
                     raise ValueError(msg)
+        for where, keys in (("inline", self.inline), ("more", self.more)):
+            for name in keys:
+                check(where, name)
+        if len(self.inline) == 1:
+            msg = f"OptionsForm {self.key!r}: inline needs two fields or more, not {self.inline}"
+            raise ValueError(msg)
+        both = sorted(set(self.inline) & set(self.more))
+        if both:
+            msg = f"OptionsForm {self.key!r}: {both} cannot be both inline and under More"
+            raise ValueError(msg)
+        conditional = sorted(set(self.inline) & set(self.shown_when))
+        if conditional:
+            msg = f"OptionsForm {self.key!r}: inline fields always show; {conditional} do not"
+            raise ValueError(msg)
 
     def hidden(self, options: object) -> frozenset[str]:
         """The fields that do not apply to ``options`` (see ``shown_when``)."""
@@ -527,6 +604,7 @@ InputWidget = (
     | TextField
     | TextArea
     | Choice
+    | ChipChoice
     | OptionsForm
     | EditableTable
     | TablePreview
@@ -544,6 +622,8 @@ def empty_values(widget: InputWidget) -> dict[str, Any]:
         return {widget.key: ""}
     if isinstance(widget, Choice):
         return {widget.key: widget.initial}
+    if isinstance(widget, ChipChoice):
+        return {widget.key: ()}
     if isinstance(widget, OptionsForm):
         return {widget.key: widget.schema()}
     if isinstance(widget, CodeSource | EditableTable):
@@ -1039,6 +1119,30 @@ class WritesTo:
     open_label: str = DEFAULT_OPEN_LABEL
 
 
+# ---------------------------------------------------------------- what a tool found
+@dataclass(frozen=True)
+class Found:
+    """What a tool found in one input, for the shell to show beside it (see
+    ``PanelSpec.inspect``): ``notes`` under it (a tick for each ``ok`` line,
+    a warning mark for the others), ``rows`` that its *Preview* link
+    (``rows_label``) opens in a window, and, for a :class:`ChipChoice`, its
+    ``chips`` (None leaves the chips as they are)."""
+
+    notes: tuple[Note, ...] = ()
+    rows: Table | None = None
+    rows_label: str = "Preview rows"
+    chips: tuple[ChipOption, ...] | None = None
+
+
+@dataclass(frozen=True)
+class Inspection:
+    """What ``PanelSpec.inspect`` returns: a :class:`Found` per input key, and
+    the run button's text for these inputs ("" keeps ``run_label``)."""
+
+    found: Mapping[str, Found] = field(default_factory=dict)
+    run_label: str = ""
+
+
 # ---------------------------------------------------------------- the panel
 @dataclass(frozen=True)
 class PanelSpec:
@@ -1057,7 +1161,23 @@ class PanelSpec:
     unchanged, but the tool is handed its empty value (:func:`empty_values`,
     :meth:`passed`), and a required one is not asked for: what the teacher
     cannot see never reaches, or blocks, a run. Unknown keys, a value the
-    field can never hold and loops are refused when the spec is built."""
+    field can never hold and loops are refused when the spec is built.
+
+    ``joined`` names inputs that continue the group above them: no hairline
+    between, and their label drawn small, as part of the same step (quiz's
+    topic chips and taught log under *Questions from*).
+
+    ``inspect`` reads what the inputs hold and says what it found: the
+    inputs dict (as handed to the tool) -> an :class:`Inspection`. The shell
+    calls it when the panel opens and whenever an input changes, and shows
+    each :class:`Found` beside its input: notes under a file (*13 questions ·
+    6 topics · no problems*, or the first problem with its line), the rows a
+    *Preview* link opens, the chips of a :class:`ChipChoice` (a bank's own
+    topics) and a running total under them; it may also name the run button
+    (*Make do-now*). It is the plugin's code, not ``logic``: it may read the
+    files the inputs name (tables through :func:`staffroom.core.csvio.read_table`
+    like every other table), must be quick, and is only a hint: an exception
+    is logged and the panel carries on."""
 
     title: str
     description: str = ""
@@ -1070,6 +1190,10 @@ class PanelSpec:
     suggest: Callable[[Mapping[str, Any]], Mapping[str, str]] | None = None
     # Input key -> the condition under which the input applies (see the class doc).
     shown_when: Mapping[str, ShownWhen] = field(default_factory=dict)
+    # Inputs drawn as part of the group above them (see the class doc).
+    joined: tuple[str, ...] = ()
+    # The current inputs -> what the tool found in them (see the class doc).
+    inspect: Callable[[Mapping[str, Any]], Inspection] | None = None
 
     def __post_init__(self) -> None:
         keys = [w.key for w in self.inputs] + [w.key for w in self.outputs]
@@ -1120,6 +1244,14 @@ class PanelSpec:
                         )
                         raise ValueError(msg)
         self._check_shown_when()
+        input_keys = [w.key for w in self.inputs]
+        for key in self.joined:
+            if key not in input_keys:
+                msg = f"panel {self.title!r}: joined names {key!r}, not an input of the panel"
+                raise ValueError(msg)
+            if input_keys.index(key) == 0:
+                msg = f"panel {self.title!r}: joined {key!r} is the first input; nothing to join"
+                raise ValueError(msg)
 
     def _condition_source(self, on: str) -> tuple[str, OptionsForm | Choice, str] | None:
         """What a panel-level condition reads: the input that holds it (the

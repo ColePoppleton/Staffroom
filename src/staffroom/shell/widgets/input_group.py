@@ -18,19 +18,31 @@ def eyebrow(text: str) -> QLabel:
 
 class InputGroup(QWidget):
     """A heading row (with room on the right for a trailing link), a body,
-    and optional help text under the body."""
+    and optional help text under the body.
 
-    def __init__(self, title: str = "", help_text: str = "", parent: QWidget | None = None) -> None:
+    A ``joined`` group continues the one above it (``PanelSpec.joined``): it
+    sits close under it, with no hairline, and its heading is a small plain
+    label rather than an eyebrow."""
+
+    def __init__(
+        self,
+        title: str = "",
+        help_text: str = "",
+        parent: QWidget | None = None,
+        *,
+        joined: bool = False,
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("InputGroup")
         self.title = title
+        self.joined = joined
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 12, 0, 14)
-        outer.setSpacing(8)
+        outer.setContentsMargins(0, 0 if joined else 12, 0, 14)
+        outer.setSpacing(6 if joined else 8)
 
         head = QHBoxLayout()
         head.setSpacing(8)
-        self.title_label = eyebrow(title)
+        self.title_label = make_label(title, "muted") if joined else eyebrow(title)
         self.title_label.setVisible(bool(title))
         head.addWidget(self.title_label)
         head.addStretch(1)
