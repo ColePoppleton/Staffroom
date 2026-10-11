@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QApplication
 from staffroom import __version__
 from staffroom.core.config import load_config
 from staffroom.core.log import get_logger, setup_logging
+from staffroom.shell import screenshot_paths
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.tool_panel import ToolPanel
 
@@ -230,9 +231,20 @@ def _save_when_drawn(
 
 def _save_screenshot(app: QApplication, window: MainWindow, path: Path) -> None:
     app.processEvents()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    ok = window.grab().save(str(path))
-    print(("saved " if ok else "FAILED to save ") + str(path))
+    # Show the folders a teacher would see, not this machine's temp and
+    # checkout paths, and refuse an image that still names one (#14).
+    current = window.stack.currentWidget()
+    tool = current.plugin.name if isinstance(current, ToolPanel) else None
+    screenshot_paths.neutralise(window, screenshot_paths.aliases(window.config, tool))
+    app.processEvents()
+    leaked = screenshot_paths.leaks(window)
+    if leaked:
+        print(f"REFUSED to save {path}: it would show a path on this machine: {leaked[0]!r}")
+        ok = False
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ok = window.grab().save(str(path))
+        print(("saved " if ok else "FAILED to save ") + str(path))
     # A first index may still be running (a fresh home, or a folder indexed
     # for the first time): stop it before the window goes, or Qt aborts the
     # process after the PNG is written (#40).
