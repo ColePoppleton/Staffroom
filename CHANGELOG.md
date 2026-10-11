@@ -227,8 +227,9 @@ with every change; `just release <part>` turns it into a version.
   tags and folding, `main_layout="row"`, compact `EditableTable` and
   `TablePreview`, `Choice`, `FilePicker(chip=True)`. The CLI prints the same
   headline; the saved chart gains the percentages too.
-- CI and the release workflow run on Linux instead of macOS, which uses a tenth of the
-  Actions allowance on a private repo. macOS-only packaging tests skip there.
+- CI and the release workflow run on macOS again: the repository is public, so
+  macOS runners are free, and the layout and packaging tests are written for the
+  platform Staffroom targets.
 
 ### Added
 - Product and design audit 2026-10-09 (`docs/audits/2026-10-09.md`): the first with a

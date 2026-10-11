@@ -10,14 +10,11 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # Staffroom targets macOS; macOS runners are free on a public repository.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Qt system libraries (offscreen)
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libfontconfig1 libglib2.0-0 libdbus-1-3 fonts-dejavu-core
       - run: uv sync
       - run: QT_QPA_PLATFORM=offscreen uv run pytest -q
       - name: Tag must match pyproject
