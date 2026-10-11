@@ -62,7 +62,8 @@ update:
 icon:
     uv run python scripts/make_icon.py
 
-# Cut a release from main: bump (patch|minor|major), move Unreleased in CHANGELOG, commit, tag, push.
+# Cut a release from main: bump (patch|minor|major), move Unreleased in CHANGELOG, re-pin the
+# install line in README and docs, commit, tag, push.
 # The tag triggers the Release workflow (wheel + sdist + GitHub Release with the notes).
 release PART="patch":
     @git diff --quiet || (echo "commit or stash changes first" && exit 1)

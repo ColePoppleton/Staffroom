@@ -11,6 +11,11 @@ with every change; `just release <part>` turns it into a version.
   removing ones the build no longer has, then re-signing and re-registering it)
   instead of deleting and recopying it, so Spotlight keeps listing the app rather
   than dropping it until it re-indexes (#79).
+- `just release` re-pins the documented install line
+  (`git+https://github.com/ColePoppleton/Staffroom@vX.Y.Z`) and the wheel
+  filename in README.md and docs/ to the new version in the release commit, so
+  the docs no longer go on installing the previous release (#100). The pins now
+  point at v0.7.0, and a test holds them equal to the package version.
 
 ## [0.7.0] - 2026-10-09
 ### Changed

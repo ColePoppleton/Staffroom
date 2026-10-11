@@ -8,7 +8,7 @@ sidebar; each tool is a plugin that owns its logic and a declarative panel.
 Staffroom is not on PyPI. Install the latest release straight from GitHub with
 [uv](https://docs.astral.sh/uv/), then start the launcher:
 
-    uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.6.0
+    uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.7.0
     staffroom
 
 The repository is private for now, so this works only for a GitHub account that
