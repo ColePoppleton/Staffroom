@@ -436,8 +436,12 @@ def _parse_release(body: bytes) -> Release | None:
 def notes_for_display(markdown: str) -> str:
     """Release notes as the card shows them: images and HTML comments
     dropped (the card never fetches anything, so a picture would be a broken
-    box), and an empty body said plainly."""
+    box), the folded *For contributors* list unfolded under its own heading
+    (Qt's Markdown runs an HTML block into one line), and an empty body said
+    plainly."""
     text = re.sub(r"<!--.*?-->", "", markdown, flags=re.S)
+    text = re.sub(r"<summary>(.*?)</summary>", r"\n#### \1\n", text, flags=re.I | re.S)
+    text = re.sub(r"</?details\b[^>]*>", "", text, flags=re.I)
     text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text)
     text = re.sub(r"<img\b[^>]*>", "", text, flags=re.I)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
