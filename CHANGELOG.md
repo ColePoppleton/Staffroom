@@ -7,6 +7,8 @@ with every change; `just release <part>` turns it into a version.
 
 ## [Unreleased]
 ### Changed
+- The repository is public: the install docs no longer ask colleagues for access,
+  and the wheel on each GitHub Release is the fallback when git is not available.
 - Ready to be public: the first audit no longer names the owner's real folder or
   index counts, and issue claims no longer record the machine's name.
 

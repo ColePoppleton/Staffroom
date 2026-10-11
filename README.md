@@ -11,9 +11,8 @@ Staffroom is not on PyPI. Install the latest release straight from GitHub with
     uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@v0.8.0
     staffroom
 
-The repository is private for now, so this works only for a GitHub account that
-can see it. See [Install](https://colepoppleton.github.io/Staffroom/guide/install/)
-for the details.
+No GitHub account is needed. See [Install](https://colepoppleton.github.io/Staffroom/guide/install/)
+for the details and the alternatives.
 
 ## Develop
 

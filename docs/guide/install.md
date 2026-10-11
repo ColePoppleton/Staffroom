@@ -28,15 +28,12 @@ is not always on the path yet.
 supports; without it uv may pick an older Python already on the Mac and stop
 with "the current Python version does not satisfy Python>=3.12".
 
-!!! warning "The repository is private for now"
-    The line above only works for someone who can see
-    [github.com/ColePoppleton/Staffroom](https://github.com/ColePoppleton/Staffroom).
-    uv asks git for the code, so git needs your GitHub sign-in (the macOS
-    keychain or `gh auth login` handles this). A colleague without access gets
-    a "repository not found" or sign-in error, and so would the wheel attached
-    to the [GitHub Release](https://github.com/ColePoppleton/Staffroom/releases).
-    Until the repository is public, ask the owner to add you, or to send you
-    the `.whl` file from the latest release and install that with
+!!! note "No account needed"
+    The repository is public, so the line above works on any Mac with uv and
+    git; no GitHub sign-in is needed. If git is missing, or a school network
+    blocks it, download the `.whl` file from the latest
+    [GitHub Release](https://github.com/ColePoppleton/Staffroom/releases) and
+    install that instead:
     `uv tool install --python 3.12 ./staffroom-0.8.0-py3-none-any.whl`.
 
 !!! note "Why not `uv tool install` with just the name?"
