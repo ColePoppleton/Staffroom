@@ -12,6 +12,7 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-12
 Staffroom no longer crashes now and then while a tool runs, and Settings › Updates tells you
 when a new version is out and gives the one command to update. Trace says what to type when a
 program needs input, Quiz starts from your question bank with its topics to pick, and Parsons

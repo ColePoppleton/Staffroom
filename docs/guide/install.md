@@ -43,7 +43,7 @@ It needs macOS 14 Sonoma or later, which that Qt release is built for.
     blocks it, download the `.whl` file from the latest
     [GitHub Release](https://github.com/ColePoppleton/Staffroom/releases) and
     install that instead:
-    `uv tool install --python 3.12 ./staffroom-0.8.1-py3-none-any.whl`.
+    `uv tool install --python 3.12 ./staffroom-0.9.0-py3-none-any.whl`.
 
 !!! note "Why not `uv tool install` with just the name?"
     There is no Staffroom package on PyPI, and the name is not reserved, so
