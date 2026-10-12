@@ -62,6 +62,8 @@ def test_install_forgets_the_dist_copy(tmp_path: Path, monkeypatch: pytest.Monke
 
     assert target == applications / "Staffroom.app"
     assert (target / "Contents" / "MacOS" / "staffroom").exists()
+    # The build is gone, so Spotlight cannot list a second Staffroom from dist/.
+    assert not app.exists()
     registrations = [c for c in calls if c[0] == str(lsregister)]
     assert registrations == [
         [str(lsregister), "-u", str(app)],
