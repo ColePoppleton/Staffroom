@@ -9,7 +9,7 @@ import typer
 
 from staffroom.core.config import load_config
 from staffroom.core.plugin import RunContext, ToolError
-from staffroom.tools.trace.logic import Options
+from staffroom.tools.trace.logic import Options, stdin_option_step
 
 
 def register(app: typer.Typer) -> None:
@@ -32,8 +32,11 @@ def register(app: typer.Typer) -> None:
             bool, typer.Option("--preview/--no-preview", help="Print the sheet and key")
         ] = True,
     ) -> None:
-        """Trace SOURCE in the sandbox and write blank + completed trace tables."""
-        from staffroom.tools.trace import plugin
+        """Trace SOURCE in the sandbox and write blank + completed trace tables.
+
+        Example: staff trace make examples/year9.py --vars total,count,score
+        """
+        from staffroom.tools.trace import MissingInputError, plugin
 
         config = load_config()
         ctx = RunContext(
@@ -54,6 +57,8 @@ def register(app: typer.Typer) -> None:
             )
         except ToolError as exc:
             typer.secho(str(exc), fg=typer.colors.RED, err=True)
+            if isinstance(exc, MissingInputError):
+                typer.secho(stdin_option_step(exc.needed), err=True)
             raise typer.Exit(1) from None
         if preview:
             typer.echo(result.texts["preview"])

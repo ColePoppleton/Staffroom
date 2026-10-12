@@ -2,11 +2,14 @@
 # Regenerate every screenshot referenced from docs/**/*.md, offscreen and
 # reproducibly. `just screenshots` runs this.
 #
-# Nothing here touches the owner's config or resources: STAFFROOM_HOME is a
-# throwaway folder created for this run, its config points at the invented
-# fixture root in scripts/screenshots/resources/, and tool outputs go to
-# folders that die with the process (the launcher does that in --screenshot
-# mode; the two CLI renders below use a scratch folder under the same home).
+# Nothing here touches the owner's config, sessions folder or resources:
+# STAFFROOM_HOME is a throwaway folder created for this run, its config points
+# at the invented fixture root in scripts/screenshots/resources/,
+# STAFFROOM_SESSIONS points the default sessions folder inside it too (#37; the
+# config names the same folder, the variable covers anything that runs without
+# it), and tool outputs go to folders that die with the process (the launcher
+# does that in --screenshot mode; the CLI renders below use a scratch folder
+# under the same home).
 #
 # Every sheet prints a date in its header. STAFFROOM_DATE pins it (read in
 # core/export/dating.py), so the renders are the same bytes whichever day they
@@ -38,6 +41,7 @@ cd "$root"
 home="$(mktemp -d -t staffroom-shots)"
 trap 'rm -rf "$home"' EXIT
 export STAFFROOM_HOME="$home"
+export STAFFROOM_SESSIONS="$home/sessions"
 export QT_QPA_PLATFORM=offscreen
 # Qt's offscreen platform has no system theme; keep the window size fixed too.
 size="1240x780"
@@ -48,7 +52,7 @@ cat > "$home/config.toml" <<TOML
 [general]
 theme = "dark"
 resources_root = '$fixtures'
-sessions_root = '$home/sessions'
+sessions_root = '$STAFFROOM_SESSIONS'
 board = "ocr"
 
 [tools]
@@ -98,7 +102,7 @@ shot marks-dark                --tool marks --open examples/marks_10x_max.csv --
 shot marks-warnings-light      --tool marks --open examples/marks_messy.csv --run --expand --theme light
 shot worksheet-light           --tool worksheet --run --theme light
 shot parsons-dark              --tool parsons --open examples/year9.py --run --theme dark
-shot quiz-light                --tool quiz --open examples/question_bank.md --run --theme light
+shot quiz-light                --tool quiz --open examples/question_bank.md --option topics=binary,cpu,loops --option count=8 --run --theme light
 shot trace-dark                --tool trace --open examples/year9.py --run --select-row 8 --theme dark
 shot trace-preset-dark         --tool trace --open examples/year9.py --preset "Year 9" --theme dark --size 1240x1500
 shot trace-missing-input-dark  --tool trace --open "$fixtures/Python/Year 10/temperature.py" --run --theme dark

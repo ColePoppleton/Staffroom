@@ -253,19 +253,17 @@ def test_quiz_do_now_shows_pages_and_kahoot_shows_paste_text(
 
     panel = open_tool(window, "quiz")
     panel.set_input_path("source", examples_dir() / "question_bank.md")
-    assert visible_tabs(panel) == ["Chosen questions", "Sheet", "Key"]  # Paste text waits
-    form = panel.forms["options"]
-    form.set_field("fmt", "donow")
-    run(panel, qtbot)
+    assert visible_tabs(panel) == ["Sheet", "Key", "Chosen questions"]  # Paste text waits
+    run(panel, qtbot)  # a do-now: the default (#17)
     preview = panel.results.page_previews["pages"]
     sheet, key = preview.page_count("sheet"), preview.page_count("key")
     assert sheet >= 1 and key >= 1
     assert visible_tabs(panel) == [
-        "Chosen questions",
         f"Sheet · {sheet} page{'s' if sheet > 1 else ''}",
         f"Key · {key} page{'s' if key > 1 else ''}",
+        "Chosen questions",
     ]
-    form.set_field("fmt", "kahoot")
+    panel.choices["fmt"].set_value("kahoot")
     run(panel, qtbot)
     assert visible_tabs(panel) == ["Chosen questions", "Paste text"]
     assert "Question - max 120" in panel.results.text_views["paste"].toPlainText()

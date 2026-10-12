@@ -69,7 +69,7 @@ term has a precise meaning in the code, this is that meaning.
 
 **Distractor**
 : A block that does not belong: a real line with its colon removed, a
-  comparison flipped or a number off by one. In Quiz, a wrong option in a
+  comparison flipped or a loop bound or index off by one. In Quiz, a wrong option in a
   multiple-choice question.
 
 **Trace table**
@@ -81,8 +81,9 @@ term has a precise meaning in the code, this is that meaning.
 
 **Variant** (Bugs)
 : A copy of the input program with exactly one line changed to introduce
-  one error. Each is run, so the key can say *crashes*, *runs but the
-  output is wrong*, *hangs* or *silent* (no visible change; skipped unless
+  one error. Each is run, so the key can say *crashes* (a `SyntaxError` means
+  it will not start), *runs but the output is wrong*, *hangs* or *silent*
+  (no visible change; skipped unless
   *Silent bugs allowed* keeps it). Written as
   `<stem>_bug1.py`, `_bug2.py`, …
 
@@ -133,8 +134,9 @@ term has a precise meaning in the code, this is that meaning.
   it.
 
 **Retrieval windows**
-: The three dates retrieval mode looks back to: one, three and six weeks
-  before today, each with three days' leeway either side. Topics taught
+: The three dates quiz looks back to when questions come from *Taught 1, 3
+  and 6 weeks ago* (`staff quiz retrieval`): one, three and six weeks before
+  the *As of* date (today when empty), each with three days' leeway either side. Topics taught
   inside a window are eligible, and the questions are drawn round-robin
   across the windows so each gets a fair share. The run log says what fell
   in each.
@@ -170,7 +172,8 @@ term has a precise meaning in the code, this is that meaning.
 
 **Sessions folder**
 : Where Classroom keeps lesson copies (`~/TeachingSessions` by default) and,
-  under `outputs/`, where tools without an input file write. Local, never
+  under `outputs/`, where tools write when there is no input file, the code
+  was pasted, or the input is in the resources folder. Local, never
   auto-detected from a cloud folder.
 
 **Lesson label**
@@ -187,23 +190,25 @@ term has a precise meaning in the code, this is that meaning.
   [Outputs](outputs.md).
 
 **Exam board**
-: OCR J277 or AQA 8525, set in Settings (`--board` on the command line for
-  one run). Chooses the grade preset Marks starts with and the gates a
+: OCR J277 or AQA 8525, set in Settings › Worksheets (`staff worksheet make
+  --board` overrides it for one run). Chooses the grade preset the Marks
+  panel starts with and the gates a
   GCSE truth-table worksheet may use (OCR: AND, OR, NOT; AQA adds XOR).
   Quiz spec tags are per question (`ocr:` and `aqa:` can both be on one),
   so they do not depend on it.
 
 **Level** (Worksheet)
-: `gcse` or `a_level`, for truth tables. GCSE follows the board; A-level
+: *GCSE* or *A level* (`gcse` / `a_level`), for truth tables. GCSE follows the board; A-level
   adds XOR at every difficulty and NAND / NOR at `hard`, and puts `alevel`
   in the file name so the GCSE sheet with the same seed survives.
 
 **Boolean laws** (Worksheet)
-: The family of laws a simplification set practises: `absorption`
-  (absorption, distributive, complement; the default), `de_morgan` (adds De
-  Morgan), `identities` (identity, idempotent, double negation, complement;
-  the only family that puts `X AND X`, `NOT NOT X` or `0` / `1` on the
-  sheet) or `all`. The key undoes the question one law at a time, each step
+: The family of laws a simplification set practises: *Absorption*
+  (`absorption`: absorption, distributive, complement; the default),
+  *Absorption + De Morgan* (`de_morgan`), *Identities* (`identities`:
+  identity, idempotent, double negation, complement; the only family that
+  puts `X AND X`, `NOT NOT X` or `0` / `1` on the sheet) or *All laws*
+  (`all`). The key undoes the question one law at a time, each step
   in the question's own letters.
 
 **Thonny**

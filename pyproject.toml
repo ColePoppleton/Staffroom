@@ -17,7 +17,12 @@ classifiers = [
 ]
 dependencies = [
     "typer>=0.12",
-    "pyside6>=6.7",
+    # Only the Qt modules the app imports (#4): Essentials has QtCore/Gui/Widgets/Svg/
+    # PrintSupport, Pdf has QtPdf/QtPdfWidgets. Not the `pyside6` meta-package, which adds
+    # Addons and WebEngine (about 1 GB). One pin for both: each Pdf build requires the
+    # exact Essentials of its Qt release. tests/test_qt_modules.py guards the import set.
+    "pyside6-essentials==6.12.0.*",
+    "pyside6-pdf==6.12.0.*",
     "openpyxl>=3.1",
     "tomli-w>=1.0",
     "pypdf>=6.19.0",
@@ -29,9 +34,6 @@ dependencies = [
 [project.scripts]
 staffroom = "staffroom.shell.app:main"
 staff = "staffroom.cli:main"
-# Kept for one release so existing shells and installed launchers keep working.
-tt = "staffroom.cli:main"
-tt-gui = "staffroom.shell.app:main"
 
 [project.urls]
 Repository = "https://github.com/ColePoppleton/Staffroom"
@@ -80,6 +82,9 @@ ignore = ["RUF012", "RUF001"]  # RUF001: we like × and … in UI text
 testpaths = ["tests", "src/staffroom/tools"]
 addopts = "-q"
 qt_api = "pyside6"
+# pytest's faulthandler plugin is on by default, so a crash prints every
+# thread's traceback (#39); a test stuck for five minutes dumps them too.
+faulthandler_timeout = 300
 filterwarnings = ["error::DeprecationWarning:staffroom.*"]
 
 # ---------------------------------------------------------------- mypy

@@ -152,8 +152,14 @@ QLabel[role="eyebrow"] {{
     color: {p.text_muted}; font-size: 11px; font-weight: 700; letter-spacing: 1px;
 }}
 QLabel[role="placeholder"] {{ color: {p.text_faint}; font-size: 14px; padding: 24px; }}
+QLabel[role="next-step"] {{ color: {p.text_muted}; font-size: 14px; padding: 24px; }}
 QLabel[role="chip"] {{
     background: {p.surface_alt}; color: {p.text_muted}; border: 1px solid {p.border};
+    border-radius: 9px; padding: 0px 8px; font-size: 11px; font-weight: 600;
+}}
+QLabel[role="strong"] {{ font-weight: 600; color: {p.text}; }}
+QLabel[role="chip-new"] {{
+    background: {p.accent_soft}; color: {p.text};
     border-radius: 9px; padding: 0px 8px; font-size: 11px; font-weight: 600;
 }}
 QLabel[role="danger"] {{ color: {p.danger}; }}
@@ -313,6 +319,15 @@ QLabel#UseStatus {{ font-size: 13px; }}
 QFrame#ExternalCard {{
     background: {p.surface_alt}; border: 1px dashed {p.border_strong}; border-radius: {RADIUS_SM}px;
 }}
+/* Settings > Updates (#11): the command to paste, and the release notes. */
+QFrame#CommandBox {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
+}}
+QLabel#CommandText {{ font-family: {MONO_FAMILY}; font-size: 14px; color: {p.text}; }}
+QTextBrowser#ReleaseNotes {{
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+    padding: 4px 8px;
+}}
 QPlainTextEdit#CodeView {{
     font-family: {MONO_FAMILY}; font-size: 12.5px; color: {p.text};
     background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
@@ -418,9 +433,51 @@ BarCanvas {{
 }}
 TableWidget {{
     qproperty-barColor: {p.text_muted}; qproperty-trackColor: {p.border};
-    qproperty-textColor: {p.text};
+    qproperty-textColor: {p.text}; qproperty-carriedColor: {p.text_muted};
 }}
 TableWidget[action="true"] {{ qproperty-actionColor: {p.accent}; }}
+/* A table fitted to the screen (trace): constants lifted into chips above it,
+   the pinned last column behind a stronger hairline. Carried values take the
+   muted ink, which keeps 4.5:1; bold marks the value that changed. */
+QFrame#FitTableFrame {{
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+}}
+QFrame#FitTableFrame QTableView {{ border: none; border-radius: 0px; }}
+QFrame#FitTableFrame QTableView::item {{ padding: 4px 6px; }}
+QFrame#FitTableFrame QHeaderView::section {{ padding: 6px 6px; }}
+QFrame#FitTableFrame TableWidget#PinnedColumn {{ border-left: 1px solid {p.border_strong}; }}
+QLabel#LiftedLead {{ color: {p.text_muted}; font-size: 12px; }}
+QLabel#LiftedChip {{
+    font-family: {MONO_FAMILY}; font-size: 12px; color: {p.text};
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: 6px; padding: 1px 7px;
+}}
+/* A card list (bugs: what each bug does): one card per row, the outcome badge
+   at the right, a diff's two inks under it; the accent rings the chosen card. */
+QScrollArea#CardList, QWidget#CardListBody {{ background: transparent; border: none; }}
+QFrame#ResultCard {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: 9px;
+}}
+QFrame#ResultCard:hover {{ border-color: {p.border_strong}; }}
+QFrame#ResultCard[selected="true"] {{
+    border: 1px solid {p.accent}; border-left: 3px solid {p.accent};
+}}
+QLabel#CardTitle {{ font-weight: 700; }}
+QLabel#CardDetail {{ color: {p.text_muted}; font-size: 13px; }}
+QLabel#CardBadge {{
+    background: {p.surface_alt}; color: {p.text_muted}; border: 1px solid {p.border_strong};
+    border-radius: 9px; padding: 1px 9px; font-size: 12px; font-weight: 700;
+}}
+QLabel#CardBadge[tone="danger"] {{
+    background: {p.accent_soft}; color: {p.danger}; border-color: {p.accent_soft};
+}}
+QLabel#CardBadge[tone="warning"] {{
+    background: transparent; color: {p.warning}; border-color: {p.warning};
+}}
+QFrame#CardCodeLine {{ background: transparent; border: none; border-radius: 4px; }}
+QFrame#CardCodeLine[diff="new"] {{ background: {p.surface_alt}; }}
+QLabel#CardCodeCaption {{ font-family: {MONO_FAMILY}; font-size: 12px; color: {p.text_faint}; }}
+QLabel#CardCode {{ font-family: {MONO_FAMILY}; font-size: 12.5px; color: {p.text}; }}
+QFrame#CardCodeLine[diff="old"] QLabel#CardCode {{ color: {p.text_muted}; }}
 QLabel[role="note-ok"] {{ color: {p.text_muted}; font-size: 12px; }}
 QLabel[role="note-warn"] {{ color: {p.text}; font-size: 12px; font-weight: 600; }}
 
@@ -444,6 +501,18 @@ QPushButton#Segment:checked {{
     background: {p.surface}; color: {p.text}; border-bottom: 2px solid {p.accent};
 }}
 QPushButton#Segment:hover:!checked {{ color: {p.text}; }}
+/* toggle chips (ChipChoice): a pill each; on, it takes the accent (a selection) */
+QPushButton#ToggleChip {{
+    background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: 13px;
+    padding: 0px; min-height: 0px;
+}}
+QPushButton#ToggleChip:hover {{ border-color: {p.text_faint}; }}
+QPushButton#ToggleChip[on="true"] {{ background: {p.accent_soft}; border-color: {p.accent}; }}
+QPushButton#ToggleChip:focus {{ border-color: {p.accent}; }}
+QLabel#ChipName {{ font-weight: 600; background: transparent; }}
+QLabel#ChipName[on="true"] {{ color: {p.accent}; }}
+QLabel#ChipCount {{ color: {p.text_faint}; font-size: 11px; background: transparent; }}
+QLabel#ChipCount[on="true"] {{ color: {p.accent}; }}
 QFrame#GridCell {{
     background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
 }}
@@ -534,6 +603,12 @@ QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QPlainTe
     border: 1px solid {p.accent};
 }}
 QLineEdit:read-only {{ color: {p.text_muted}; }}
+/* The input a failed run points at (ToolError.input_key, #21). */
+QLineEdit[flagged="true"], QPlainTextEdit[flagged="true"],
+QPlainTextEdit#CodeView[flagged="true"], QPlainTextEdit#TextView[flagged="true"] {{
+    border: 1px solid {p.danger};
+}}
+QLabel[role="flag"] {{ color: {p.danger}; font-size: 12px; font-weight: 600; }}
 QLineEdit::placeholder {{ color: {p.text_faint}; }}
 QSpinBox::up-button, QSpinBox::down-button,
 QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{

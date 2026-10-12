@@ -147,6 +147,7 @@ full session of using every tool.
 | Config | `~/.config/staffroom/config.toml` | settings only: theme, folders, editor command, exam board, header and footer text, the library exclusion list |
 | Library index | `~/.config/staffroom/library.db` | path, size, modified time and kind for every file under the resources folder, and the text of searchable files except those indexed by name only |
 | Log | `~/.config/staffroom/logs/staffroom.log` (+ `.1` to `.3`) | tool names, file paths, names of dropped columns, warnings; never values |
+| Release check | `~/.config/staffroom/release-check.json` (an installed copy) | the last answer from GitHub: the newest release's version, date, link and notes, and when it was asked |
 | Usage | `~/.config/staffroom/usage.toml` | run count (launcher and `staff` commands, with the CLI's share) and last-used date per tool; never what was run on |
 | Lesson copies | `<sessions folder>/<date>/<lesson label>/` | the copy you edited in class |
 | Session sidecar | `<sessions folder>/<date>/<lesson label>/.origin.json` | the lesson label and, for each copy, the absolute path of the original it came from |
@@ -158,33 +159,36 @@ The sessions folder is `~/TeachingSessions` unless you change it. The
 lesson label is the one line you typed (60 characters at most); the UI asks
 for a lesson, not a class, and cannot check what you wrote.
 
-!!! note "Upgrading from Teaching Tools"
-    The first run of Staffroom copies `~/.config/teaching-tools/` to
-    `~/.config/staffroom/` and leaves the old folder alone. A
-    `.teaching-tools/tags.json` sidecar (or `ignore` file) in the resources
-    folder is still read; the next edit writes `.staffroom/tags.json`.
-
-Nothing leaves the machine. The app checks its git remote for updates when
-started from a checkout, and that is the only network call it makes.
+Nothing leaves the machine. An installed copy (`uv tool install`, a wheel)
+never runs git. Its one network call asks GitHub which release is newest: a
+single HTTPS request to
+`https://api.github.com/repos/ColePoppleton/Staffroom/releases/latest`, with
+no account, token or anything about you or your files, made when you press
+*Check again* in Settings › Updates and, at most once a day, when Staffroom
+opens; untick *Look for a new release when Staffroom opens* there to stop
+the second. It never installs anything: you update it yourself with
+`uv tool upgrade staffroom`. Run from its own git checkout (the macOS launcher
+app), Staffroom instead asks that checkout's git remote whether a release is
+out, when it starts and when you press *Check for updates*; that is the only
+network call a checkout makes.
 
 ## Deleting everything
 
 There is no account and no server, so removing the app's traces is a
 matter of deleting folders:
 
-1. `~/.config/staffroom/` (config, logs, the library index, usage counts),
-   and `~/.config/teaching-tools/` if it is still there from before the
-   rename.
+1. `~/.config/staffroom/` (config, logs, the library index, usage counts,
+   the last release check).
 2. The sessions folder (`~/TeachingSessions` by default), which holds the
    lesson copies, their `.origin.json` sidecars and the default outputs
    folder.
-3. `<resources folder>/.staffroom/` (tags, notes, your ignore file) and any
-   `.teaching-tools/` folder beside it. The resources themselves were never
-   changed.
+3. `<resources folder>/.staffroom/` (tags, notes, your ignore file). The
+   resources themselves were never changed.
 4. Any outputs you saved next to inputs or in a folder you chose.
 
-Then `uv tool uninstall staffroom`, or drag the launcher app out of
-/Applications.
+Then run `uv tool uninstall staffroom` in Terminal. (Running from a git
+checkout with the launcher app instead? Drag the app out of /Applications and
+delete the checkout.)
 
 ## In the repository
 

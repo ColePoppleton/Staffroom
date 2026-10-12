@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import Signal
 
 from staffroom.core import update
+from staffroom.shell.worker import GuiWorker
 
 
-class UpdateWorker(QThread):
+class UpdateWorker(GuiWorker):
     done = Signal(object)  # UpdateStatus
 
     def __init__(self, *, fetch: bool = True) -> None:
@@ -18,7 +19,16 @@ class UpdateWorker(QThread):
         self.done.emit(update.status(fetch=self.fetch))
 
 
-class ApplyWorker(QThread):
+class ReleaseWorker(GuiWorker):
+    """Ask GitHub for the newest release (an installed copy, #11). Never git."""
+
+    done = Signal(object)  # ReleaseCheck
+
+    def run(self) -> None:
+        self.done.emit(update.check_latest_release())
+
+
+class ApplyWorker(GuiWorker):
     done = Signal(str, bool)
 
     def run(self) -> None:

@@ -91,6 +91,8 @@ def first_result(panel: ToolPanel) -> QWidget:
     key = pane.main_keys[0]
     if key in pane.tables:
         return pane.tables[key][1]
+    if key in pane.card_lists:
+        return pane.card_lists[key]
     if key in pane.images:
         return pane.images[key]
     if key in pane.text_views:

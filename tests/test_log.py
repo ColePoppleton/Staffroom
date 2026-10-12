@@ -104,7 +104,7 @@ def test_tool_still_runs_with_a_read_only_home(
     out = tmp_path / "out"
     result = runner.invoke(app, ["hello", "run", str(example_marks), "--out", str(out)])
     assert result.exit_code == 0, result.output
-    assert (out / "marks_10x_totals.csv").exists()
+    assert (out / "marks_10x_summary.csv").exists()
     assert "Traceback" not in result.output
     assert not (read_only_home / "logs").exists()
     assert not (read_only_home / "usage.toml").exists()  # #28's quiet skip still holds

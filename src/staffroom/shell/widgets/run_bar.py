@@ -76,6 +76,11 @@ class RunBar(QWidget):
         beside.addWidget(self.folder)
         row.addLayout(beside, 1)
 
+    def set_label(self, label: str) -> None:
+        """The button's words for the inputs as they are (*Make do-now*)."""
+        self.button.setText(label)
+        self.button.setToolTip(f"{label} ({RUN_SHORTCUT_TEXT})")
+
     def set_running(self, running: bool) -> None:
         self.button.setEnabled(not running)
         self.progress.setValue(0)  # the bar is a hairline again once the run is over

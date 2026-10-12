@@ -183,6 +183,7 @@ class Sidebar(QWidget):
     tool_selected = Signal(str)
     library_requested = Signal()
     settings_requested = Signal()
+    updates_requested = Signal()  # the footer's update link: Settings > Updates
     search_requested = Signal(str)
     log_toggled = Signal(bool)
 
@@ -308,7 +309,7 @@ class Sidebar(QWidget):
         self.update_button.setProperty("role", "link")
         self.update_button.setToolTip("A newer release is out. Settings › Updates installs it.")
         self.update_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.update_button.clicked.connect(self._on_settings_clicked)
+        self.update_button.clicked.connect(self._on_updates_clicked)
         self.update_button.hide()
         self.update_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.log_button = QPushButton("Activity log")
@@ -368,10 +369,20 @@ class Sidebar(QWidget):
         """The number beside *Library* (files in the index), or ``""``."""
         self.rows[LIBRARY].item.set_count(text)
 
-    def set_update_available(self, available: bool | None) -> None:
-        """``None`` until a check answers; then *up to date*, or an *update*
-        link that opens Settings > Updates."""
-        self.update_button.setVisible(bool(available))
+    def set_update_available(self, available: bool | None, label: str = "update") -> None:
+        """``None`` until a check answers and when it failed: just the
+        version. Then *up to date*, or a link that opens Settings > Updates:
+        *update* for a checkout, *0.9.0 out* for an installed copy (#11)."""
+        shown = bool(available)
+        self.update_button.setVisible(shown)
+        if shown:
+            self.update_button.setText(label or "update")
+            self.update_button.setToolTip(
+                "A newer release is out. Settings › Updates installs it."
+                if (label or "update") == "update"
+                else f"Staffroom {label.removesuffix(' out')} is out. "
+                "Settings › Updates has the one command that updates."
+            )
         state = {None: "", False: " · up to date", True: " ·"}[available]
         self.version_label.setText(f"v{__version__}{state}")
 
@@ -398,6 +409,9 @@ class Sidebar(QWidget):
         # Undo the button's own toggle: only set_current decides its state.
         self.settings_button.setChecked(self._current == SETTINGS)
         self.settings_requested.emit()
+
+    def _on_updates_clicked(self) -> None:
+        self.updates_requested.emit()
 
     def _on_search_edited(self, text: str) -> None:
         if text:

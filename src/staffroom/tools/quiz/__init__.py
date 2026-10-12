@@ -6,12 +6,13 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from staffroom.core.csvio import read_table
 from staffroom.core.export import house_style_from, to_text
 from staffroom.core.panel import Pages, PanelSpec, pages_from
 from staffroom.core.plugin import Inputs, RunContext, RunResult, ToolError
 from staffroom.core.table import Table
+from staffroom.tools.quiz import bank as bank_files
 from staffroom.tools.quiz import logic
+from staffroom.tools.quiz.bank import load_bank
 from staffroom.tools.quiz.export import (
     donow_document,
     kahoot_csv_text,
@@ -19,20 +20,10 @@ from staffroom.tools.quiz.export import (
     write_forms,
     write_kahoot,
 )
-from staffroom.tools.quiz.panel import panel_spec
+from staffroom.tools.quiz.found import as_of_date
+from staffroom.tools.quiz.panel import options_from, panel_spec
 
-
-def load_bank(path: Path) -> logic.Bank:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise ToolError(f"Could not read {path}: {exc}") from exc
-    bank = logic.parse_bank(text)
-    if not bank.questions:
-        raise ToolError(
-            "No questions found. Each question starts with '## ' (see examples/question_bank.md)."
-        )
-    return bank
+__all__ = ["QuizPlugin", "load_bank", "load_taught_log", "plugin"]
 
 
 def load_taught_log(path: Path, ctx: RunContext) -> Table:
@@ -40,7 +31,7 @@ def load_taught_log(path: Path, ctx: RunContext) -> Table:
     like every other table: a column that could identify a pupil (a name, a
     class) is dropped there, before this tool sees it, and named here by its
     header only. Missing, unreadable or wrong-kind files are ToolErrors."""
-    table = read_table(path)
+    table = bank_files.load_taught_log(path)
     if table.dropped_columns:
         ctx.log(
             "Log: dropped identifier column(s), never read: " + ", ".join(table.dropped_columns)
@@ -57,25 +48,26 @@ def _names_in(folder: Path) -> set[str]:
         return set()
 
 
-def _as_of(text: str) -> date:
-    """The retrieval date from the option, today when blank."""
-    if not text.strip():
-        return date.today()
-    try:
-        return date.fromisoformat(text.strip())
-    except ValueError:
-        raise ToolError(
-            f"The 'as of' date should look like 2026-10-08 (YYYY-MM-DD), not {text!r}."
-        ) from None
+def _topics_phrase(chosen: list[logic.Question]) -> str:
+    """The topics a run's questions cover, for the result strip."""
+    seen: dict[str, None] = {}
+    for q in chosen:
+        for t in q.topics:
+            seen.setdefault(t, None)
+    topics = list(seen)
+    if not topics:
+        return "untagged"
+    return ", ".join(topics) if len(topics) <= 4 else f"{', '.join(topics[:3])} and more"
 
 
-FORMAT_NAMES = {"kahoot": "Kahoot", "forms": "Forms", "donow": "do now"}
+FORMAT_NAMES = {"kahoot": "Kahoot", "forms": "Forms", "donow": "Do now"}
 
 
 class QuizPlugin:
     name = "quiz"
     description = (
-        "Markdown question bank → Kahoot, Forms text, printable do-now; retrieval scheduler."
+        "Markdown question bank → printable do-now, Kahoot or Forms text; retrieval from what "
+        "was taught."
     )
     version = "0.1.0"
     group, glyph = "Sheets & quizzes", "question"  # sidebar group and glyph (#89)
@@ -89,7 +81,7 @@ class QuizPlugin:
         return panel_spec()
 
     def run(self, inputs: Inputs, ctx: RunContext) -> RunResult:
-        options: logic.Options = inputs.get("options", logic.Options())
+        options = options_from(inputs)
         source: Path | None = inputs.get("source")
         if source is None:
             raise ToolError("Choose a question bank first.")
@@ -107,7 +99,7 @@ class QuizPlugin:
             entries, errors = logic.parse_taught_log(load_taught_log(log_path, ctx))
             for err in errors:
                 ctx.log("Log: " + err)
-            today = _as_of(options.today)
+            today = as_of_date(options.today)
             chosen, windows = logic.retrieval_pick(
                 pool, entries, today, options.count, options.seed
             )
@@ -172,14 +164,22 @@ class QuizPlugin:
             summary += "; replaced " + ", ".join(replaced)
         ctx.progress(1.0, "Done")
         return RunResult(
-            tables={"chosen": logic.selection_table(written)},
+            # "chosen" is the CLI's listing; the panel lists them as on the sheet.
+            tables={
+                "chosen": logic.selection_table(written),
+                "questions": logic.question_list(written),
+            },
             texts={"preview": preview, **texts},  # "preview" is the CLI's --preview
             pages=pages,
             files=files,
             summary=summary,
-            outcome=(
-                f"{len(written)} question{'s' if len(written) != 1 else ''} · "
-                f"{FORMAT_NAMES.get(options.fmt, options.fmt)}, seed {options.seed}"
+            outcome=" · ".join(
+                (
+                    f"{len(written)} question{'s' if len(written) != 1 else ''}",
+                    *(() if options.fmt == "donow" else (FORMAT_NAMES[options.fmt],)),
+                    _topics_phrase(written),
+                    f"seed {options.seed}",
+                )
             ),
         )
 

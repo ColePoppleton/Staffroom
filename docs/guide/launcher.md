@@ -12,8 +12,9 @@ One line per tool with a small glyph; hover a tool for what it does and its
 shortcut. The red accent marks only where you are. Above the list, the gear
 opens Settings and the search field searches the library (typing carries on
 in the Library's own search box). At the foot: the running version (with
-*up to date* or an *update* link once the app has checked) and **Activity
-log**, which opens the log drawer.
+*up to date*, or a link that opens Settings › Updates, once the app has
+checked: the newer release's number and *out* for an installed copy,
+*update* for a checkout) and **Activity log**, which opens the log drawer.
 
 A fresh install opens on Classroom; after that the app opens where you left
 it, a tool or the Library. (`hello`, the developers' reference tool, is not in
@@ -51,19 +52,20 @@ does not change.
 Pick a tool, fill in the inputs down the left, press the button at their foot
 (or ⌘↵). Results appear on the right, beside the inputs, so you can change one
 setting and run again without scrolling; a tool with more than one result shows
-them as tabs (Trace: the completed table, then the sheet and the key). A tool
+them as tabs (Trace: the completed table, then the sheet and the key), and
+Marks lays its report out side by side. A tool
 that writes a sheet shows the PDF itself, page by page, under *Sheet* and *Key*
 tabs: the current page large, every page as a thumbnail beside it, *Open PDF*
 and *Print…* under them. Told to write Word only, it says so over the plain
 text instead. Files are
-written to the output folder, named under the Run button before you press it:
+written to the output folder, named beside the Run button before you press it:
 next to the input by default,
 `~/TeachingSessions/outputs/<tool>/` for tools with no input file, or
 wherever Settings says ([Outputs](outputs.md) has the rule and every tool's
 file names).
 
 After a run, the strip along the top of the results says how it went: a tick
-and what was made ("10 questions · seed 42"), or a cross and why it stopped.
+and what was made ("10 questions · seed 42, medium"), or a cross and why it stopped.
 Each file written is a button beside it (*PDF Sheet*, *PDF Key*, *DOCX Sheet*
 …): click to open it in its app, right-click to show it in Finder. *Folder*
 opens the output folder (before the first run, *Open output folder* does).
@@ -79,7 +81,7 @@ log file hold the app-wide log, described in
 | --- | --- |
 | ⌘↵ | Run the tool on screen (its button at the foot of the inputs) |
 | ⌘K | The Library, with its search box ready |
-| ⌘O | Classroom with the library picker open |
+| ⌘O | On the Library with a file showing: open it for class (or jump to its lesson label); anywhere else: Classroom with the library picker open |
 | ⌘1 – ⌘9 | Switch tool, in sidebar order (the Library is ⌘K): ⌘1 Classroom, ⌘2 Worksheet, ⌘3 Quiz, ⌘4 Parsons, ⌘5 Trace, ⌘6 Bugs, ⌘7 Fade, ⌘8 Pseudocode, ⌘9 Marks |
 | ⌘L | Show or hide the activity log |
 | ⇧⌘L | Switch between the dark and light theme (also in Settings) |
@@ -93,11 +95,11 @@ log file hold the app-wide log, described in
 | Output folder | where tools write; empty means next to the input, or `<sessions folder>/outputs/<tool>` when there is none or the input is in the resources folder |
 | Resources folder | what the Resource Library indexes (read-only to every tool), and the folders under it to keep out of the index |
 | Sessions folder | where Classroom puts lesson copies; local by default |
-| Editor | Thonny, IDLE, system default, or a custom `{file}` command |
+| Editor | Thonny, IDLE, system default, or Custom with a *Command* in which `{file}` is the lesson copy |
 | Exam board | OCR J277 or AQA 8525: the grade preset Marks starts with, and the gates a GCSE truth-table worksheet may use |
-| Header / footer text | printed on every worksheet and key |
+| Header / footer text | printed on every sheet and key, from every tool (the *Worksheets* card, with the exam board) |
 | Logging | the level of the app log (`INFO` by default), and buttons to reveal the config file and the log |
-| Updates | check for and apply an update when running from a checkout |
+| Updates | an installed copy: this version, the newest release and what changed, *Check again*, the tick box *Look for a new release when Staffroom opens* (at most once a day), and the one command to paste (`uv tool upgrade staffroom`) with *Copy*, or the install line once for a copy pinned to a release; from a checkout: check for and apply an update. See [Updating](updating.md) |
 
 Everything is saved to `~/.config/staffroom/config.toml` as you change it.
 Words the panels use without explaining (seed, facility, ERL, do-now…) are

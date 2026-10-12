@@ -4,8 +4,10 @@ import pytest
 from click.testing import Result
 from typer.testing import CliRunner
 
+import staffroom.cli
 from staffroom import __version__
 from staffroom.cli import app
+from staffroom.core.install import InstallKind
 
 runner = CliRunner()
 
@@ -15,7 +17,7 @@ def test_list_shows_hello_marked_hidden_after_the_workflow_tools() -> None:
     assert result.exit_code == 0, result.output
     lines = result.output.splitlines()
     hello = next(line for line in lines if line.startswith("hello"))
-    assert "reference tool" in hello and "Total" in hello and "[hidden]" in hello
+    assert "reference tool" in hello and "per question" in hello and "[hidden]" in hello
     assert "[hidden]: not shown in the launcher" in result.output
     names = [line.split()[0] for line in lines if line and not line.startswith("[")]
     assert names[:3] == ["classroom", "worksheet", "quiz"]  # the sidebar's groups (#89)
@@ -26,12 +28,33 @@ def test_list_shows_hello_marked_hidden_after_the_workflow_tools() -> None:
 def test_hidden_tool_still_has_its_commands(example_marks: Path, tmp_path: Path) -> None:
     result = runner.invoke(app, ["hello", "run", str(example_marks), "--out", str(tmp_path)])
     assert result.exit_code == 0, result.output
-    assert (tmp_path / "marks_10x_totals.csv").exists()
+    assert (tmp_path / "marks_10x_summary.csv").exists()
 
 
 def test_version() -> None:
     result = runner.invoke(app, ["version"])
     assert result.output.strip() == __version__
+
+
+@pytest.mark.parametrize("kind", [InstallKind.UV_TOOL, InstallKind.OTHER])
+def test_new_refuses_on_an_installed_copy(
+    kind: InstallKind, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """From ``uv tool install`` (or pip, or a bundle) ``staff new`` would write
+    into site-packages; it says so in one line and writes nothing (#18)."""
+    from staffroom.core import install
+
+    tools_dir = Path(staffroom.cli.__file__).resolve().parent / "tools"
+    before = sorted(p.name for p in tools_dir.iterdir())
+    package = tmp_path / "site-packages" / "staffroom"
+    monkeypatch.setattr(install, "detect", lambda: install.Installation(kind, package))
+    result = runner.invoke(app, ["new", "reading_age"])
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    lines = [ln for ln in result.output.splitlines() if ln.strip()]
+    assert lines == [staffroom.cli.NEW_NEEDS_CHECKOUT]
+    assert "clone" in lines[0] and "installed" in lines[0]
+    assert sorted(p.name for p in tools_dir.iterdir()) == before
 
 
 def test_new_rejects_bad_name() -> None:

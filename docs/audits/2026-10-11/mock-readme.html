@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1240">
+<title>README for teachers</title>
+<!-- Audit 2026-10-11 mockup: README for teachers. GitHub-like page, ?theme=light|dark. Words and images invented for the mockup. -->
+<script>document.documentElement.dataset.theme=(new URLSearchParams(location.search).get('theme')||'light');</script>
+<style>
+:root{--bg:#ffffff;--bg2:#f6f8fa;--fg:#1f2328;--muted:#59636e;--border:#d1d9e0;--link:#0969da;--code:#eff2f5;--accent:#c8322b;--note:#fff8c5;--green:#1a7f37}
+:root[data-theme=dark]{--bg:#0d1117;--bg2:#151b23;--fg:#f0f6fc;--muted:#9198a1;--border:#3d444d;--link:#4493f8;--code:#262c36;--accent:#ff6b5e;--note:#bb800926;--green:#3fb950}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1240px;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif}
+.top{height:64px;background:#010409;display:flex;align-items:center;padding:0 32px;color:#f0f6fc;font-weight:600;gap:10px}
+.top .o{width:30px;height:30px;border-radius:50%;background:#f0f6fc}
+.crumb{padding:16px 32px 0;font-size:18px} .crumb b{font-weight:600}
+.tabsr{display:flex;gap:22px;padding:12px 32px 0;border-bottom:1px solid var(--border);font-size:14px}
+.tabsr span{padding-bottom:10px} .tabsr .on{border-bottom:2px solid #fd8c73;font-weight:600}
+.wrap{display:flex;gap:24px;padding:24px 32px}
+.readme{flex:1;border:1px solid var(--border);border-radius:6px}
+.readme .bar{padding:10px 16px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600}
+.md{padding:28px 32px}
+.md h1{font-size:32px;font-weight:600;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.md h2{font-size:24px;font-weight:600;padding-bottom:5px;border-bottom:1px solid var(--border);margin:22px 0 12px}
+.md h3{font-size:18px;font-weight:600;margin:16px 0 8px}
+.md p{margin-bottom:12px} .md ul{margin:0 0 12px 24px} .md li{margin:3px 0}
+.md a{color:var(--link);text-decoration:none}
+.md pre{background:var(--bg2);border-radius:6px;padding:14px 16px;font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;margin-bottom:14px;overflow:hidden}
+.md code{background:var(--code);border-radius:5px;padding:1px 5px;font:85% ui-monospace,Menlo,monospace}
+.md pre code{background:none;padding:0;font-size:inherit}
+.shot{display:flex;gap:12px;margin:6px 0 16px}
+.shot img{border:1px solid var(--border);border-radius:6px;display:block} .shot .ph{border:1px solid var(--border);border-radius:6px}
+.ph{background:var(--bg2);display:grid;place-items:center;color:var(--muted);font-size:13px}
+.tag{font-size:12px;color:var(--muted)}
+.note{position:absolute;background:#fff3a8;color:#2b2a24;font-size:13px;line-height:1.35;padding:8px 10px;border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,.25);width:240px;transform:rotate(-1deg);z-index:9}
+.note b{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#a82820;margin-bottom:2px}
+.aside{width:290px;font-size:14px;color:var(--muted)} .aside h4{color:var(--fg);font-size:16px;margin-bottom:8px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0 14px}
+.three div{border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:14px}
+.three b{display:block;margin-bottom:3px}
+details{border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:8px 0 14px;font-size:14px}
+summary{font-weight:600;cursor:pointer}
+.rel{flex:1;border:1px solid var(--border);border-radius:6px;padding:20px 28px}
+.rel h1{font-size:32px;font-weight:600;margin-bottom:4px}
+.meta{font-size:14px;color:var(--muted);padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.latest{display:inline-block;border:1px solid var(--green);color:var(--green);border-radius:999px;font-size:12px;padding:0 8px;margin-left:8px;vertical-align:middle}
+</style></head><body>
+<div class="top"><span class="o"></span>&nbsp;GitHub</div><div class="crumb">ColePoppleton / <b>Staffroom</b></div>
+<div class="tabsr"><span class="on">Code</span><span>Issues</span><span>Pull requests</span><span>Actions</span></div>
+<div class="wrap"><div class="readme"><div class="bar">README</div><div class="md">
+<h1>Staffroom</h1>
+<p><b>Small tools for secondary computing teachers, on your own Mac.</b> Make a seeded binary worksheet with its key, a Parsons
+problem or a trace table from a program, a do-now from a question bank, and see which questions a class found hardest in a mock.
+Everything prints in one plain house style. No pupil names, ever.</p>
+<div class="shot"><img src="mock-readme-app.png" width="430" height="270" alt="The Staffroom window: Marks"><img src="mock-readme-page.png" width="190" height="270" alt="A worksheet page"><img src="mock-readme-page2.png" width="190" height="270" alt="A trace table page"></div>
+<h2>Install (macOS)</h2>
+<p>Two lines in Terminal. The first installs <a>uv</a>, which fetches everything else; skip it if you have uv.</p>
+<pre><code>curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main</code></pre>
+<p>Then type <code>staffroom</code>. To update later: <code>uv tool upgrade staffroom</code>. <a>Install guide</a> · <a>What's new</a></p>
+<h2>What it does with your data</h2>
+<div class="three"><div><b>✓ Stays on this Mac</b>Settings, an index of your resources folder, a log of file paths.</div><div><b>✕ Never stored</b>Names, candidate numbers or any row of marks: identifier columns are dropped on load.</div><div><b>⌕ Check it</b>No account, no server. <a>Every file it keeps</a>.</div></div>
+<h2>The tools</h2>
+<p><a>Library</a> · <a>Classroom</a> · <a>Worksheet</a> · <a>Quiz</a> · <a>Parsons</a> · <a>Trace</a> · <a>Bugs</a> · <a>Fade</a> · <a>Pseudocode</a> · <a>Marks</a></p>
+<h2>Contributing</h2>
+<p>Bug reports and new tools are welcome: <a>open an issue</a> (please never attach a real marks file) or read the <a>contributing guide</a>. MIT licensed.</p>
+</div></div>
+<div class="aside"><h4>About</h4><p>Small desktop tools for UK secondary computing teachers… Runs on your own Mac; no pupil data.</p></div></div>
+<div class="note" style="left:960px;top:330px"><b>Today</b>The README opens with “a launcher… PySide6… each tool is a plugin that owns its logic and a declarative panel”, then a <i>Develop</i> block (<code>just setup</code>, <code>just install</code>). No picture of the app or a page; uv's own install is a link away; updating says “pulls the latest code”.</div>
+<div class="note" style="left:960px;top:610px;transform:rotate(1deg)"><b>Proposed</b>What it is in teacher words, the app and two real pages, the whole install (uv included), the three-part privacy promise, the tools, then contributing in two lines. Developer commands live in the contributing guide.</div>
+</body></html>

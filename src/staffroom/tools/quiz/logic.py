@@ -53,7 +53,9 @@ KAHOOT_HEADERS = (
 
 @dataclass
 class Options:
-    fmt: Format = field(default="kahoot", metadata={"label": "Format"})
+    # Do-now first: the weekly use, checked on paper; Kahoot's import is
+    # still to be confirmed (#1). The CLI's ``export --format`` keeps its own.
+    fmt: Format = field(default="donow", metadata={"label": "Format"})
     count: int = field(default=10, metadata={"label": "Questions", "min": 1, "max": 100})
     seed: int = field(default=1, metadata={"label": "Seed", "min": 0, "max": 999_999})
     topics: str = field(
@@ -540,3 +542,13 @@ def selection_table(questions: list[Question]) -> Table:
         for q in questions
     ]
     return Table(["#", "Type", "Question", "Topics", "Spec", "Answer"], rows)
+
+
+def question_list(questions: list[Question]) -> Table:
+    """The chosen questions as the panel lists them: numbered as on the sheet,
+    the question, and its topics and type (*cpu · mcq*). The answers are on
+    the key; the full row is :func:`selection_table` (the CLI's listing)."""
+    rows: list[Row] = [
+        [i, q.text, " · ".join((*q.topics, q.qtype))] for i, q in enumerate(questions, 1)
+    ]
+    return Table(["#", "Question", "Topic · type"], rows)

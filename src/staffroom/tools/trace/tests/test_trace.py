@@ -9,7 +9,7 @@ from staffroom.cli import app
 from staffroom.core.config import load_config
 from staffroom.core.export import to_text
 from staffroom.core.plugin import RunContext, ToolError
-from staffroom.tools.trace import logic, plugin, run_trace
+from staffroom.tools.trace import MissingInputError, logic, plugin, run_trace
 from staffroom.tools.trace.logic import Options
 from staffroom.tools.trace.sheet import build_document
 
@@ -166,22 +166,64 @@ def test_empty_inputs_box_is_a_tool_error_and_writes_nothing(tmp_path: Path) -> 
     out.mkdir()
     ctx = RunContext(config=load_config(), output_dir=out)
     with pytest.raises(
-        ToolError, match=r"^The pasted code asked for input but the Inputs box is empty"
+        MissingInputError, match=r"^The pasted code asked for input, but none was given\.$"
     ):
         plugin.run({"pasted": ASKS_TWICE, "options": Options()}, ctx)
     src = tmp_path / "area.py"
     src.write_text(ASKS_TWICE)
     with pytest.raises(
-        ToolError, match=r"^area\.py asked for a 2nd input but the Inputs box has only 1 line"
+        ToolError, match=r"^area\.py asked for a 2nd input, but was given only 1 line\.$"
     ):
         plugin.run({"source": src, "stdin": "4", "options": Options()}, ctx)
     r = runner.invoke(app, ["trace", "make", str(src), "--out", str(out)])
     assert r.exit_code == 1, r.output
-    assert (
-        "area.py asked for input but the Inputs box is empty: add one line per input() call"
-        in r.output
-    )
+    assert "area.py asked for input, but none was given." in r.output
+    # The CLI's next step names its own way in: --stdin, not the Inputs box (#21).
+    assert "Give it 2 lines with --stdin, one per input() call" in r.output
+    assert "Inputs box" not in r.output
     assert list(out.iterdir()) == [], "nothing may be written for a run that got no input"
+
+
+def test_missing_input_says_what_to_do_in_the_launcher(tmp_path: Path) -> None:
+    """The error carries the launcher's next step and points at the Inputs box (#21)."""
+    ctx = RunContext(config=load_config(), output_dir=tmp_path)
+    with pytest.raises(MissingInputError) as caught:
+        plugin.run({"pasted": ASKS_TWICE, "stdin": "4", "options": Options()}, ctx)
+    error = caught.value
+    assert error.input_key == "stdin"
+    assert error.needed == "2 lines"
+    assert error.input_hint == "Needs 2 lines, one per input() call."
+    assert error.next_step == (
+        "The pasted code calls input() twice. "
+        "Type 2 lines in the Inputs box, then press Trace again."
+    )
+    # A call in a loop can repeat: the count is a floor, and says why.
+    loop = "for i in range(3):\n    x = input()\n"
+    with pytest.raises(MissingInputError) as caught:
+        plugin.run({"pasted": loop, "stdin": "a\nb", "options": Options()}, ctx)
+    assert caught.value.needed == "at least 3 lines"
+    assert caught.value.next_step.startswith(
+        "The pasted code calls input() at least once (one is in a loop). Type at least 3 lines"
+    )
+
+
+def test_missing_input_wording() -> None:
+    from staffroom.core.codeinput import InputCalls
+
+    assert logic.lines_needed(InputCalls(1), 0) == "1 line"
+    assert logic.lines_needed(InputCalls(3), 1) == "3 lines"
+    assert logic.lines_needed(InputCalls(1, "loop"), 0) == "at least 1 line"
+    # The run asked for more than the code shows (input() via a name the
+    # count cannot see): the run's own number is the floor.
+    assert logic.lines_needed(InputCalls(1), 2) == "at least 3 lines"
+    assert logic.lines_needed(None, 0) == "at least 1 line"
+    assert logic.stdin_option_step("1 line") == (
+        "Give it 1 line with --stdin, one per input() call; separate lines with \\n, "
+        'as in --stdin "12\\n7".'
+    )
+    assert logic.missing_input_step("area", None, "at least 1 line") == (
+        "Type at least 1 line in the Inputs box, then press Trace again."
+    )
 
 
 def test_other_runtime_errors_still_make_the_sheet_and_say_so(tmp_path: Path) -> None:

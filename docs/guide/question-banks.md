@@ -37,7 +37,7 @@ answer: 10
 | `time` | Seconds for Kahoot (snapped to 5, 10, 20, 30, 60, 90, 120 or 240). |
 | `why` | Explanation, printed in the do-now key. |
 
-`staff quiz check --bank bank.md` reports every problem with its line number and
+`staff quiz check bank.md` reports every problem with its line number and
 any spec tag that is not in the taxonomy.
 
 ## Taught log (for retrieval mode)
@@ -45,8 +45,9 @@ any spec tag that is not in the taxonomy.
 A CSV with `date,topic` columns. Topic and date only, never a class or a
 pupil. Start it with `# FAKE DATA` if it is an example you intend to commit.
 It is read like every other table, so a column that could identify a pupil
-(a name, a class, an id) is dropped as the file is loaded and the run log
-says so by header only (`dropped identifier column(s), never read: class`).
+(a name, a class, an id) is dropped as the file is loaded, and the panel and
+the run log say so by header only (`Never read: Class (could name a pupil)` in the panel, `dropped identifier
+column(s), never read: Class` in the log).
 Any other extra column is ignored and named once by its header
 (`ignored column 'room' — the log is date and topic only`). What either kind
 of column holds is never read or shown. Take it out of the file.

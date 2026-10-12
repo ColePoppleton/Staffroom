@@ -5,14 +5,20 @@ line and predict what happens; the key knows, because each variant was run.
 
 ![Bugs panel](../bugs-light.png)
 
-The program is shown on the left, numbered; click a row of the key and the
-line that variant broke lights up in it.
+Press **Make variants**. *What each bug does* has one card per version
+(*Version 2*, *line 9*, *wrong variable name*), with what happens as a badge on the right (red for a crash
+or a hang, amber for a wrong output), and the line as it *was* and as it is
+*now* underneath. The badge is in view at any window width. The program is
+shown on the left, numbered; click a card (or move with the arrow keys) and
+the line that version broke lights up in it, and click a line to find the
+versions that broke it. The printed sheet and key are unchanged.
 
 Error classes: comparison flipped, off by one, missing colon, missing
 bracket, wrong variable name, indentation slip, string / integer confusion.
 Each variant differs from the original by exactly one line, and the key says
-*crashes: SyntaxError*, *runs, but the output is wrong*, *hangs*, or
-*silent: no visible change*.
+*crashes: SyntaxError*, *runs, but the output is wrong*, *hangs (infinite
+loop)*, or *silent: no visible change (still runs the same)*, which has a
+grey badge.
 
 A *wrong variable name* bug swaps in a name a pupil might really type: one
 that already holds the same sort of value (a number for a number, a string
@@ -22,7 +28,8 @@ most recently assigned first. So `if average >= 50:` becomes
 `if scores >= 50:`, which only crashes. With nothing like it in scope the
 name is misspelt instead (`scores` → `score`).
 
-The key's *Original* and *Changed to* columns trim each line's indentation,
+The key's *Original* and *Changed to* columns (*was* and *now* on the cards)
+trim each line's indentation,
 except where the indentation is the bug: there each space shows as `·`
 (`····count = count + 1` → `count = count + 1`) and the *Bug* column says how
 far it moved, *indentation slip (4 spaces to 0)*.

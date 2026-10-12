@@ -1,5 +1,5 @@
 """End-to-end through the launcher: open hello, load the example, run it,
-see the results table fill and the output file appear."""
+see the per-question table fill and the summary appear in the output folder."""
 
 from __future__ import annotations
 
@@ -93,11 +93,11 @@ def test_go_to_unknown_tool_does_nothing(window: MainWindow) -> None:
 def test_preview_fills_when_file_chosen(window: MainWindow, example_marks: Path) -> None:
     panel = window.panel_for("hello")
     panel.set_input_path("source", example_marks)
-    preview = panel.previews["preview"]
-    assert preview.model.rowCount() == 10
-    assert preview.model.columnCount() == 6
-    assert preview.stack.currentWidget() is preview.view
-    assert "fake data" in preview.caption.text()
+    summary = panel.summaries["preview"]  # under the file chip, as the scaffold has it
+    assert summary.table is not None
+    assert len(summary.table) == 10 and len(summary.table.columns) == 6
+    assert [n.text for n in summary.notes()] == ["10 scripts × 6 questions"]
+    assert summary.preview_button.isEnabled()
 
 
 def test_run_requires_a_file(window: MainWindow) -> None:
@@ -115,13 +115,14 @@ def test_run_hello_end_to_end(
     with qtbot.waitSignal(panel.run_finished, timeout=5000) as blocker:
         panel.start_run()
     assert blocker.args == [True]
-    model, _view, caption = panel.results.tables["result"]
-    assert model.columnCount() == 7
-    assert model.headerData(6, Qt.Orientation.Horizontal) == "Total"
-    assert "10 rows" in caption.text()
-    assert (tmp_path / "out" / "marks_10x_totals.csv").exists()
+    model, _view, _caption = panel.results.tables["questions"]
+    assert model.columnCount() == 4 and model.rowCount() == 6  # one row per question
+    assert model.headerData(0, Qt.Orientation.Horizontal) == "Question"
+    written = tmp_path / "out" / "marks_10x_summary.csv"
+    assert written.exists()
+    assert not (example_marks.parent / written.name).exists()  # never beside the input
     assert panel.strip.folder_chip.isVisible()
-    assert [c.path for c in panel.strip.files] == [tmp_path / "out" / "marks_10x_totals.csv"]
+    assert [c.path for c in panel.strip.files] == [written]
 
 
 def test_run_failure_is_reported_not_raised(
@@ -142,9 +143,9 @@ def test_preview_drops_identifier_columns(window: MainWindow, tmp_path: Path) ->
     src.write_text("Name,q1\nx,3\n")
     panel = window.panel_for("hello")
     panel.set_input_path("source", src)
-    preview = panel.previews["preview"]
-    assert preview.model.columnCount() == 1
-    assert "dropped identifier columns: Name" in preview.caption.text()
+    summary = panel.summaries["preview"]
+    assert summary.table is not None and summary.table.columns == ["q1"]
+    assert "Identifier columns dropped: Name" in [n.text for n in summary.notes()]
     assert "Name" in panel.results.log_view.toPlainText()
 
 

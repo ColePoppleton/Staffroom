@@ -2,17 +2,33 @@
 
     uv run python scripts/release.py version              # print the current version
     uv run python scripts/release.py bump patch|minor|major
-    uv run python scripts/release.py notes 0.2.0          # that version's changelog section
+    uv run python scripts/release.py notes 0.2.0          # that version's GitHub Release body
+    uv run python scripts/release.py check                # CHANGELOG.md follows the rules below
+    uv run python scripts/release.py site > docs/changelog.md   # the docs site's Changelog page
     uv run python scripts/release.py tag                  # commit the bump and tag it
 
 ``just release <part>`` runs bump, lock, tag and push. The tag triggers
 .github/workflows/release.yml, which builds the wheel and sdist and creates
 the GitHub Release with the notes.
 
-``bump`` also re-pins the documented install line
-(``git+https://github.com/ColePoppleton/Staffroom@vX.Y.Z``) and the wheel
-filename in README.md and docs/ to the new version (#100), so the release
-commit never leaves colleagues installing the previous one.
+Each version in CHANGELOG.md opens with two or three plain sentences for a
+teacher (what they can now do, or what no longer goes wrong), then the
+detail grouped under ``### Added`` / ``### Changed`` / ``### Fixed``. Write
+the sentences at the top of ``## [Unreleased]`` before releasing; ``bump``
+refuses without them. ``notes`` turns a section into the Release body: the
+sentences, the update command, and the detail folded under *For
+contributors*, with hard-wrapped lines joined (a Release renders every
+newline as a line break).
+
+Versions up to ``LAST_PRIVATE`` were built in a private repository whose
+issue numbers mean something else here, so their sections cite none.
+Later sections may cite this repository's issues; a summary never does.
+
+``bump`` also re-pins the wheel filename the Install guide names
+(``staffroom-X.Y.Z-py3-none-any.whl``) in README.md and docs/ to the new
+version, so the release commit never points colleagues at the previous
+wheel. The git install line follows ``@main`` (so ``uv tool upgrade
+staffroom`` updates a copy) and is left alone.
 """
 
 from __future__ import annotations
@@ -29,10 +45,32 @@ PYPROJECT = ROOT / "pyproject.toml"
 README = ROOT / "README.md"
 DOCS = ROOT / "docs"
 UNRELEASED = "## [Unreleased]"
+SITE = "https://colepoppleton.github.io/Staffroom"
 
-# The documented install pin and the wheel the Install guide names. Same
-# shapes as tests/test_install_docs.py checks.
-GIT_PIN = re.compile(r"(git\+https://github\.com/ColePoppleton/Staffroom@v)\d+\.\d+\.\d+\b")
+#: The last version released from the private repository. Its issue
+#: numbers would open unrelated issues here.
+LAST_PRIVATE = "0.8.1"
+
+#: An issue or pull request number, ``#123``; not a heading, an anchor
+#: (``page.md#part``) or an HTML entity (``&#123;``).
+ISSUE_REF = re.compile(r"(?<![\w/&#])#\d+\b")
+
+#: How the work was organised, which the public notes leave out.
+PROCESS_WORDS = re.compile(
+    r"\bphase \d|\baudit(?:ed|s)?\b|issues board|/next-task|/merge-prs|\broadmap\b", re.I
+)
+
+SECTION = re.compile(r"^## \[([^\]]+)\][^\n]*\n(.*?)(?=^## |\Z)", re.M | re.S)
+SENTENCE_END = re.compile(r"[.!?][\"')*_]*(?=\s|$)")
+
+UPDATE_LINE = (
+    "**Update:** quit Staffroom, run `uv tool upgrade staffroom` in Terminal, and open it "
+    f"again ([Updating]({SITE}/guide/updating/) covers a copy installed from a release tag). "
+    f"New to Staffroom? Start with [Install]({SITE}/guide/install/)."
+)
+
+# The wheel the Install guide names. Same shape as tests/test_install_docs.py
+# checks. The git line installs from @main and has no version to pin.
 WHEEL = re.compile(r"(staffroom-)\d+\.\d+\.\d+(-py3-none-any\.whl)")
 
 
@@ -73,6 +111,12 @@ def release_changelog(version: str) -> str:
     tail = rest[m.start() :] if m else ""
     if not body.strip():
         raise SystemExit("the Unreleased section is empty; add changelog lines first")
+    problems = summary_problems(split_section(body)[0])
+    if problems:
+        raise SystemExit(
+            "write two or three sentences for teachers at the top of Unreleased first: "
+            + "; ".join(problems)
+        )
     today = dt.date.today().isoformat()
     new = (
         f"{head}{UNRELEASED}\n\n## [{version}] - {today}\n{body.strip()}\n\n{tail}".rstrip() + "\n"
@@ -97,25 +141,170 @@ def install_pages() -> list[Path]:
 
 
 def pin_install_docs(version: str) -> list[Path]:
-    """Point every install pin and wheel filename at ``version``. Returns the
-    pages that changed."""
+    """Point every wheel filename at ``version``; the ``@main`` install line
+    is left as it is. Returns the pages that changed."""
     changed = []
     for path in install_pages():
         text = path.read_text(encoding="utf-8")
-        new = GIT_PIN.sub(rf"\g<1>{version}", text)
-        new = WHEEL.sub(rf"\g<1>{version}\g<2>", new)
+        new = WHEEL.sub(rf"\g<1>{version}\g<2>", text)
         if new != text:
             path.write_text(new, encoding="utf-8")
             changed.append(path)
     return changed
 
 
-def notes(version: str) -> str:
-    text = CHANGELOG.read_text()
-    m = re.search(rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+def version_key(version: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in re.findall(r"\d+", version.split("-")[0])[:3])
+
+
+def sections(text: str) -> dict[str, str]:
+    """Every released version's section body, newest first; not Unreleased."""
+    return {
+        m.group(1): m.group(2).strip() for m in SECTION.finditer(text) if m.group(1) != "Unreleased"
+    }
+
+
+def split_section(body: str) -> tuple[str, str]:
+    """``(summary, detail)``: the text before the first ``###`` heading, and
+    the headings with their lists."""
+    m = re.search(r"^### ", body, re.M)
     if not m:
+        return body.strip(), ""
+    return body[: m.start()].strip(), body[m.start() :].strip()
+
+
+def summary_problems(summary: str) -> list[str]:
+    """What is wrong with a version's teacher summary, in words."""
+    if not summary:
+        return ["no summary paragraph before the first ### heading"]
+    problems = []
+    if re.search(r"^\s*([-*+]|\d+\.)\s", summary, re.M):
+        return ["the summary is a list; write two or three sentences"]
+    sentences = len(SENTENCE_END.findall(unwrap(summary)))
+    if not 2 <= sentences <= 3:
+        problems.append(f"the summary has {sentences} sentences; write two or three")
+    if ISSUE_REF.search(summary):
+        problems.append("the summary cites an issue number")
+    if PROCESS_WORDS.search(summary):
+        problems.append("the summary describes how the work was organised")
+    return problems
+
+
+def changelog_problems(text: str) -> list[str]:
+    """Every rule CHANGELOG.md breaks, one line each. Empty when it is fine."""
+    problems = []
+    for version, body in sections(text).items():
+        summary, detail = split_section(body)
+        problems += [f"[{version}] {p}" for p in summary_problems(summary)]
+        if not detail:
+            problems.append(f"[{version}] no ### Added / Changed / Fixed list after the summary")
+        for heading in re.findall(r"^### (.+)$", detail, re.M):
+            if heading.strip() not in {"Added", "Changed", "Fixed", "Removed", "Security"}:
+                problems.append(f"[{version}] heading '### {heading}' is not Added/Changed/Fixed")
+        if version_key(version) <= version_key(LAST_PRIVATE):
+            refs = sorted(set(ISSUE_REF.findall(body)), key=lambda r: int(r[1:]))
+            if refs:
+                problems.append(
+                    f"[{version}] cites {', '.join(refs)} from the private repository; "
+                    "those numbers open unrelated issues here"
+                )
+            if word := PROCESS_WORDS.search(body):
+                problems.append(
+                    f"[{version}] mentions '{word.group(0)}' (how the work was organised)"
+                )
+    return problems
+
+
+def unwrap(markdown: str) -> str:
+    """Join hard-wrapped lines: a GitHub Release renders every newline in its
+    body as a line break. Headings, list items, blank lines and fenced code
+    keep their own lines; a list item's indented continuation lines and a
+    paragraph's lines become one line."""
+    out: list[str] = []
+    fenced = False
+    joinable = False
+    for line in markdown.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            fenced = not fenced
+            out.append(line)
+            joinable = False
+            continue
+        # A heading, an HTML tag, a table row or a quote starts its own line
+        # only at the margin: indented, ``<file>`` is a wrapped item's text.
+        block_line = line.startswith(("#", "<", "|", ">"))
+        starts_block = (
+            fenced
+            or not stripped
+            or block_line
+            or re.match(r"([-*+]|\d+\.)\s", stripped) is not None
+        )
+        if joinable and not starts_block:
+            out[-1] = f"{out[-1].rstrip()} {stripped}"
+            continue
+        out.append(line.rstrip())
+        joinable = bool(stripped) and not fenced and not line.startswith(("#", "<", "|"))
+    return "\n".join(out).strip()
+
+
+def notes(version: str) -> str:
+    """The GitHub Release body for ``version``: the teacher summary, the update
+    command, then the detail folded under *For contributors*."""
+    body = sections(CHANGELOG.read_text()).get(version)
+    if body is None:
         raise SystemExit(f"no changelog section for {version}")
-    return m.group(1).strip()
+    summary, detail = split_section(body)
+    if not summary:
+        raise SystemExit(f"[{version}] has no summary for teachers before its first ### heading")
+    parts = [unwrap(summary), UPDATE_LINE]
+    if detail:
+        parts.append(_fold("For contributors: the full list", unwrap(detail), "<details>"))
+    return "\n\n".join(parts) + "\n"
+
+
+def _fold(summary: str, detail: str, tag: str = '<details markdown="1">') -> str:
+    """``detail`` folded under ``summary`` and its count of changes. The site
+    needs ``markdown="1"`` (``md_in_html``); GitHub does not."""
+    count = len(re.findall(r"^[-*+] ", detail, re.M))
+    return (
+        f"{tag}\n<summary>{summary} ({count} change{'s' if count != 1 else ''})</summary>\n\n"
+        f"{detail}\n\n</details>"
+    )
+
+
+def _labels(detail: str) -> str:
+    """Group headings as bold labels, so the site's contents list stays one
+    line per version; a blank line keeps the list below a list."""
+    detail = re.sub(r"^### (.+)\n(?!\n)", r"**\1**\n\n", detail, flags=re.M)
+    detail = re.sub(r"^### (.+)$", r"**\1**", detail, flags=re.M)
+    detail = re.sub(r"^#### (.+)\n(?!\n)", r"*\1*\n\n", detail, flags=re.M)
+    return re.sub(r"^#### (.+)$", r"*\1*", detail, flags=re.M)
+
+
+def site_page(text: str) -> str:
+    """The documentation site's Changelog page: CHANGELOG.md with each
+    version's teacher summary as its lead and the detail folded under *For
+    contributors* (``md_in_html``), as on the GitHub Release."""
+    parts: list[str] = []
+    pos = 0
+    for m in SECTION.finditer(text):
+        parts.append(text[pos : m.start()])
+        pos = m.end()
+        heading = m.group(0).split("\n", 1)[0]
+        summary, detail = split_section(m.group(2).strip())
+        block = [heading]
+        if m.group(1) == "Unreleased":
+            # Lines land here with every change; the summary comes at release.
+            if summary or detail:
+                block.append(_fold("Not released yet", f"{summary}\n\n{_labels(detail)}".strip()))
+        else:
+            if summary:
+                block.append(f'<div class="release-summary" markdown="1">\n\n{summary}\n\n</div>')
+            if detail:
+                block.append(_fold("For contributors: the full list", _labels(detail)))
+        parts.append("\n\n".join(block) + "\n\n")
+    parts.append(text[pos:])
+    return "".join(parts).rstrip() + "\n"
 
 
 def tag() -> str:
@@ -124,7 +313,7 @@ def tag() -> str:
     pinned = [
         str(path.relative_to(ROOT))
         for path in install_pages()
-        if any(rx.search(path.read_text(encoding="utf-8")) for rx in (GIT_PIN, WHEEL))
+        if WHEEL.search(path.read_text(encoding="utf-8"))
     ]
     subprocess.run(
         ["git", "add", "pyproject.toml", "CHANGELOG.md", "uv.lock", *pinned], check=True, cwd=ROOT
@@ -148,7 +337,14 @@ def main(argv: list[str]) -> None:
         pin_install_docs(version)
         print(version)
     elif cmd == "notes":
-        print(notes(argv[2]))
+        print(notes(argv[2]), end="")
+    elif cmd == "site":
+        print(site_page(CHANGELOG.read_text()), end="")
+    elif cmd == "check":
+        problems = changelog_problems(CHANGELOG.read_text())
+        for problem in problems:
+            print(problem)
+        raise SystemExit(1 if problems else 0)
     elif cmd == "tag":
         print(tag())
     else:

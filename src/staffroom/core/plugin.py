@@ -22,7 +22,29 @@ Inputs = Mapping[str, Any]
 
 class ToolError(Exception):
     """Raised by a tool for a user-facing failure (bad input, missing column).
-    The shell shows the message; anything else is treated as a bug."""
+    The shell shows the message; anything else is treated as a bug.
+
+    The message says what went wrong, in one line, and is all a CLI prints.
+    In the launcher the message is the result strip's red line, and three
+    optional fields say what to do about it (#21):
+
+    * ``next_step``: a sentence that takes the output pane's place until the
+      next run ("Add a line to the Inputs box for each input() call, then
+      press Trace again."). Without one the pane is left empty, never showing
+      its "Press Run" placeholder after a failure.
+    * ``input_key``: the panel input to fix. Its box is marked and scrolled
+      into view until the teacher edits it or runs again.
+    * ``input_hint``: a short line shown under that input, in place of its
+      help, while it is marked ("Needs 2 lines: one per input() call.").
+    """
+
+    def __init__(
+        self, message: str, *, next_step: str = "", input_key: str = "", input_hint: str = ""
+    ) -> None:
+        super().__init__(message)
+        self.next_step = next_step
+        self.input_key = input_key
+        self.input_hint = input_hint
 
 
 @dataclass

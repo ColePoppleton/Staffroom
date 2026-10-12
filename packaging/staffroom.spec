@@ -52,6 +52,7 @@ app = BUNDLE(
         "CFBundleDisplayName": "Staffroom",
         "CFBundleShortVersionString": "0.1.0",
         "NSHighResolutionCapable": True,
-        "LSMinimumSystemVersion": "12.0",
+        # The Qt 6.12 wheels (PySide6-Essentials / -Pdf, #4) are built for macOS 14+.
+        "LSMinimumSystemVersion": "14.0",
     },
 )

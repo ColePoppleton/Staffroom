@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1240">
+<title>Trace: a table that fits</title>
+<!-- Audit 2026-10-11 mockup: Trace: a table that fits. Open with ?theme=light or ?theme=dark (default dark), window 1240x780.
+     Invented data only. Shared styles in mock.css. -->
+<script>document.documentElement.dataset.theme=(new URLSearchParams(location.search).get('theme')||'dark');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mock.css">
+<style>
+.out .stage{padding:12px 20px}
+.const{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--text-muted);margin-bottom:8px}
+.const code{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 7px}
+table.t{table-layout:auto}
+table.t td.u{color:var(--text-faint)}
+table.t td.ch{font-weight:700}
+table.t th.outc,table.t td.outc{border-left:1px solid var(--border-strong);background:var(--surface);min-width:120px}
+.wrap2{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.legend{font-size:12px;color:var(--text-faint);margin-top:8px}
+</style></head><body><div class="app"><aside class="side">
+<div class="brand"><span class="mark">S</span><b>Staffroom</b><span class="gear" title="Settings ⌘,">⚙</span></div>
+<div class="search">⌕ Search resources<kbd>⌘K</kbd></div>
+<div class="grp">Lessons</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M3 4h4v16H3zM9 4h4v16H9zM15 5l4-1 3 15-4 1z"/></svg></span>Library<small>11</small></div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H4zM8 19h8M12 15v4"/></svg></span>Classroom</div>
+<div class="grp">Sheets &amp; quizzes</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM9 10h7M9 14h7M9 18h4"/></svg></span>Worksheet</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.7M12 17.5v.01"/></svg></span>Quiz</div>
+<div class="grp">From a program</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 5h10v4H4zM8 11h12v4H8zM4 17h8v4H4z"/></svg></span>Parsons</div><div class="nav on"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M4 14h16M10 4v16"/></svg></span>Trace</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM12 9v9M4 12h5M15 12h5M5 6l4 3M19 6l-4 3M5 19l4-3M19 19l-4-3"/></svg></span>Bugs</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h12M4 14h8M4 18h4"/></svg></span>Fade</div><div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></span>Pseudocode</div>
+<div class="grp">After a test</div>
+<div class="nav"><span class="g"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Marks</div>
+<div class="foot"><span>v0.8.1 · up to date</span><a>Activity log</a></div>
+</aside><main class="main"><div class="head"><h1>Trace</h1><p>Blank and completed trace tables from a run in a separate Python process.</p></div>
+<div class="panes"><section class="in"><div class="scroll">
+<div class="sec" style="padding-top:2px"><div class="lab">Program <a>Paste instead</a></div>
+<div class="src"><span class="fi">PY</span><b>year9.py</b><span>examples</span><span class="x">Change ▾</span></div>
+<div style="margin-top:8px"><div class="code"><div><span><span class="c"># Average of five test scores</span></span></div><div><span>scores = [<span class="num">45</span>, <span class="num">62</span>, <span class="num">58</span>, <span class="num">71</span>, <span class="num">39</span>]</span></div><div><span>total = <span class="num">0</span></span></div><div><span>count = <span class="num">0</span></span></div><div><span><span class="k">for</span> score <span class="k">in</span> scores:</span></div><div class="hl"><span>    total = total + score</span></div><div><span>    count = count + <span class="num">1</span></span></div><div><span>average = total / count</span></div><div><span><span class="k">if</span> average &gt;= <span class="num">50</span>:</span></div><div><span>    <span class="f">print</span>(<span class="s">"Well done"</span>)</span></div><div><span><span class="k">else</span>:</span></div><div><span>    <span class="f">print</span>(<span class="s">"Keep going"</span>)</span></div><div><span><span class="f">print</span>(<span class="s">"Average:"</span>, average)</span></div></div></div></div>
+<div class="sec"><div class="lab">Inputs</div><div class="inbox">No input() in this program</div></div>
+</div><div class="go"><span class="primary">Trace</span><small>⌘↵ · 10 s limit</small></div></section>
+<section class="out">
+<div class="strip"><span class="ok">✓</span><span class="msg">23 rows <span>· Full trace</span></span><div class="chips"><span class="chip"><i>PDF</i>Sheet</span><span class="chip"><i>PDF</i>Key</span><span class="chip">Folder</span></div></div>
+<div class="tabs"><span class="tab on">Completed table</span><span class="tab">Sheet<small>1 page</small></span><span class="tab">Key<small>2 pages</small></span></div>
+<div class="stage">
+<div class="const">Never changes after line 2: <code>scores = [45, 62, 58, 71, 39]</code></div>
+<div class="wrap2"><table class="t"><tr><th class="n">Line</th><th class="n">total</th><th class="n">count</th><th class="n">score</th><th class="n">average</th><th class="outc">Output</th></tr><tr><td class="n">2</td><td class="n "></td><td class="n "></td><td class="n "></td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">3</td><td class="n ch">0</td><td class="n "></td><td class="n "></td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">4</td><td class="n u">0</td><td class="n ch">0</td><td class="n "></td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">5</td><td class="n u">0</td><td class="n u">0</td><td class="n ch">45</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">6</td><td class="n ch">45</td><td class="n u">0</td><td class="n u">45</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">7</td><td class="n u">45</td><td class="n ch">1</td><td class="n u">45</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">5</td><td class="n u">45</td><td class="n u">1</td><td class="n ch">62</td><td class="n "></td><td class="outc"></td></tr><tr class="sel"><td class="n">6</td><td class="n ch">107</td><td class="n u">1</td><td class="n u">62</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">7</td><td class="n u">107</td><td class="n ch">2</td><td class="n u">62</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">5</td><td class="n u">107</td><td class="n u">2</td><td class="n ch">58</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">6</td><td class="n ch">165</td><td class="n u">2</td><td class="n u">58</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">7</td><td class="n u">165</td><td class="n ch">3</td><td class="n u">58</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">5</td><td class="n u">165</td><td class="n u">3</td><td class="n ch">71</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">6</td><td class="n ch">236</td><td class="n u">3</td><td class="n u">71</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">7</td><td class="n u">236</td><td class="n ch">4</td><td class="n u">71</td><td class="n "></td><td class="outc"></td></tr><tr><td class="n">5</td><td class="n u">236</td><td class="n u">4</td><td class="n ch">39</td><td class="n "></td><td class="outc"></td></tr></table></div>
+<div class="legend"><b style="color:var(--text)">Bold</b>: the value changed on this line · faint: carried down</div>
+</div>
+<div class="details"><b>Details ▸</b><span>run log</span></div></section></div>
+<div class="note" style="left:960px;top:250px;width:200px"><b>Today</b>5 of 7 columns fit at 1240 px, 4 at 1040: <i>average</i> and <i>Output</i> are off to the right; <i>scores</i> repeats the same list in all 23 rows.</div>
+<div class="note" style="left:985px;top:500px;width:190px;transform:rotate(1.4deg)"><b>Proposed</b>Unchanging values lift above the table; columns size to their values; Output is always the last visible column.</div>
+</main></div></body></html>

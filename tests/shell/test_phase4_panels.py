@@ -47,7 +47,7 @@ def test_trace_panel(window: MainWindow, qtbot: QtBot, tmp_path: Path) -> None:
 
 def test_bugs_panel(window: MainWindow, qtbot: QtBot, tmp_path: Path) -> None:
     panel = run_tool(window, qtbot, "bugs")
-    assert panel.results.tables["key"][0].rowCount() >= 1
+    assert panel.results.card_lists["key"].count() >= 1
     assert (tmp_path / "out" / "pasted_code_bug1.py").exists()
     assert panel.results.page_previews["pages"].path("sheet") == (
         tmp_path / "out" / "pasted_code_bugs.pdf"

@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QApplication
 from staffroom import __version__
 from staffroom.core.config import load_config
 from staffroom.core.log import get_logger, setup_logging
+from staffroom.shell import screenshot_paths
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.tool_panel import ToolPanel
 
@@ -50,7 +51,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=[],
         metavar="FIELD=VALUE",
-        help="set a field of the tool's options form, e.g. formats=docx (for --screenshot)",
+        help="set an option, a switch, chips (a,b), a text field or a file, e.g. formats=docx "
+        "(for --screenshot)",
     )
     parser.add_argument("--run", action="store_true", help="run the tool before --screenshot")
     parser.add_argument(
@@ -114,11 +116,20 @@ def build_window(args: argparse.Namespace) -> MainWindow:
         for form in window.panel_for(args.tool).forms.values():
             form.apply_preset(args.preset)
     if args.option and args.tool:
+        panel = window.panel_for(args.tool)
         for item in args.option:
             name, _, value = item.partition("=")
-            for form in window.panel_for(args.tool).forms.values():
+            for form in panel.forms.values():
                 if name in form.widgets:
                     form.set_field(name, int(value) if value.isdigit() else value)
+            if name in panel.choices:
+                panel.choices[name].set_value(value)
+            if name in panel.chip_choices:  # a comma-separated list of chips
+                panel.chip_choices[name].set_value(v.strip() for v in value.split(","))
+            if name in panel.text_fields:
+                panel.set_text(name, value)
+            if name in panel.pickers:  # a second file, such as quiz's taught log
+                panel.set_input_path(name, Path(value).resolve())
     if args.resource is not None:
         window.show_library()
         if args.resource:
@@ -218,11 +229,34 @@ def _save_when_drawn(
     QTimer.singleShot(150, lambda: _save_screenshot(app, window, path))  # the large page too
 
 
+def _default_output(panel: ToolPanel) -> Path:
+    """Where the panel would write with no output folder set, as on a fresh
+    install: the screenshot's throwaway folder is shown as this."""
+    general = panel.config.general
+    saved, general.output_dir = general.output_dir, ""
+    try:
+        return panel.destination(panel.collect_inputs())
+    finally:
+        general.output_dir = saved
+
+
 def _save_screenshot(app: QApplication, window: MainWindow, path: Path) -> None:
     app.processEvents()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    ok = window.grab().save(str(path))
-    print(("saved " if ok else "FAILED to save ") + str(path))
+    # Show the folders a teacher would see, not this machine's temp and
+    # checkout paths, and refuse an image that still names one (#14).
+    current = window.stack.currentWidget()
+    default = _default_output(current) if isinstance(current, ToolPanel) else None
+    table = screenshot_paths.aliases(window.config, default)
+    screenshot_paths.neutralise(window, table, blank=window.config.general.output_dir)
+    app.processEvents()
+    leaked = screenshot_paths.leaks(window)
+    if leaked:
+        print(f"REFUSED to save {path}: it would show a path on this machine: {leaked[0]!r}")
+        ok = False
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ok = window.grab().save(str(path))
+        print(("saved " if ok else "FAILED to save ") + str(path))
     # A first index may still be running (a fresh home, or a folder indexed
     # for the first time): stop it before the window goes, or Qt aborts the
     # process after the PNG is written (#40).

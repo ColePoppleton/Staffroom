@@ -36,7 +36,10 @@ def register(app: typer.Typer) -> None:
             str, typer.Option("--label", "-l", help="Lesson label, e.g. 'P3 Y9 loops'")
         ],
     ) -> None:
-        """Copy RESOURCE into today's session folder and open the copy in your editor."""
+        """Copy RESOURCE into today's session folder and open the copy in your editor.
+
+        Example: staff classroom open examples/year9.py --label "P3 Y9 loops"
+        """
         from staffroom.tools.classroom import plugin
 
         try:
@@ -49,7 +52,10 @@ def register(app: typer.Typer) -> None:
 
     @app.command("list")
     def list_() -> None:
-        """List past session copies (newest day first)."""
+        """List past session copies, newest day first.
+
+        Example: staff classroom list
+        """
         from staffroom.tools.classroom import plugin
 
         ctx = _ctx()
@@ -65,7 +71,10 @@ def register(app: typer.Typer) -> None:
     def diff(
         session_file: Annotated[str, typer.Argument(help="Path under the sessions folder")],
     ) -> None:
-        """Unified diff of a session copy against its original."""
+        """Show what changed in a session copy since it was copied from its original.
+
+        Example: staff classroom diff "2026-10-12/P3 Y9 loops/year9.py"
+        """
         from staffroom.tools.classroom import plugin
 
         try:
@@ -82,6 +91,8 @@ def register(app: typer.Typer) -> None:
         """Copy an edited session file back next to its original as <name>_v2.
 
         Never overwrites. An unchanged copy writes nothing and says which file already holds it.
+
+        Example: staff classroom promote "2026-10-12/P3 Y9 loops/year9.py"
         """
         from staffroom.tools.classroom import plugin
 
@@ -98,7 +109,10 @@ def register(app: typer.Typer) -> None:
     def reopen(
         session_file: Annotated[str, typer.Argument(help="Path under the sessions folder")],
     ) -> None:
-        """Launch the editor on a session copy again."""
+        """Open a session copy in your editor again.
+
+        Example: staff classroom reopen "2026-10-12/P3 Y9 loops/year9.py"
+        """
         from staffroom.tools.classroom import plugin
 
         try:

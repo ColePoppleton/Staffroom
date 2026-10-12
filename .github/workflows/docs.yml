@@ -3,7 +3,7 @@ name: Docs
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "mkdocs.yml", "CHANGELOG.md", ".github/workflows/docs.yml"]
+    paths: ["docs/**", "mkdocs.yml", "CHANGELOG.md", "scripts/release.py", ".github/workflows/docs.yml"]
   workflow_dispatch:
 
 permissions:
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --only-group docs
-      - run: cp CHANGELOG.md docs/changelog.md
+      - run: uv run --only-group docs python scripts/release.py site > docs/changelog.md
       - run: uv run --only-group docs mkdocs build --strict
       - uses: actions/upload-pages-artifact@v3
         with:
