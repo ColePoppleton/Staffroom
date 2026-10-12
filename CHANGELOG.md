@@ -11,6 +11,13 @@ full list for contributors, grouped under Added, Changed and Fixed. Versions up 
 later entries refer to this repository's issues.
 
 ## [Unreleased]
+
+Staffroom no longer crashes now and then while a tool runs, and Settings › Updates tells you
+when a new version is out and gives the one command to update. Trace says what to type when a
+program needs input, Quiz starts from your question bank with its topics to pick, and Parsons
+puzzles can include a line with the wrong variable. The guides and screenshots match the app
+again, and a fresh install is about a third of the size.
+
 ### Added
 - *New issue* offers a **Bug report** and an **Idea for a tool or change** form
   in teacher words, each with a required tick box that nothing from school
@@ -81,8 +88,6 @@ later entries refer to this repository's issues.
   `ChipChoice` input, `PanelSpec.inspect` (what a tool found in its inputs, shown beside
   them), `PanelSpec.joined`, `ResourcePicker(chip=True)`, and `OptionsForm(inline=...,
   more=...)` (#17).
-
-### Changed
 - Trace's completed table and the bugs key fit the screen (#16). Trace lifts a value
   that never changes (*Never changes after line 2: scores = […]*) above the table,
   sizes columns to their values, makes a changed value bold and a carried one grey,
@@ -97,6 +102,7 @@ later entries refer to this repository's issues.
   the whole `pyside6` package with its web engine. The dev lock and a fresh install
   now get the same Qt. Qt 6.12 needs macOS 14 Sonoma or later. A test fails if any
   code imports a Qt module those two packages do not ship.
+
 ### Fixed
 - The docs tell the truth (#14, #34). Install says to open a new Terminal window after
   installing uv (in the same window the next line stops with `uv: command not found`),
