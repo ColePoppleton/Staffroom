@@ -12,6 +12,7 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-12
 Nothing changes for teachers since 0.9.0. This version only fixes a check that stopped
 0.9.0's release page from being published.
 
