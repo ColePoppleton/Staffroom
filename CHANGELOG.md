@@ -12,6 +12,13 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 
+Nothing changes for teachers since 0.9.0. This version only fixes a check that stopped
+0.9.0's release page from being published.
+
+### Fixed
+- The changelog site test no longer expects an *Unreleased* fold right after a release,
+  when that section is empty; this failure kept the 0.9.0 GitHub Release from being built.
+
 ## [0.9.0] - 2026-10-12
 Staffroom no longer crashes now and then while a tool runs, and Settings › Updates tells you
 when a new version is out and gives the one command to update. Trace says what to type when a
