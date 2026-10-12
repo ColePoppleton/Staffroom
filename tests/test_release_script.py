@@ -331,5 +331,15 @@ def test_the_real_site_page_builds_from_the_changelog() -> None:
     text = (REAL_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     page = release.site_page(text)
     released = release.sections(text)
+    # Unreleased folds only while it holds lines: right after a release it is empty.
+    unreleased = text.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
+    pending = 1 if unreleased.strip() else 0
     assert page.count('<div class="release-summary"') == len(released)
-    assert page.count("<details") == page.count("</details>") == len(released) + 1
+    assert page.count("<details") == page.count("</details>") == len(released) + pending
+
+
+def test_an_empty_unreleased_section_has_no_fold() -> None:
+    text = changelog()
+    page = release.site_page(text)
+    assert "Not released yet" not in page
+    assert "## [Unreleased]\n\n## [0.8.0]" in page
