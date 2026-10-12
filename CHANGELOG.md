@@ -11,6 +11,9 @@ full list for contributors, grouped under Added, Changed and Fixed. Versions up 
 later entries refer to this repository's issues.
 
 ## [Unreleased]
+### Fixed
+- `just install` deletes its build in `dist/` once the app is in Applications, so Spotlight
+  lists Staffroom once instead of twice.
 
 ## [0.9.1] - 2026-10-12
 Nothing changes for teachers since 0.9.0. This version only fixes a check that stopped

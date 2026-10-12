@@ -8,6 +8,7 @@ there is nothing to rebuild or reinstall.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import plistlib
 import re
@@ -130,6 +131,9 @@ def install(app: Path, target_dirs: tuple[Path, ...] | None = None) -> Path:
         subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(target)], check=False)
         sign(target)
         unregister(app)
+        # Spotlight indexes folders, not only Launch Services: a build left in
+        # dist/ shows up as a second Staffroom, so the installed copy is the only one.
+        shutil.rmtree(app, ignore_errors=True)
         register(target)
         return target
     msg = "could not write to /Applications or ~/Applications"
@@ -197,6 +201,8 @@ def main() -> None:
     if "--install" in sys.argv:
         target = install(app)
         print("installed", target)
+        with contextlib.suppress(OSError):
+            out.rmdir()  # only when empty
         if os.environ.get("STAFFROOM_OPEN"):
             subprocess.run(["open", str(target)], check=False)
 
