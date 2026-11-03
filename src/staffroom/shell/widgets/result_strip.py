@@ -131,7 +131,9 @@ class ResultStrip(QWidget):
         self.headline.setObjectName("StripHeadline")
         self.headline.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         row.addWidget(self.headline, 0, Qt.AlignmentFlag.AlignTop)
-        self.message = ElidedLabel(max_lines=OUTCOME_LINES, whole_words=True)
+        # Height-for-width: a resize that rewraps the message grows the strip
+        # in the same layout pass, so no frame squeezes the lines (#45).
+        self.message = ElidedLabel(max_lines=OUTCOME_LINES, whole_words=True, height_for_width=True)
         self.message.setObjectName("StripMessage")
         row.addWidget(self.message, 1, Qt.AlignmentFlag.AlignTop)
 

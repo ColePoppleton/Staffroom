@@ -54,24 +54,28 @@ class ResourcePickerWidget(QWidget):
         self.library_button.setEnabled(resources is not None)
         self.browse_button = QPushButton("Browse…")
         self.browse_button.clicked.connect(self.browse)
+        layout.addWidget(self.edit)
+        self.chip: QFrame | None = None
+        if spec.chip:
+            self._build_chip(layout)
+            return
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
         buttons.addWidget(self.library_button)
         buttons.addWidget(self.browse_button)
         buttons.addStretch(1)
-        layout.addWidget(self.edit)
         layout.addLayout(buttons)
-        self.chip: QFrame | None = None
-        if spec.chip:
-            self._build_chip(layout, buttons)
 
-    def _build_chip(self, layout: QVBoxLayout, buttons: QHBoxLayout) -> None:
-        """The chip replaces the field and the button row; the field still
-        holds the value."""
+    def _build_chip(self, layout: QVBoxLayout) -> None:
+        """The chip takes the place of the field and the button row; the
+        field still holds the value.
+
+        The row is never built here only to be taken out again: a row with a
+        stretch, added to this layout and then removed and dropped, deleted
+        its spacer while PySide 6.11 still held a wrapper for it, and the
+        next object made at that address (a tool's tab bar) came back as that
+        stale ``QSpacerItem`` (#54)."""
         self.edit.hide()
-        for button in (self.library_button, self.browse_button):
-            buttons.removeWidget(button)
-        layout.removeItem(buttons)
         chip = QFrame()
         chip.setObjectName("FileChip")
         row = QHBoxLayout(chip)
