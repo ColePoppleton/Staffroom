@@ -26,6 +26,12 @@ later entries refer to this repository's issues.
   breaks a path after `~/` (the first-run card printed "~/ TeachingSessions") (#23).
 - `just install` deletes its build in `dist/` once the app is in Applications, so Spotlight
   lists Staffroom once instead of twice.
+- The Library preview no longer freezes the app on a big photo or a long PDF, and a PDF
+  shows its page instead of its first page's text, so a scanned booklet looks like itself:
+  *Page 1 of N* with Previous and Next. Photos are decoded off the GUI thread at the size
+  they are shown and keep their orientation; PDF pages are drawn in Qt's own renderer
+  thread; arrowing through many files runs one decode at a time and shows only the last;
+  the last few previews are kept, so going back is instant (#64).
 
 ## [0.9.1] - 2026-10-12
 Nothing changes for teachers since 0.9.0. This version only fixes a check that stopped

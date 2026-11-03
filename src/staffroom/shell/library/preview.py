@@ -1,6 +1,8 @@
 """The preview pane: the file's title, its tags as chips and the use bar
-over the file itself (code, text, image or PDF text for parseable kinds; a
-short card saying why not for everything else, which is never parsed)."""
+over the file itself (code or text; a picture of an image or of a PDF's
+pages, drawn off the GUI thread so a big photo or a long scanned booklet
+never freezes the window (#64); a short card saying why not for everything
+else, which is never parsed)."""
 
 from __future__ import annotations
 
@@ -20,16 +22,17 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from staffroom.core.library.extract import CloudOnlyError, read_pdf_text, read_text
+from staffroom.core.library.extract import CloudOnlyError, read_text
 from staffroom.core.library.model import Resource
 from staffroom.core.library.service import LibraryService
 from staffroom.core.log import get_logger
 from staffroom.shell.library.result_item import KIND_LABEL
 from staffroom.shell.library.tag_chips import TagChips
 from staffroom.shell.library.use_bar import UseBar
-from staffroom.shell.widgets import ImageViewWidget, make_label
+from staffroom.shell.widgets import make_label
 from staffroom.shell.widgets.code_view import CodeViewWidget
 from staffroom.shell.widgets.elided_label import ElidedLabel
+from staffroom.shell.widgets.picture_preview import PicturePreview
 
 log = get_logger(__name__)
 
@@ -165,8 +168,10 @@ class PreviewPane(QWidget):
         self.text.setReadOnly(True)
         self.content.addWidget(self.text)
 
-        self.image = ImageViewWidget()
-        self.content.addWidget(self.image)
+        # Images and PDFs, as pictures: decoded or drawn off the GUI thread,
+        # a PDF with Page 1 of N under it. Its text layer is for search only.
+        self.picture = PicturePreview()
+        self.content.addWidget(self.picture)
 
         # Files the library never opens: what it is and why, over an empty
         # frame. The use bar above carries Open externally as the main action.
@@ -195,6 +200,7 @@ class PreviewPane(QWidget):
     # -- showing ---------------------------------------------------------
     def clear(self) -> None:
         self.resource = None
+        self.picture.clear()
         self.stack.setCurrentWidget(self.empty)
 
     def show_resource(self, resource: Resource) -> None:
@@ -218,13 +224,17 @@ class PreviewPane(QWidget):
         # copy beside the title would only repeat it.
         self.open_button.setVisible(not self.use_bar.open_button.isVisibleTo(self.use_bar))
 
-        if resource.cloud_only or resource.external_only:
+        card = resource.cloud_only or resource.external_only
+        if card or resource.kind not in ("image", "pdf"):
+            self.picture.clear()  # no picture wanted: a late one never shows
+        if card:
             self._show_card(resource, path)
         elif resource.kind == "image":
-            self.image.set_image(path)
-            self.content.setCurrentWidget(self.image)
+            self.content.setCurrentWidget(self.picture)  # first, so it has its size
+            self.picture.show_image(path, resource.mtime)
         elif resource.kind == "pdf":
-            self._show_text(self._safe(lambda: read_pdf_text(path, page_cap=1), path), pdf=True)
+            self.content.setCurrentWidget(self.picture)
+            self.picture.show_pdf(path, resource.mtime)
         elif resource.kind == "python":
             self.code.set_text(self._safe(lambda: read_text(path), path))
             self.content.setCurrentWidget(self.code)
@@ -241,11 +251,7 @@ class PreviewPane(QWidget):
             log.warning("preview failed for %s: %s", path, exc)
             return f"Could not read {path.name}: {exc}"
 
-    def _show_text(self, text: str, *, pdf: bool = False) -> None:
-        if pdf and not text.strip():
-            text = "No text layer on the first page (scanned PDF?). Open externally to view it."
-        elif pdf:
-            text = "First page text:\n\n" + text
+    def _show_text(self, text: str) -> None:
         self.text.setPlainText(text)
         self.content.setCurrentWidget(self.text)
 
