@@ -29,7 +29,7 @@ README_CLAIMS = [
     "an index of the files (and their text) in your resources folder",
     "identifier columns are dropped on load",
     "only class-level aggregates are saved",
-    "the only network call asks GitHub which release is newest",
+    "the only network call it makes on its own asks GitHub which release is newest",
 ]
 
 # Words for the person building Staffroom, not the teacher reading about it.
