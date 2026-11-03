@@ -321,6 +321,29 @@ def test_year9_at_seed_1_has_wrong_variables() -> None:
         ]
 
 
+def test_year9_sheets_are_pinned() -> None:
+    """The rule moved to ``core.pyscope`` (#48) without changing a sheet."""
+    expected = {
+        2: [
+            ("total = total + count", "wrong variable"),
+            ("else", "missing colon"),
+            ('print("Average:", count)', "wrong variable"),
+            ("for score in scores", "missing colon"),
+        ],
+        3: [
+            ('print("Average:", count)', "wrong variable"),
+            ("total = score + score", "wrong variable"),
+            ("average = count / count", "wrong variable"),
+            ("if count >= 50:", "wrong variable"),
+        ],
+    }
+    for seed, distractors in expected.items():
+        for granularity in ("statement", "line"):
+            options = logic.Options(seed=seed, distractors=4, granularity=granularity)
+            problem = logic.make_problem(CORPUS["year9"], options)
+            assert [(b.lines[0], b.kind) for b in problem.shuffled if b.distractor] == distractors
+
+
 def test_wrong_variables_in_year9() -> None:
     """Each name read is swapped for the number most recently set before its
     line; the list, the loop's own header and the literals are left alone."""
@@ -368,6 +391,15 @@ def test_wrong_variables_stay_in_their_function() -> None:
     # bonus, set after it. At the top level, never the function's locals.
     assert [(s.old, s.new) for s in swaps[5]] == [("base", "extra"), ("extra", "base")]
     assert [(s.old, s.new) for s in swaps[7]] == [("rate", "bonus"), ("bonus", "rate")]
+
+
+def test_a_name_set_by_unpacking_counts_as_set() -> None:
+    """``a, b = b, a + b`` sets a and b on line 5, so they, not the loop
+    counter, are the most recent numbers before line 6. Bugs always counted
+    it; Parsons missed it until the two shared one rule (#48)."""
+    source = "a = 0\nb = 1\nn = 10\nfor i in range(n):\n    a, b = b, a + b\nprint(n)\n"
+    swaps = logic.variable_swaps(source)
+    assert [(s.old, s.new) for s in swaps[6]] == [("n", "a")]
 
 
 def test_wrong_variables_are_seed_reproducible() -> None:

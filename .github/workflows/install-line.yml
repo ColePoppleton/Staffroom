@@ -21,6 +21,7 @@ on:
       - "src/staffroom/core/install.py"
       - "src/staffroom/core/update.py"
       - "tests/test_installed_copy.py"
+      - "tests/test_sdist.py"
       - ".github/workflows/install-line.yml"
   pull_request:
     paths:
@@ -31,6 +32,7 @@ on:
       - "src/staffroom/core/install.py"
       - "src/staffroom/core/update.py"
       - "tests/test_installed_copy.py"
+      - "tests/test_sdist.py"
       - ".github/workflows/install-line.yml"
   workflow_dispatch:
 
@@ -90,3 +92,7 @@ jobs:
           STAFFROOM_WHEEL_TEST: "1"
           QT_QPA_PLATFORM: offscreen
         run: uv run pytest -q tests/test_installed_copy.py
+      - name: The sdist stays small and builds the same wheel as this commit (#22)
+        env:
+          STAFFROOM_WHEEL_TEST: "1"
+        run: uv run pytest -q tests/test_sdist.py

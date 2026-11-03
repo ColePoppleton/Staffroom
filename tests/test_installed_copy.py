@@ -103,6 +103,7 @@ def checkout(root: Path, *, name: str = "staffroom", git_dir: bool = True) -> Pa
 # -- detection -----------------------------------------------------------
 
 
+@pytest.mark.checkout
 def test_the_running_test_copy_is_this_checkout() -> None:
     """The owner's launcher and ``uv run`` import from ``src/``: a checkout,
     whose root is this repository."""
@@ -245,6 +246,7 @@ def test_staff_update_on_an_installed_copy_prints_one_line(
     assert installed == []
 
 
+@pytest.mark.checkout
 def test_the_real_checkout_still_asks_git() -> None:
     """Unchanged for the owner's checkout: status reads the repository (no
     fetch here, so no network)."""
