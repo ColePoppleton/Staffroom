@@ -3,6 +3,7 @@ other apps; the web assets stay full-bleed."""
 
 from pathlib import Path
 
+import pytest
 from PySide6.QtGui import QImage
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,7 @@ def test_app_icon_has_transparent_inset() -> None:
     assert 511 - right >= minimum and 511 - bottom >= minimum
 
 
+@pytest.mark.checkout
 def test_docs_icon_is_full_bleed() -> None:
     image = QImage(str(DOCS_ICON))
     left, top, right, bottom = alpha_bbox(image)

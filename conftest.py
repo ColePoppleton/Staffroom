@@ -18,6 +18,20 @@ EXAMPLES = paths.examples_dir()
 # Read once, before any test can monkeypatch HOME.
 REAL_HOME = Path.home().resolve()
 UNRECORDED_SESSIONS_ROOT = paths.sessions_root
+# An unpacked source distribution (#22) has PKG-INFO at its root, which a git
+# checkout never has. It carries src/, tests/ and examples/ only, so the tests
+# about the repository around the package (the docs site, the CI workflows, the
+# release and packaging scripts) are marked ``checkout`` and skipped there.
+FROM_SDIST = (Path(__file__).resolve().parent / "PKG-INFO").is_file()
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    if not FROM_SDIST:
+        return
+    skip = pytest.mark.skip(reason="needs the git checkout; the source distribution has no docs")
+    for item in items:
+        if item.get_closest_marker("checkout"):
+            item.add_marker(skip)
 
 
 @pytest.fixture(autouse=True)

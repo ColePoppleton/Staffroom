@@ -59,6 +59,7 @@ src/staffroom/
                     library/ (Resource Library: index, search, tags, service),
                     export/ (house style: Document → docx / PDF / text),
                     runner/ (sandboxed subprocess with timeout), codeinput,
+                    pyscope (the wrong-variable rule Bugs and Parsons share),
                     spec/ (OCR J277 / AQA 8525 taxonomies as TOML)
   shell/            staffroom: the PySide6 launcher and its widget kit
   tools/<name>/     one package per tool: __init__ (plugin), cli, logic, panel, tests/
