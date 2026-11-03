@@ -273,6 +273,7 @@ def test_screenshot_mode_never_asks(qtbot: QtBot, monkeypatch: pytest.MonkeyPatc
 # -- a checkout keeps its card -----------------------------------------------------
 
 
+@pytest.mark.checkout
 def test_a_checkout_keeps_its_git_card_and_never_asks_github(
     qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from pytestqt.qtbot import QtBot
 
 from staffroom import __version__
@@ -40,6 +41,7 @@ def test_sidebar_footer_shows_the_version_and_update_state(qtbot: QtBot) -> None
     assert sidebar.update_button.isHidden()
 
 
+@pytest.mark.checkout
 def test_settings_updates_card_states_the_running_version(qtbot: QtBot) -> None:
     page = SettingsPage(load_config())
     qtbot.addWidget(page)

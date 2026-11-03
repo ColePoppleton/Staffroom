@@ -71,12 +71,14 @@ def test_the_guard_recognises_a_root_under_the_real_home(tmp_path: Path) -> None
 REPO = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.checkout
 def test_the_screenshot_script_isolates_both_folders() -> None:
     script = (REPO / "scripts" / "screenshots.sh").read_text(encoding="utf-8")
     assert 'export STAFFROOM_HOME="$home"' in script
     assert 'export STAFFROOM_SESSIONS="$home/sessions"' in script
 
 
+@pytest.mark.checkout
 def test_the_contributing_guide_tries_things_out_in_throwaway_folders() -> None:
     """#18 and #37: fork first, a try-out that sets both variables, how long
     ``just check`` takes, and where to ask."""

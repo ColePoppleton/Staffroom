@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from staffroom.core import spec
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +42,7 @@ def _boards_in(chunk: str) -> set[str]:
     return named
 
 
+@pytest.mark.checkout  # reads the docs, README and CLAUDE.md beside the package
 def test_a_list_of_boards_names_them_all() -> None:
     every = set(spec.BOARDS)
     assert set(spec.SHORT_NAMES) == every
