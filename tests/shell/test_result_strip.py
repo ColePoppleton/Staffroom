@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QPoint, Qt
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 from pytestqt.qtbot import QtBot
 
 from staffroom.core.config import load_config
@@ -271,11 +271,15 @@ def test_a_long_failure_shows_whole_and_the_strip_grows(
     assert " ".join(lines) == LONG_FAILURE
     assert strip.message.toolTip() == ""
     assert strip.height() > one_line
-    # Wider, then back: it rewraps each time and the strip follows.
+    # Wider, then back: it rewraps each time and the strip follows in the
+    # same layout pass, so the lines fit before the event loop runs again
+    # as well as after (#45).
     narrow_window.resize(1600, 900)
+    _assert_fits(strip)
     QApplication.processEvents()
     assert " ".join(_assert_fits(strip)) == LONG_FAILURE
     narrow_window.resize(narrow_window.minimumSize())
+    _assert_fits(strip)
     QApplication.processEvents()
     assert len(_assert_fits(strip)) == len(lines)
     # The next run puts the strip back to one line.
@@ -283,6 +287,31 @@ def test_a_long_failure_shows_whole_and_the_strip_grows(
     run(panel, qtbot)
     assert strip.message.max_lines == 2
     assert len(_assert_fits(strip)) == 1
+
+
+def test_a_rewrap_and_the_room_for_it_arrive_in_one_layout_pass(qtbot: QtBot) -> None:
+    """Narrowing or widening the pane rewraps the message, and the strip is
+    given the height for the new lines in that same layout pass: no frame
+    shows them squeezed into the old height (#45). Checked straight after
+    each resize, before the event loop runs."""
+    host = QWidget()
+    qtbot.addWidget(host)
+    column = QVBoxLayout(host)
+    column.setContentsMargins(0, 0, 0, 0)
+    strip = ResultStrip()
+    column.addWidget(strip)
+    column.addStretch(1)
+    host.resize(1400, 400)
+    host.show()
+    strip.show_failure(LONG_FAILURE)
+    QApplication.processEvents()
+    counts = {len(_assert_fits(strip))}
+    for width in (1000, 760, 560, 420, 560, 760, 1000, 1400):
+        host.resize(width, 400)  # lays the strip out synchronously
+        lines = _assert_fits(strip)
+        assert " ".join(lines) == LONG_FAILURE
+        counts.add(len(lines))
+    assert len(counts) >= 3  # it did rewrap, both ways
 
 
 def test_a_failure_past_the_cap_is_cut_between_words_with_a_tooltip(qtbot: QtBot) -> None:
