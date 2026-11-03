@@ -4,7 +4,8 @@ Used by ``trace`` and ``bugs`` (``fade`` only blanks lines as text and runs
 nothing). This is a convenience fence, not a security boundary: these are the
 teacher's own files. What it does provide:
 
-* ``python -I -u`` (isolated: no site, no env-driven imports) in a fresh
+* ``python -I -B -u`` (isolated: no site, no env-driven imports, no ``.pyc``
+  written anywhere) in a fresh
   temp working directory with a minimal environment;
 * a hard wall-clock timeout, after which the process is killed, plus a CPU
   rlimit as a second guard where the platform supports it;
@@ -264,7 +265,9 @@ def run_file(
         "PYTHONIOENCODING": "utf-8",
         "PYTHONDONTWRITEBYTECODE": "1",
     }
-    cmd = [str(interpreter()), "-I", "-u", "-X", "utf8", str(path), *(argv or [])]
+    # -B: write no .pyc anywhere. -I ignores PYTHONDONTWRITEBYTECODE, and the
+    # Mac app's Python must stay unchanged or its code signature breaks (#60).
+    cmd = [str(interpreter()), "-I", "-B", "-u", "-X", "utf8", str(path), *(argv or [])]
     started = time.perf_counter()
     proc = subprocess.Popen(
         cmd,

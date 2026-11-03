@@ -27,8 +27,8 @@ in Thonny anyway.
   adds *output capped at 1024 KB*. Trace also caps what it collects inside the run
   at 1 MB, so a `while True: print(i)` traced for 10 seconds stays small.
 - **A fresh, temporary working folder** that is deleted afterwards, a
-  minimal environment, and `python -I` (no site packages, no `PYTHON*`
-  variables from your shell). Inputs you type in the *Inputs* box are fed
+  minimal environment, and `python -I -B` (no site packages, no `PYTHON*`
+  variables from your shell, no `.pyc` files written). Inputs you type in the *Inputs* box are fed
   to `input()`, one line each. When they run out, Trace stops and
   writes nothing: the result strip says which input was missing (*asked for
   a 2nd input, but was given only 1 line*), the result pane says how many

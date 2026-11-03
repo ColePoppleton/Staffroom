@@ -12,7 +12,8 @@ read or written:
 3. runs that cover the risky parts complete: Trace, Bugs and Fade on
    ``examples/year9.py`` (pupil code through ``core/runner`` and the bundled
    Python), Parsons and Worksheet (Word and PDF exports), Marks (charts),
-   Pseudocode and Quiz.
+   Pseudocode and Quiz;
+4. nothing inside the app changed (its ad-hoc code signature still verifies).
 
 Exits non-zero on the first failure, printing the launcher's output and the
 end of its log, so the Release workflow stops before it publishes. Prints
@@ -137,6 +138,26 @@ def smoke(app: Path, work: Path) -> None:
             tail = log.read_text(errors="replace")[-4000:] if log.exists() else "(no log)"
             raise SmokeError(f"{tool} did not run: {line or out}\n--- log ---\n{tail}")
         print(f"ok   {tool} runs")
+    check_signature(app)
+
+
+def check_signature(app: Path) -> None:
+    """After every run: the app is unchanged. Anything written inside it
+    (a stray .pyc from a pupil run) breaks the seal, and macOS then calls a
+    downloaded copy damaged."""
+    proc = subprocess.run(
+        ["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    if proc.returncode != 0:
+        changed = sorted(
+            str(p.relative_to(app)) for p in app.rglob("*.pyc") if "pupil-python" in p.parts
+        )[:10]
+        raise SmokeError(f"the runs changed the app: {proc.stderr.strip()}\n" + "\n".join(changed))
+    print("ok   the app is unchanged after the runs (codesign --verify)")
 
 
 def main(argv: list[str] | None = None) -> int:

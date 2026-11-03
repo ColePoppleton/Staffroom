@@ -188,7 +188,9 @@ def test_frozen_app_runs_pupil_code_with_its_bundled_python(
     out = run_source("import os\nprint(os.path.basename(os.getcwd()))\n")
     assert out.ok, out.stderr
     assert out.stdout.startswith("staffroom-run-")  # a fresh temp folder, not the app's
-    assert spawned[-1][:2] == [str(bundled), "-I"]
+    # -B as well as -I: isolated mode ignores PYTHONDONTWRITEBYTECODE, and a
+    # .pyc written inside the app breaks its code signature.
+    assert spawned[-1][:3] == [str(bundled), "-I", "-B"]
     assert sys.executable not in spawned[-1]
 
     started = time.perf_counter()
