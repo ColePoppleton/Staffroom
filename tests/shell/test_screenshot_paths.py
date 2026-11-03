@@ -138,3 +138,25 @@ def test_a_home_relative_folder_is_neutral_too() -> None:
     shown = screenshot_paths.neutral("~/Teaching-Tools-worktrees/fix/x/resources", table)
     assert shown == "~/Documents/Teaching resources"
     assert screenshot_paths.neutral(str(resources), table) == "~/Documents/Teaching resources"
+
+
+def test_screenshot_mode_names_a_missing_tool_and_reports_each_run(
+    qapp: QApplication, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The Mac app's smoke test (#60) drives the launcher this way: a tool
+    that discovery skipped is an exit code, not a picture of the home page,
+    and a run prints whether it worked."""
+    from types import SimpleNamespace
+
+    from staffroom.core.plugin import RunResult
+    from staffroom.shell.app import _run_line, main
+
+    assert main(["--tool", "no-such-tool", "--screenshot", str(tmp_path / "x.png")]) == 2
+    assert "no tool named 'no-such-tool'" in capsys.readouterr().out
+    assert not (tmp_path / "x.png").exists()
+
+    panel = SimpleNamespace(
+        plugin=SimpleNamespace(name="trace"), last_result=RunResult(summary="12 steps")
+    )
+    assert _run_line(panel, True) == "run ok: trace: 12 steps"  # type: ignore[arg-type]
+    assert _run_line(panel, False) == "run failed: trace"  # type: ignore[arg-type]

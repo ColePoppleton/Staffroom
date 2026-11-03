@@ -14,7 +14,9 @@ from staffroom.tools.parsons.logic import Options, make_problem
 from staffroom.tools.parsons.sheet import build_document
 
 runner = CliRunner()
-YEAR9 = paths.examples_dir() / "year9.py"
+EXAMPLES = paths.examples_dir()
+assert EXAMPLES is not None, "the tests run from a checkout"
+YEAR9 = EXAMPLES / "year9.py"
 CODE = "count = 0\nwhile count < 10:\n    print(count)\n    count += 1\n"
 
 

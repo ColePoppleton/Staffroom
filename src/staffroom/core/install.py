@@ -29,13 +29,16 @@ DEFAULT_BRANCH = "main"
 # The documented install line (#11): it follows ``main``, so the upgrade
 # command above moves it to the newest release.
 INSTALL_LINE = "uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main"
+# The zipped Mac app each GitHub Release carries (#60); packaging/bundle.py
+# names the file the Release workflow attaches.
+APP_ASSET_PATTERN = "Staffroom-<version>-macos.zip"
 _INSTALLED_DIRS = {"site-packages", "dist-packages"}
 
 
 class InstallKind(StrEnum):
     CHECKOUT = "checkout"  # this project's own git work tree (the thin launcher, a clone)
     UV_TOOL = "uv-tool"  # ``uv tool install``, from git or a wheel
-    OTHER = "other"  # pip into a venv, a PyInstaller bundle, an unpacked sdist
+    OTHER = "other"  # pip into a venv, the Mac app (``app=True``), an unpacked sdist
 
 
 @dataclass(frozen=True)
@@ -48,6 +51,10 @@ class Installation:
     # pins a tag (the install line before #11) or a wheel file: ``upgrade``
     # says "Nothing to upgrade" for those, so the install line is the command.
     tracks_main: bool = True
+    # The self-contained Mac app from a GitHub Release (a PyInstaller bundle,
+    # #60). Its kind stays OTHER (nothing to run in Terminal); it is updated
+    # by downloading the newest app, which is what its hint says.
+    app: bool = False
 
     @property
     def is_checkout(self) -> bool:
@@ -76,6 +83,13 @@ class Installation:
             return (
                 "This copy was installed with uv and never updates itself. "
                 f"To update it, quit Staffroom and run: {UV_UPGRADE_COMMAND}"
+            )
+        if self.app:
+            return (
+                "This is the Staffroom app from GitHub and it never updates itself. "
+                f"To update it, download {APP_ASSET_PATTERN} from the newest release, "
+                "unzip it and drag Staffroom to Applications in place of this copy. "
+                "Your settings and lesson copies are kept."
             )
         if self.kind is InstallKind.OTHER:
             return (
@@ -106,7 +120,7 @@ def detect(package_dir: Path | None = None) -> Installation:
     git."""
     here = (package_dir or Path(__file__).resolve().parents[1]).resolve()
     if getattr(sys, "frozen", False):
-        return Installation(InstallKind.OTHER, here)
+        return Installation(InstallKind.OTHER, here, app=True)
     installed_in = next((p for p in here.parents if p.name in _INSTALLED_DIRS), None)
     if installed_in is not None:
         # <env>/lib/pythonX.Y/site-packages/staffroom; on Windows <env>/Lib/site-packages.

@@ -11,6 +11,15 @@ full list for contributors, grouped under Added, Changed and Fixed. Versions up 
 later entries refer to this repository's issues.
 
 ## [Unreleased]
+### Added
+- A self-contained Mac app (#60): each GitHub Release carries `Staffroom-<version>-macos.zip`
+  for Apple silicon, to unzip and drag to Applications with no Terminal or uv. It brings its
+  own Python 3.13 (python-build-standalone, pinned and checked by SHA-256) so Trace and Bugs run
+  programs through the usual runner, and the release is only published once the built app
+  passes a smoke test (every tool opens; Trace, Bugs and Fade run; Word and PDF export). The
+  Install page offers the download first, with the one-time *Open Anyway* step; Settings ›
+  Updates in the app links to the new release instead of showing a command.
+
 ### Changed
 - The source distribution carries only the package, its tests and the examples: 1.2 MB
   instead of 40 MB (no docs images, audits or `.claude/`). Tests about the repository
@@ -33,6 +42,8 @@ later entries refer to this repository's issues.
 - Marks' *Reteach first* says its threshold is the paper's own facility ("facility below the
   paper as a whole, 0.75"); Parsons warns above 30 blocks; a wrapped sentence no longer
   breaks a path after `~/` (the first-run card printed "~/ TeachingSessions") (#23).
+- `paths.examples_dir()` and `paths.project_root()` return nothing in an installed copy instead
+  of a folder above the package that has nothing to do with Staffroom (#27).
 - `just install` deletes its build in `dist/` once the app is in Applications, so Spotlight
   lists Staffroom once instead of twice.
 - Parsons counts a name set by unpacking (`a, b = b, a + b`, `for i, x in …`) as set on

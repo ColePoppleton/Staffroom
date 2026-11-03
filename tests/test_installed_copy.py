@@ -22,7 +22,7 @@ from typer.testing import CliRunner
 import staffroom
 from staffroom import __version__
 from staffroom.cli import app
-from staffroom.core import install, update
+from staffroom.core import install, paths, update
 from staffroom.core.install import Installation, InstallKind
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -194,6 +194,45 @@ def test_other_installs_are_not_checkouts(tmp_path: Path, monkeypatch: pytest.Mo
     # A frozen bundle never counts as a checkout, whatever its folders look like.
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     assert install.detect(checkout(tmp_path / "frozen")).kind is InstallKind.OTHER
+
+
+def test_the_mac_app_is_updated_by_downloading_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The PyInstaller bundle (#60): OTHER, so nothing offers a Terminal
+    command (the add-ons installer shows its manual route too), with a hint
+    that says to download the new app. No other install claims to be it."""
+    assert not install.detect(venv_package(tmp_path)).app
+    assert not install.detect(uv_tool_package(tmp_path / "tools")).app
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    here = install.detect(tmp_path / "Staffroom.app" / "Contents" / "Frameworks" / "staffroom")
+    assert here.kind is InstallKind.OTHER and here.app and here.root is None
+    assert here.update_command == ""
+    hint = here.update_hint()
+    assert "download" in hint and install.APP_ASSET_PATTERN in hint and "uv" not in hint
+
+
+def test_examples_and_project_root_exist_only_in_a_checkout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#27: from an installed copy the folders above the package are not
+    Staffroom's, so there is no project root and no examples folder."""
+    assert paths.project_root() == REPO_ROOT
+    assert paths.examples_dir() == REPO_ROOT / "examples"
+    for fake in (
+        install.Installation(InstallKind.UV_TOOL, uv_tool_package(tmp_path / "tools")),
+        install.Installation(InstallKind.OTHER, venv_package(tmp_path)),
+        install.Installation(InstallKind.OTHER, tmp_path / "Frameworks" / "staffroom", app=True),
+    ):
+        monkeypatch.setattr(install, "detect", lambda package_dir=None, fake=fake: fake)
+        assert paths.project_root() is None
+        assert paths.examples_dir() is None
+
+
+def venv_package(tmp_path: Path) -> Path:
+    package = tmp_path / "venv" / "lib" / "python3.12" / "site-packages" / "staffroom"
+    package.mkdir(parents=True, exist_ok=True)
+    return package
 
 
 # -- update, CLI: no git for an installed copy ---------------------------

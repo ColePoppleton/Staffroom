@@ -19,7 +19,9 @@ from staffroom.tools.bugs.logic import KIND_LABELS, Options
 from staffroom.tools.bugs.sheet import build_document
 
 runner = CliRunner()
-YEAR9 = paths.examples_dir() / "year9.py"
+EXAMPLES = paths.examples_dir()
+assert EXAMPLES is not None, "the tests run from a checkout"
+YEAR9 = EXAMPLES / "year9.py"
 
 PROGRAM = """total = 0
 count = 1

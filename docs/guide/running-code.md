@@ -4,7 +4,10 @@
 anything: it blanks lines out of the solution as text.
 
 A run happens in a separate Python process, started by the app with these
-limits. They are there to stop an accident (a loop that never ends, a print
+limits. In the downloaded Mac app that process is the copy of Python 3.13
+inside the app (without tkinter, so a `turtle` program stops with
+`No module named 'tkinter'`); installed with uv, it is the Python Staffroom
+itself runs on. They are there to stop an accident (a loop that never ends, a print
 flood) from freezing your Mac. They are **not a security boundary**: the file
 is one you chose, written by you or copied from a pupil, and you would run it
 in Thonny anyway.

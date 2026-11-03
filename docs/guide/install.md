@@ -1,6 +1,41 @@
 # Install
 
-## The canonical way: `uv tool install` from GitHub
+There are two ways to install Staffroom. Most teachers want the first.
+
+## Download the Mac app
+
+For a Mac with Apple silicon (M1 or newer) on macOS 14 Sonoma or later. No
+Terminal, no uv, nothing else to install.
+
+1. Open the newest [GitHub Release](https://github.com/ColePoppleton/Staffroom/releases/latest)
+   and, under *Assets*, download `Staffroom-<version>-macos.zip` (about 80 MB).
+2. Double-click the zip if your browser did not unzip it, then drag
+   **Staffroom** into your **Applications** folder.
+3. Open Staffroom from Applications.
+
+The first time, macOS stops it with a message that it cannot check the app
+for malicious software or verify the developer. That is because the app is
+not signed with a paid Apple developer account, not because anything is
+wrong. Do this **once**:
+
+1. Click **Done** (or **OK**) on the message.
+2. Open **System Settings › Privacy & Security** and scroll down to
+   *Security*. There is a line saying Staffroom was blocked; click
+   **Open Anyway** beside it, then enter your Mac's password.
+3. Click **Open Anyway** again on the message that follows. From now on
+   Staffroom opens like any other app.
+
+The app carries its own copy of Python for Trace and Bugs, so they work
+without any other Python on the Mac; your editor (Thonny) is unchanged.
+To update, Settings › Updates says when a new release is out and links to
+it: download the new zip and drag Staffroom into Applications again,
+replacing the old one. Your settings, library index and lesson copies live
+outside the app, so they are kept. See [Updating](updating.md).
+
+An Intel Mac, a Mac on an older macOS or a school-managed Mac that refuses
+apps from unidentified developers needs the second way.
+
+## With uv in Terminal
 
 Staffroom is a Python package. Installing it as a tool gives you the
 `staff` and `staffroom` commands without touching any other Python on the machine.

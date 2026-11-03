@@ -17,6 +17,8 @@ import os
 import shutil
 from pathlib import Path
 
+from staffroom.core import install
+
 APP_NAME = "staffroom"
 # The name before the rename to Staffroom; its config folder is copied once.
 LEGACY_APP_NAME = "teaching-tools"
@@ -64,13 +66,19 @@ def log_file() -> Path:
     return log_dir() / f"{APP_NAME}.log"
 
 
-def project_root() -> Path:
-    """The repository root (two levels above the ``staffroom`` package)."""
-    return Path(__file__).resolve().parents[3]
+def project_root() -> Path | None:
+    """The root of the git checkout this copy runs from, or ``None`` for an
+    installed copy (a uv tool, a wheel, the Mac app), which has no checkout:
+    the folder above an installed package is unrelated to Staffroom (#27).
+    :func:`staffroom.core.install.detect` decides."""
+    return install.detect().root
 
 
-def examples_dir() -> Path:
-    return project_root() / "examples"
+def examples_dir() -> Path | None:
+    """The checkout's ``examples/`` folder (invented data for tests, docs and
+    try-outs), or ``None`` for an installed copy, which does not ship it."""
+    root = project_root()
+    return root / "examples" if root is not None else None
 
 
 DEFAULT_SESSIONS_ROOT = "~/TeachingSessions"
