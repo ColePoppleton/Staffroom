@@ -60,7 +60,20 @@ def aliases(config: Config, default_output: Path | None = None) -> Aliases:
         for variant in {str(path), str(path.resolve())}:  # /var is /private/var on macOS
             if variant not in ("/", "."):
                 pairs.append((variant, shown))
+                # The Library's header shows its folder home-relative
+                # (``~/…``, ``short_path``): that form needs the alias too (#49).
+                home_relative = _home_relative(variant)
+                if home_relative and shown != "~":
+                    pairs.append((home_relative, shown))
     return sorted(set(pairs), key=lambda pair: len(pair[0]), reverse=True)
+
+
+def _home_relative(path: str) -> str:
+    """``~/rest`` for a path under home, else empty."""
+    try:
+        return "~/" + Path(path).relative_to(Path.home()).as_posix()
+    except ValueError:
+        return ""
 
 
 def neutral(text: str, table: Aliases) -> str:

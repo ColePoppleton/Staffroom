@@ -8,6 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from PySide6.QtGui import QTextLayout
+from PySide6.QtWidgets import QLabel
 from pytestqt.qtbot import QtBot
 
 from staffroom.core import paths
@@ -142,3 +144,32 @@ def test_first_run_flag_forces_the_card_for_screenshots(qtbot: QtBot, tmp_path: 
     assert win.first_run is not None
     assert win.stack.currentWidget() is win.first_run
     assert load_config().general.resources_root == str(tmp_path / "resources")  # untouched
+
+
+def _lines_at(label: QLabel, width: int) -> list[str]:
+    """How Qt lays out the label's own text (what it paints) at ``width``."""
+    text = QLabel.text(label)  # the C++ text, word joiners and all
+    layout = QTextLayout(text, label.font())
+    layout.beginLayout()
+    lines = []
+    while (line := layout.createLine()).isValid():
+        line.setLineWidth(width)
+        lines.append(text[line.textStart() : line.textStart() + line.textLength()])
+    layout.endLayout()
+    return lines
+
+
+def test_the_sessions_path_never_breaks_after_the_home_slash(fresh_window: MainWindow) -> None:
+    """#23: the card wrapped "~/ TeachingSessions" after the slash."""
+    card = fresh_window.first_run
+    assert card is not None
+    note = card.sessions_note
+    assert paths.DEFAULT_SESSIONS_ROOT in note.text()  # plain words for readers and tests
+    assert "⁠" not in note.text()
+    for width in range(160, 420, 2):
+        lines = _lines_at(note, width)
+        assert not any(line.rstrip().rstrip("⁠").endswith("~/") for line in lines), lines
+    # Screenshot mode rewrites the text; the rewritten path stays whole too.
+    note.setText("Copies go to ~/TeachingSessions/outputs today.")
+    assert note.text() == "Copies go to ~/TeachingSessions/outputs today."
+    assert "~/⁠TeachingSessions" in QLabel.text(note)

@@ -4,9 +4,30 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+WORD_JOINER = "\u2060"  # invisible; forbids a line break where it stands
+
+
+class SentenceLabel(QLabel):
+    """A wrapping sentence that may name a folder under home: Qt breaks a line
+    after a slash, so "~/TeachingSessions" could end one line with "~/" and
+    start the next with "TeachingSessions" (#23). A word joiner after each
+    ``~/`` keeps the path whole. :meth:`text` gives the sentence back without
+    it, so whatever reads or rewrites the text (tests, screenshot mode) sees
+    plain words."""
+
+    def __init__(self, text: str = "", parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setText(text)
+
+    def setText(self, text: str) -> None:  # noqa: N802 (Qt's name)
+        super().setText(text.replace(WORD_JOINER, "").replace("~/", "~/" + WORD_JOINER))
+
+    def text(self) -> str:
+        return super().text().replace(WORD_JOINER, "")
+
 
 def make_label(text: str, role: str = "", *, wrap: bool = False) -> QLabel:
-    label = QLabel(text)
+    label = SentenceLabel(text) if wrap else QLabel(text)
     if role:
         label.setProperty("role", role)
     label.setWordWrap(wrap)

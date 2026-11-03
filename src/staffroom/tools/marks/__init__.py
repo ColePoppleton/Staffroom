@@ -116,9 +116,11 @@ def headline_stats(analysis: logic.Analysis) -> list[Stat]:
         Stat(
             "Reteach first",
             reteach or "None",
-            f"facility under {h.reteach_below:.2f}"
+            # The threshold is this paper's own facility, so it moves from file
+            # to file; say so rather than show a bare number (#23).
+            f"facility below the paper as a whole, {h.reteach_below:.2f}"
             if reteach
-            else f"no facility under {h.reteach_below:.2f}",
+            else f"no facility below the paper as a whole, {h.reteach_below:.2f}",
             action=bool(reteach),
         ),
     ]

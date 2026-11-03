@@ -150,6 +150,10 @@ class LibraryPage(QWidget):
             if last
             else "never"
         )
+        if last and self.config.screenshot_day is not None:
+            # A docs screenshot shows the pinned day and no clock time, so two
+            # renders are the same bytes (#49). Display only, as in Classroom.
+            when = self.config.screenshot_day.strftime("%d %b %Y")
         # The same line the sidebar footer shows, from the same tally (#30).
         counts = self.service.counts()
         if self.service.unavailable_reason is not None:  # read-only home (#65)

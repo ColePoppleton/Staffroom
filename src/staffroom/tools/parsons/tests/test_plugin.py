@@ -91,3 +91,31 @@ def test_sheet_without_indentation_still_boxes_every_block() -> None:
     preview = to_text(build_document(problem, "year9", options))
     assert "Indentation has been removed" in preview
     assert '| print("Well done")' in preview  # dedented inside its box
+
+
+def _program(statements: int) -> str:
+    """An invented program of ``statements`` one-line statements."""
+    return "".join(f"total = {i}\n" for i in range(statements))
+
+
+def test_a_long_program_is_warned_about_in_the_strip_and_the_cli(tmp_path: Path) -> None:
+    """#23: a 1,501-line file made a 1,501-block problem without a word."""
+    from staffroom.tools.parsons.logic import LONG_PROBLEM_BLOCKS
+
+    warned: list[str] = []
+    ctx = RunContext(config=load_config(), output_dir=tmp_path, warned=warned.append)
+    options = Options(distractors=0, formats="pdf")
+    plugin.run({"pasted": _program(LONG_PROBLEM_BLOCKS), "options": options}, ctx)
+    assert warned == []  # 30 blocks: no warning
+    plugin.run({"pasted": _program(LONG_PROBLEM_BLOCKS + 1), "options": options}, ctx)
+    assert len(warned) == 1
+    assert warned[0].startswith(f"{LONG_PROBLEM_BLOCKS + 1} blocks is a lot")
+    assert f"about {LONG_PROBLEM_BLOCKS} or fewer" in warned[0]
+
+    src = tmp_path / "long.py"
+    src.write_text(_program(40))
+    r = runner.invoke(
+        app, ["parsons", "make", str(src), "-f", "pdf", "--no-preview", "--out", str(tmp_path)]
+    )
+    assert r.exit_code == 0, r.output
+    assert "Warning: 40 blocks is a lot to put in order" in r.output

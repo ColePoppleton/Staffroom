@@ -261,3 +261,24 @@ def test_sidebar_footer_and_header_show_one_count(window: MainWindow) -> None:
     assert panel.status.text() == line == f"{counts.indexed} files (incl. {counts.hidden} hidden)"
     assert page.index_status.text().startswith(line + "  ·  last index ")
     assert len(library.resources(include_hidden=True)) == counts.indexed
+
+
+def test_a_screenshot_shows_the_pinned_day_not_the_index_time(
+    qtbot: QtBot, service: LibraryService, resources_root: Path
+) -> None:
+    """#49: the Library screenshots showed the clock time of the last index,
+    so every ``just screenshots`` changed them. A pinned screenshot day
+    replaces the time; a teacher's launcher (no pinned day) shows it."""
+    from datetime import date
+
+    config = load_config()
+    config.general.resources_root = str(resources_root)
+    assert config.screenshot_day is None
+    win = MainWindow(config, library=service, auto_index=False)
+    qtbot.addWidget(win)
+    assert service.last_indexed() is not None
+    assert ":" in win.library_page.index_status.text().rpartition("last index ")[2]
+
+    config.screenshot_day = date(2026, 10, 9)
+    win.library_page.refresh_status()
+    assert win.library_page.index_status.text().endswith("  ·  last index 09 Oct 2026")

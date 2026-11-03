@@ -46,6 +46,8 @@ class ParsonsPlugin:
             f"{len(problem.solution)} blocks, {len(problem.distractor_numbers())} distractors, "
             f"seed {problem.seed}"
         )
+        if warning := logic.length_warning(problem):
+            ctx.warn(warning)
         doc = build_document(problem, name, options)
         ctx.progress(0.6, "Writing files")
         stem = f"{name}_parsons_s{problem.seed}"

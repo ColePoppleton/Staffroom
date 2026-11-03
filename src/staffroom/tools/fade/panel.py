@@ -11,13 +11,7 @@ from staffroom.core.panel import (
     PanelSpec,
     shown_when,
 )
-from staffroom.tools.fade.logic import Options
-
-ORDER_LABELS = {
-    "bottom_up": "Last lines first",
-    "top_down": "First lines first",
-    "ranges": "Only the lines I list",
-}
+from staffroom.tools.fade.logic import ORDER_LABELS, Options
 
 
 def panel_spec() -> PanelSpec:
