@@ -56,7 +56,7 @@ class GeneralSettings:
     resources_root: str = ""  # the teacher's resources folder; set in Settings
     sessions_root: str = ""  # empty means ~/TeachingSessions (local; never a cloud folder)
     editor_command: str = "open -a Thonny {file}"
-    board: str = "ocr"  # default exam board for presets and tags: ocr | aqa
+    board: str = "ocr"  # ocr | aqa: Marks' starting preset, truth-table gates
     house_header: str = ""  # e.g. the school or department name, shown before the title
     house_footer: str = ""  # e.g. "Computing Department", shown beside the page number
     show_hidden: bool = False

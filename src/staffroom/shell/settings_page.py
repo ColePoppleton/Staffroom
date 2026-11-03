@@ -37,6 +37,14 @@ LIBRARY_STORED_STATEMENT = (
 )
 
 
+# What the board really changes (#49): Quiz spec tags are per question and do
+# not depend on it. Keep in step with the Exam board entry in docs/guide/glossary.md.
+WORKSHEETS_NOTE = (
+    "The exam board picks the grade preset Marks starts with and the gates a GCSE "
+    "truth-table worksheet uses. The header and footer are printed on every sheet."
+)
+
+
 class SettingsPage(QWidget):
     theme_changed = Signal(str)
     resources_root_changed = Signal(str)
@@ -171,7 +179,7 @@ class SettingsPage(QWidget):
 
         house = Card(
             "Worksheets",
-            "Exam board for presets and tags, and the house style printed on every sheet.",
+            WORKSHEETS_NOTE,
         )
         form3 = QFormLayout()
         form3.setHorizontalSpacing(16)

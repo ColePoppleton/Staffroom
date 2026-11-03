@@ -60,6 +60,11 @@ TOML
 
 if [[ "$only" == all ]]; then
 
+# The Library preview prints each file's modified date, which is whenever the
+# fixtures were checked out; pin it to the same day as the sheets (#49). Only
+# the timestamps of these invented files change, never their content.
+find "$fixtures" -type f -exec touch -t "${STAFFROOM_DATE//-/}0900" {} +
+
 # Index the fixture root up front so the Resources screenshots do not race the
 # first-index worker and the name-only banner is already there.
 uv run staff library index >/dev/null

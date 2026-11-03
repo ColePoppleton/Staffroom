@@ -82,6 +82,11 @@ def test_plugin_and_cli(tmp_path: Path) -> None:
     assert (tmp_path / "sol_faded_key.docx").exists()
     r = runner.invoke(app, ["fade", "make", str(src), "--order", "sideways"])
     assert r.exit_code == 1
+    # On the command line the slip is named in flags, not the panel's words.
+    r = runner.invoke(app, ["fade", "make", str(src), "--ranges", "3-5", "--out", str(tmp_path)])
+    assert r.exit_code == 1 and "--ranges needs --order ranges" in r.output
+    r = runner.invoke(app, ["fade", "make", str(src), "--order", "ranges", "--out", str(tmp_path)])
+    assert r.exit_code == 1 and "--order ranges needs --ranges" in r.output
 
 
 def test_versions_are_capped_at_the_fadeable_line_count(tmp_path: Path) -> None:
@@ -133,8 +138,17 @@ def test_range_errors_say_what_was_expected_and_what_is_wrong() -> None:
     assert "line 1 is a def/if/for/while header" in message and "Keep headers" in message
     assert "line 6 is blank" in message and "line 7 is a comment" in message
     # Listing ranges without choosing the ranges order is almost certainly a slip.
-    with pytest.raises(ValueError, match="Fade order is 'bottom_up'"):
+    # The message names the panel's choices, not the raw values (#49).
+    with pytest.raises(ValueError) as excinfo:
         logic.fade_versions(PROGRAM, Options(order="bottom_up", ranges="3-5"))
+    assert str(excinfo.value) == (
+        "Line ranges are listed but Fade order is “Last lines first”. "
+        "Choose “Only the lines I list” to fade only those lines, or clear Line ranges."
+    )
+    with pytest.raises(ValueError) as excinfo:
+        logic.fade_versions(PROGRAM, Options(order="ranges", ranges=" "))
+    assert str(excinfo.value).startswith("Fade order is “Only the lines I list” but no lines")
+    assert "'" not in str(excinfo.value)
     # Lines that cannot fade are reported but do not stop the others fading.
     assert logic.unfadeable_lines(PROGRAM, Options(order="ranges", ranges="1-2, 8")) == [
         (1, "line 1 is a def/if/for/while header (Keep headers is on)")

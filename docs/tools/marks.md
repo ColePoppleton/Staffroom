@@ -12,7 +12,9 @@ After *Analyse* the report reads top to bottom:
   (with the mean mark out of the total); *Median grade*, the grade of the
   median total, with how many scripts reached grade 4 (or, for boundaries
   without a 4, the lowest grade above zero: E for A-level, Pass for
-  Pass/Fail); and *Reteach first*.
+  Pass/Fail); and *Reteach first*, with the paper's own facility as the
+  line the questions fall below ("facility below the paper as a whole,
+  0.75"), so the number changes from paper to paper.
 - **The grade chart**, with the count over each bar and the share of scripts
   under it. *Table* flips it to the numbers (to one decimal place, and the
   *Incomplete scripts* row when there is one).
@@ -94,5 +96,6 @@ staff marks presets
 ```
 
 The command line prints the same report: the four headline numbers, the
-grade distribution and the questions hardest first (`--worst N` sets
-*Reteach at most*).
+boundaries used, the grade distribution and the questions hardest first
+(`--worst N` sets *Reteach at most*). Without `--preset` it uses the preset for
+the exam board in Settings, as the panel does.

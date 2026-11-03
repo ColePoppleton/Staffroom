@@ -25,6 +25,9 @@ with optional distractors, and a key.
 - The sheet prints the blocks as numbered cut-out boxes, two across, with
   dashed cut lines and an answer grid underneath; a 15-block problem fits on
   one A4 page.
+- More than 30 blocks (distractors not counted) gets a warning in the result
+  strip and on the command line: a problem that long is a sorting chore
+  rather than a puzzle. Try a shorter program or one part of it.
 - The key reconstructs the program; the tests prove it is equivalent to the input.
 - The seed is in the file name and on the sheet, so the same shuffle can be
   made again.

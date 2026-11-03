@@ -1,7 +1,8 @@
 """Run pupil-facing Python in a subprocess with a hard timeout.
 
-Used by ``trace``, ``bugs`` and ``fade``. This is a convenience fence, not a
-security boundary: these are the teacher's own files. What it does provide:
+Used by ``trace`` and ``bugs`` (``fade`` only blanks lines as text and runs
+nothing). This is a convenience fence, not a security boundary: these are the
+teacher's own files. What it does provide:
 
 * ``python -I -u`` (isolated: no site, no env-driven imports) in a fresh
   temp working directory with a minimal environment;

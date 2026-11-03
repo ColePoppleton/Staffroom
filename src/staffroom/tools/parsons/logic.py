@@ -22,7 +22,9 @@ class Options:
         default="statement",
         metadata={
             "label": "Split at",
-            "help": "Statements: a compound header with its body; Lines: every line",
+            "help": "Statements: one block per statement, so a statement written over "
+            "several lines stays in one piece, and a line ending in a colon (if, for, def…) "
+            "is a block of its own. Lines: one block per line.",
         },
     )
     show_indentation: bool = field(
@@ -538,6 +540,24 @@ def variable_swaps(source: str) -> dict[int, list[Swap]]:
 
 
 # ---------------------------------------------------------------- the problem
+# Past this many blocks a Parsons problem stops being a puzzle and becomes a
+# sorting chore (#23: a 1,501-line file made a 1,501-block problem in silence).
+LONG_PROBLEM_BLOCKS = 30
+
+
+def length_warning(problem: Problem) -> str:
+    """A sentence for the teacher when the problem has more than
+    ``LONG_PROBLEM_BLOCKS`` blocks to order (distractors not counted); empty
+    otherwise."""
+    n = len(problem.solution)
+    if n <= LONG_PROBLEM_BLOCKS:
+        return ""
+    return (
+        f"{n} blocks is a lot to put in order: Parsons problems work best with about "
+        f"{LONG_PROBLEM_BLOCKS} or fewer. Try a shorter program, or one part of this one."
+    )
+
+
 def make_problem(source: str, options: Options | None = None) -> Problem:
     options = options or Options()
     solution = split(source, options.granularity)

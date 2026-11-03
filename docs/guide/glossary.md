@@ -191,8 +191,8 @@ term has a precise meaning in the code, this is that meaning.
 
 **Exam board**
 : OCR J277 or AQA 8525, set in Settings › Worksheets (`staff worksheet make
-  --board` overrides it for one run). Chooses the grade preset the Marks
-  panel starts with and the gates a
+  --board` overrides it for one run). Chooses the grade preset Marks starts
+  with (the panel, and `staff marks run` without `--preset`) and the gates a
   GCSE truth-table worksheet may use (OCR: AND, OR, NOT; AQA adds XOR).
   Quiz spec tags are per question (`ocr:` and `aqa:` can both be on one),
   so they do not depend on it.

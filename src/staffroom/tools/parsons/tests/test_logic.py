@@ -65,6 +65,24 @@ def test_many_seeds_shuffle_but_never_lose_blocks(seed: int) -> None:
     assert [b.text for b in again.shuffled] == [b.text for b in problem.shuffled]
 
 
+def test_split_at_help_says_what_each_choice_does() -> None:
+    """#49: the help said a compound header came with its body; it does not.
+    What the help promises is what the splitter does."""
+    from dataclasses import fields
+
+    help_text = next(f for f in fields(logic.Options) if f.name == "granularity").metadata["help"]
+    assert "with its body" not in help_text
+    assert "a line ending in a colon (if, for, def…) is a block of its own" in help_text
+    assert "a statement written over several lines stays in one piece" in help_text
+    source = "marks = [\n    4,\n    7,\n]\nfor m in marks:\n    print(m)\n"
+    assert [b.text for b in logic.split_statements(source)] == [
+        "marks = [\n    4,\n    7,\n]",
+        "for m in marks:",
+        "print(m)",
+    ]
+    assert len(logic.split_lines(source)) == 6  # Lines: one block per line
+
+
 def test_statement_blocks_keep_headers_and_bodies_apart() -> None:
     blocks = logic.split_statements(PROGRAMS["if_elif_else"])
     assert [b.text for b in blocks] == [

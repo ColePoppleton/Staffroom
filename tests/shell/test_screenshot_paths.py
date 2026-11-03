@@ -125,3 +125,16 @@ def test_neutral_replaces_the_longest_prefix_first() -> None:
     assert screenshot_paths.neutral("/a/b/c/Year 9/x.py and /a/b/y", table) == (
         "~/Documents/Teaching resources/Year 9/x.py and ~/y"
     )
+
+
+def test_a_home_relative_folder_is_neutral_too() -> None:
+    """#49: the Library header shows its folder as ``~/…``. Rendered from a
+    checkout under home (a worktree), that form was not aliased, so the
+    Library screenshots were refused. Nothing here touches the folder."""
+    config = load_config()
+    resources = Path.home() / "Teaching-Tools-worktrees" / "fix" / "x" / "resources"
+    config.general.resources_root = str(resources)
+    table = screenshot_paths.aliases(config)
+    shown = screenshot_paths.neutral("~/Teaching-Tools-worktrees/fix/x/resources", table)
+    assert shown == "~/Documents/Teaching resources"
+    assert screenshot_paths.neutral(str(resources), table) == "~/Documents/Teaching resources"

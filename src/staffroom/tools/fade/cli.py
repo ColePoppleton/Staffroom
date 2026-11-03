@@ -44,6 +44,13 @@ def register(app: typer.Typer) -> None:
         if order not in ("bottom_up", "top_down", "ranges"):
             typer.secho("--order must be bottom_up, top_down or ranges", fg="red", err=True)
             raise typer.Exit(1)
+        # The tool's own messages name the panel's choices; say it in flags here.
+        if ranges.strip() and order != "ranges":
+            typer.secho("--ranges needs --order ranges", fg="red", err=True)
+            raise typer.Exit(1)
+        if order == "ranges" and not ranges.strip():
+            typer.secho("--order ranges needs --ranges, e.g. --ranges 3-5,8", fg="red", err=True)
+            raise typer.Exit(1)
         config = load_config()
         ctx = RunContext(
             config=config,

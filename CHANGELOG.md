@@ -12,6 +12,18 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 ### Fixed
+- Help texts say what the tools do: Parsons' *Split at* (an `if`/`for`/`def` line is a block
+  of its own), Fade's line-range messages in the panel's words (*Only the lines I list*;
+  `--ranges needs --order ranges` on the command line), Settings' Worksheets card (the exam
+  board sets Marks' starting preset and the truth-table gates, not Quiz tags) and the runner's
+  docstring (Fade runs nothing). `staff marks run` without `--preset` now uses the exam board
+  in Settings, as the panel does, and prints the boundaries it used. The Library screenshots
+  show the pinned day instead of the time of the last index, the fixtures' file dates are
+  pinned too, and screenshot mode also hides a home-relative (`~/…`) checkout path, so the
+  Library shots render from a worktree and no longer change on every `just screenshots` (#49).
+- Marks' *Reteach first* says its threshold is the paper's own facility ("facility below the
+  paper as a whole, 0.75"); Parsons warns above 30 blocks; a wrapped sentence no longer
+  breaks a path after `~/` (the first-run card printed "~/ TeachingSessions") (#23).
 - `just install` deletes its build in `dist/` once the app is in Applications, so Spotlight
   lists Staffroom once instead of twice.
 

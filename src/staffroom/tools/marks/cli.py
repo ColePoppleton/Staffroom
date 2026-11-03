@@ -19,9 +19,15 @@ def register(app: typer.Typer) -> None:
     @app.command()
     def run(
         source: SourceArg,
-        preset: Annotated[str, typer.Option("--preset", "-p", help="Boundary preset name")] = (
-            presets.DEFAULT_PRESET
-        ),
+        preset: Annotated[
+            str | None,
+            typer.Option(
+                "--preset",
+                "-p",
+                help="Boundary preset name (default: the preset for the exam board in "
+                "Settings, OCR J277 unless changed)",
+            ),
+        ] = None,
         unit: Annotated[str, typer.Option("--unit", help="percent or raw")] = "percent",
         max_marks: Annotated[str, typer.Option("--max", help="e.g. 4,6,8 or 10")] = "",
         worst: Annotated[
@@ -37,6 +43,8 @@ def register(app: typer.Typer) -> None:
 
         config = load_config()
         available = presets.all_presets(config)
+        if preset is None:  # the Settings exam board, as the panel uses (#49)
+            preset = presets.default_preset_for(config.general.board)
         if preset not in available:
             typer.secho(f"unknown preset {preset!r}; see  staff marks presets", fg="red", err=True)
             raise typer.Exit(1)
@@ -60,6 +68,7 @@ def register(app: typer.Typer) -> None:
             typer.secho(str(exc), fg=typer.colors.RED, err=True)
             raise typer.Exit(1) from None
         _print_headline(result.tables["headline"])
+        typer.echo(f"{'Boundaries:':<15}{result.texts['distribution']}")  # the chart's caption
         _print_table("Grade distribution", result.tables["distribution"])
         _print_table("Questions, hardest first", result.tables["questions"])
         typer.echo(result.summary)
