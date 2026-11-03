@@ -11,11 +11,15 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "release.py"
-spec = importlib.util.spec_from_file_location("release", SCRIPT)
-assert spec and spec.loader
-release = importlib.util.module_from_spec(spec)
-sys.modules["release"] = release
-spec.loader.exec_module(release)
+# The script is not in the source distribution (#22): there the module is
+# collected but every test is skipped (conftest.py).
+pytestmark = pytest.mark.checkout
+if not (Path(__file__).resolve().parents[1] / "PKG-INFO").is_file():
+    spec = importlib.util.spec_from_file_location("release", SCRIPT)
+    assert spec and spec.loader
+    release = importlib.util.module_from_spec(spec)
+    sys.modules["release"] = release
+    spec.loader.exec_module(release)
 
 
 @pytest.fixture
