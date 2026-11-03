@@ -7,6 +7,7 @@ from typing import Annotated
 
 import typer
 
+from staffroom.core import spec
 from staffroom.core.config import load_config
 from staffroom.core.plugin import RunContext, ToolError
 from staffroom.tools.worksheet.logic import GENERATORS, LAW_FAMILIES, TOPIC_TITLES, Options
@@ -37,7 +38,8 @@ def register(app: typer.Typer) -> None:
             ),
         ] = "absorption",
         board: Annotated[
-            str | None, typer.Option("--board", help="ocr or aqa; defaults to the config setting")
+            str | None,
+            typer.Option("--board", help=f"{spec.board_choices()}; defaults to the config setting"),
         ] = None,
         fmt: Annotated[str, typer.Option("--format", "-f", help="both, docx or pdf")] = "both",
         out: Annotated[Path | None, typer.Option("--out", "-o", help="Output folder")] = None,
@@ -64,8 +66,8 @@ def register(app: typer.Typer) -> None:
             raise typer.Exit(1)
         config = load_config()
         if board is not None:
-            if board.lower() not in ("ocr", "aqa"):
-                typer.secho("--board ocr|aqa", fg="red", err=True)
+            if board.lower() not in spec.BOARDS:
+                typer.secho(f"--board {spec.board_choices('|', '|')}", fg="red", err=True)
                 raise typer.Exit(1)
             config.general.board = board.lower()  # this run only; the config file is not saved
         ctx = RunContext(

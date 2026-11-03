@@ -1,7 +1,7 @@
 # Staffroom — conventions
 
 A monorepo of small Python tools for UK secondary computing teachers (KS3,
-GCSE OCR J277 / AQA 8525, A-level), run locally on the teacher's own Mac. Outputs (PDF, docx,
+GCSE OCR J277 / AQA 8525 / Pearson Edexcel 1CP2, A-level), run locally on the teacher's own Mac. Outputs (PDF, docx,
 CSV, PNG) are taken into school systems by hand. Optimise for the teacher's
 workflow, not for deployment.
 
@@ -59,7 +59,7 @@ src/staffroom/
                     library/ (Resource Library: index, search, tags, service),
                     export/ (house style: Document → docx / PDF / text),
                     runner/ (sandboxed subprocess with timeout), codeinput,
-                    spec/ (OCR J277 / AQA 8525 taxonomies as TOML)
+                    spec/ (OCR J277 / AQA 8525 / Edexcel 1CP2 taxonomies as TOML)
   shell/            staffroom: the PySide6 launcher and its widget kit
   tools/<name>/     one package per tool: __init__ (plugin), cli, logic, panel, tests/
 examples/           small FAKE data files (marker row required, no names)

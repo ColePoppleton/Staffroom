@@ -1,9 +1,10 @@
-"""The first-run card: one question, "where are your resources?".
+"""The first-run card: "where are your resources?", and which exam board.
 
 Shown by the launcher instead of a tool when no resources folder is set. It
 never suggests a folder: the dialog opens at the home folder and the teacher
 picks, because which folder is reachable from school (and whether it is
-cloud-synced) is their call, not the app's.
+cloud-synced) is their call, not the app's. The exam board starts on the
+saved one (OCR J277 on a new install); changing it saves it at once.
 """
 
 from __future__ import annotations
@@ -12,9 +13,18 @@ from pathlib import Path
 
 from PySide6.QtCore import QUrl, Signal
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QProgressBar, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from staffroom.core.panel import FolderPicker
+from staffroom.core.spec import BOARDS
 from staffroom.shell.widgets.card import Card, make_label
 from staffroom.shell.widgets.path_picker import PathPickerWidget
 
@@ -29,6 +39,10 @@ INTRO = (
     "tool can open a file from it in a click. Pick the folder you already use. The app only "
     "reads it; nothing in it is changed."
 )
+BOARD_HELP = (
+    "The grade preset Marks starts with, the gates a GCSE truth-table worksheet may use, "
+    "and the spec points Quiz names first. Can be changed later in Settings."
+)
 STORED = (
     "What is stored: file names and the text of .py, .txt, .md, .csv and .pdf files, in a "
     "database on this Mac. Nothing is sent anywhere. The details are under Settings › "
@@ -38,14 +52,18 @@ STORED = (
 
 class FirstRunCard(QWidget):
     """``folder_chosen(str)`` fires with an existing folder; ``dismissed`` when
-    the teacher chooses "Not now" (or "Continue" while the first index runs).
-    The host saves the folder, starts the index and feeds
-    :meth:`show_progress` / :meth:`finish_indexing`."""
+    the teacher chooses "Not now" (or "Continue" while the first index runs);
+    ``board_chosen(str)`` with a key of ``core.spec.BOARDS`` when the exam
+    board changes. The host saves the folder and the board, starts the index
+    and feeds :meth:`show_progress` / :meth:`finish_indexing`."""
 
     folder_chosen = Signal(str)
+    board_chosen = Signal(str)
     dismissed = Signal()
 
-    def __init__(self, sessions_default: str, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, sessions_default: str, board: str = "ocr", parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("FirstRunPage")
         outer = QVBoxLayout(self)
@@ -71,6 +89,22 @@ class FirstRunCard(QWidget):
         self.hint = make_label("", "danger", wrap=True)
         self.hint.hide()
         body.addWidget(self.hint)
+
+        board_row = QHBoxLayout()
+        board_row.setSpacing(12)
+        self.board_label = make_label("Exam board", "muted")
+        self.board = QComboBox()
+        for key, name in BOARDS.items():
+            self.board.addItem(name, key)
+        self.board.setCurrentIndex(max(self.board.findData(board), 0))
+        self.board.setToolTip(BOARD_HELP)
+        self.board.currentIndexChanged.connect(
+            lambda i: self.board_chosen.emit(str(self.board.itemData(i)))
+        )
+        self.board_label.setBuddy(self.board)
+        board_row.addWidget(self.board_label)
+        board_row.addWidget(self.board, 1)
+        body.addLayout(board_row)
 
         self.progress = QProgressBar()
         self.progress.setRange(0, 1000)

@@ -181,7 +181,7 @@ def register(app: typer.Typer) -> None:
         raise typer.Exit(1 if loaded.errors else 0)
 
     @app.command("spec")
-    def spec_(board: Annotated[str, typer.Argument(help="ocr or aqa")]) -> None:
+    def spec_(board: Annotated[str, typer.Argument(help=spec.board_choices())]) -> None:
         """Print the spec points for a board, with the tags a bank uses.
 
         Example: staff quiz spec ocr

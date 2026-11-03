@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from staffroom.core.config import load_config
 from staffroom.core.panel import (
     Choice,
     CodeSource,
@@ -25,12 +26,23 @@ FROM = Choice(
     default="guess",
     help="What the code is written in; worked out from the code when you choose or paste it.",
 )
-TO = Choice(
-    key="to",
-    label="To",
-    choices=(("ocr", "OCR ERL"), ("aqa", "AQA"), ("python", "Python")),
-    default="ocr",
+TO_CHOICES = (("ocr", "OCR ERL"), ("aqa", "AQA"), ("python", "Python"))
+#: The language each exam board writes algorithms in. Pearson Edexcel 1CP2 has no
+#: pseudocode of its own: its papers use Python 3 within the published Programming
+#: Language Subset (PLS), and its specification calls pseudocode "informal".
+BOARD_TARGETS: dict[str, logic.Target] = {"ocr": "ocr", "aqa": "aqa", "edexcel": "python"}
+EDEXCEL_HELP = (
+    "Pearson Edexcel 1CP2 assesses algorithms in Python (its Programming Language "
+    "Subset), so To starts on Python."
 )
+
+
+def to_choice(board: str) -> Choice:
+    """*To* starts on the language the teacher's exam board (Settings) uses;
+    an unknown board starts on OCR ERL, as before."""
+    target = BOARD_TARGETS.get(board.lower(), "ocr")
+    help_ = EDEXCEL_HELP if board.lower() == "edexcel" else ""
+    return Choice(key="to", label="To", choices=TO_CHOICES, default=target, help=help_)
 
 
 def suggest(inputs: Mapping[str, Any]) -> dict[str, str]:
@@ -51,6 +63,7 @@ def suggest(inputs: Mapping[str, Any]) -> dict[str, str]:
 
 
 def panel_spec() -> PanelSpec:
+    board = load_config().general.board
     return PanelSpec(
         title="Pseudocode",
         description=(
@@ -65,7 +78,7 @@ def panel_spec() -> PanelSpec:
                 required=False,
                 choice=FROM,
             ),
-            TO,
+            to_choice(board),
             OptionsForm(
                 key="options",
                 schema=Options,

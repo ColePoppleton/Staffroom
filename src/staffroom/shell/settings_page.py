@@ -24,6 +24,7 @@ from staffroom.core.library.exclude import IGNORE_FILE
 from staffroom.core.library.service import library_db_path
 from staffroom.core.library.tags import SIDECAR_DIR
 from staffroom.core.panel import FolderPicker
+from staffroom.core.spec import BOARDS
 from staffroom.shell.updates_card import InstalledUpdatesCard
 from staffroom.shell.widgets import Card, PathPickerWidget, StringListEditor, make_label
 
@@ -37,11 +38,13 @@ LIBRARY_STORED_STATEMENT = (
 )
 
 
-# What the board really changes (#49): Quiz spec tags are per question and do
-# not depend on it. Keep in step with the Exam board entry in docs/guide/glossary.md.
+# What the board really changes (#49, #62): Quiz spec tags are per question and do
+# not depend on it; the bank's summary only names the board's points first. Keep in
+# step with the Exam board entry in docs/guide/glossary.md.
 WORKSHEETS_NOTE = (
-    "The exam board picks the grade preset Marks starts with and the gates a GCSE "
-    "truth-table worksheet uses. The header and footer are printed on every sheet."
+    "The exam board picks the grade preset Marks starts with, the gates a GCSE "
+    "truth-table worksheet uses and the language Pseudocode translates to first. "
+    "The header and footer are printed on every sheet."
 )
 
 
@@ -185,8 +188,8 @@ class SettingsPage(QWidget):
         form3.setHorizontalSpacing(16)
         form3.setVerticalSpacing(10)
         self.board = QComboBox()
-        self.board.addItem("OCR J277", "ocr")
-        self.board.addItem("AQA 8525", "aqa")
+        for key, name in BOARDS.items():
+            self.board.addItem(name, key)
         self.board.setCurrentIndex(max(self.board.findData(config.general.board), 0))
         self.board.currentIndexChanged.connect(self._on_board)
         form3.addRow(self._label("Exam board"), self.board)

@@ -155,7 +155,8 @@ Worked examples with more of the program blanked out each time.
 
 [Pseudocode](tools/pseudocode.md){ .sr-card__name }
 Python into OCR Exam Reference Language (shown) or AQA pseudocode, and
-back, with a could-not-translate list.
+back, with a could-not-translate list. Pearson Edexcel 1CP2 assesses
+algorithms in Python, so on Edexcel it starts on Python.
 </div>
 
 <div class="sr-card" markdown>
