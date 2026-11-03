@@ -24,8 +24,9 @@ Every generator is verified in the tests by independent computation.
 
 ## Logic questions
 
-Truth tables use the gates the exam board requires: OCR J277 is AND, OR and
-NOT; AQA 8525 adds XOR. Neither GCSE board has NAND or NOR, so those appear
+Truth tables use the gates the exam board requires: OCR J277 and Pearson
+Edexcel 1CP2 are AND, OR and NOT (Edexcel 1.3.1: up to three inputs); AQA
+8525 adds XOR. No GCSE board has NAND or NOR, so those appear
 only when **Level** is *A level* (`--level a_level`) *and* **Difficulty** is
 *Hard* (A-level also
 adds XOR at every difficulty). The board comes from Settings (`general.board`)

@@ -11,6 +11,15 @@ full list for contributors, grouped under Added, Changed and Fixed. Versions up 
 later entries refer to this repository's issues.
 
 ## [Unreleased]
+### Added
+- Pearson Edexcel GCSE (9–1) Computer Science (1CP2) as a third exam board (#62): its 66
+  spec points (`edexcel:` tags, from the specification's Issue 1, January 2020, named in
+  `core/spec/edexcel.toml`), a choice in Settings and on the first-run card, an
+  *Edexcel 1CP2 (GCSE 9-1)* Marks preset, AND/OR/NOT truth tables, Quiz naming the board's
+  spec points first, and Pseudocode starting on Python, which Edexcel assesses through its
+  Programming Language Subset. The example bank's questions carry Edexcel tags too; a PLS
+  check for Python is #63.
+
 ### Changed
 - The source distribution carries only the package, its tests and the examples: 1.2 MB
   instead of 40 MB (no docs images, audits or `.claude/`). Tests about the repository

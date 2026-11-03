@@ -34,7 +34,8 @@ def test_parse_example_bank(bank: logic.Bank) -> None:
     assert len(bank.questions) == 13
     q = bank.questions[0]
     assert q.qtype == "mcq" and q.correct == (0,) and q.options[0] == "Central Processing Unit"
-    assert q.tags == ("ocr:1.1.1", "aqa:3.4.4", "topic:cpu") and q.topics == ("cpu",)
+    assert q.tags == ("ocr:1.1.1", "aqa:3.4.4", "edexcel:3.1.1", "topic:cpu")
+    assert q.topics == ("cpu",)
     assert q.why.startswith("The CPU")
     tf = bank.questions[2]
     assert tf.qtype == "tf" and tf.options == ("True", "False") and tf.correct == (0,)

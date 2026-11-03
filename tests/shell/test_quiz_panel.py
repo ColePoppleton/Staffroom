@@ -63,7 +63,7 @@ def test_the_bank_is_a_chip_with_what_was_found_in_it(window: MainWindow) -> Non
     assert picker.chip.toolTip() == str(BANK)
     found = panel.found["source"]
     assert [n.text for n in found.notes()] == [
-        "13 questions · 6 topics · OCR and AQA spec points · no problems"
+        "13 questions · 6 topics · OCR, AQA and Edexcel spec points · no problems"
     ]
     assert found.preview_button.isVisibleTo(panel)
     assert found.preview_button.text() == "Preview questions"

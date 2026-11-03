@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
+from staffroom.core.config import load_config
 from staffroom.core.panel import (
     ChipChoice,
     Choice,
@@ -61,6 +63,7 @@ def panel_spec() -> PanelSpec:
     from staffroom.tools.quiz.found import inspect_inputs
 
     defaults = Options()
+    board = load_config().general.board  # the bank's summary names this board's points first
     return PanelSpec(
         title="Quiz",
         description="One Markdown question bank → a printed do-now, Kahoot or Forms text.",
@@ -118,7 +121,7 @@ def panel_spec() -> PanelSpec:
             "taught_log": shown_when("pick", FROM_TAUGHT),
             "as_of": shown_when("pick", FROM_TAUGHT),
         },
-        inspect=inspect_inputs,
+        inspect=partial(inspect_inputs, board=board),
         outputs=(
             PagePreview(key="pages", label="Do-now"),
             ResultsTable(key="questions", label="Chosen questions"),

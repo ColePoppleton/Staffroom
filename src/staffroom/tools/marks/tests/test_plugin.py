@@ -99,6 +99,11 @@ def test_cli_follows_the_exam_board_in_settings(example_marks_max: Path, tmp_pat
     r = runner.invoke(app, ["marks", "run", str(example_marks_max), "--out", str(tmp_path)])
     assert r.exit_code == 0, r.output
     assert "Boundaries:    AQA 8525 · %" in r.output
+    config.general.board = "edexcel"  # #62
+    config.save()
+    r = runner.invoke(app, ["marks", "run", str(example_marks_max), "--out", str(tmp_path)])
+    assert r.exit_code == 0, r.output
+    assert "Boundaries:    Edexcel 1CP2 · %" in r.output
     r = runner.invoke(
         app,
         ["marks", "run", str(example_marks_max), "-p", "A-level (A*-E)", "--out", str(tmp_path)],
@@ -236,3 +241,22 @@ def test_cli_prints_the_headline(example_marks_max: Path, tmp_path: Path) -> Non
     assert "Reteach first: q6, q3, q4  (facility below the paper as a whole, 0.75)" in r.output
     assert "Median grade:  8  (9 of 10 at 4+)" in r.output
     assert "Questions, hardest first" in r.output and "Worst questions" not in r.output
+
+
+def test_every_board_has_a_preset_that_settings_picks(tmp_path: Path) -> None:
+    from staffroom.core.spec import BOARDS
+    from staffroom.tools.marks.panel import panel_spec
+
+    assert set(presets.BOARD_PRESETS) == set(BOARDS)
+    assert presets.default_preset_for("edexcel") == "Edexcel 1CP2 (GCSE 9-1)"
+    assert presets.default_preset_for("wjec") == presets.DEFAULT_PRESET  # unknown: unchanged
+    rows = presets.BUILTIN_PRESETS["Edexcel 1CP2 (GCSE 9-1)"]
+    assert [g for g, _ in rows] == ["9", "8", "7", "6", "5", "4", "3", "2", "1", "U"]
+    minimums = [float(m or 0) for _, m in rows]
+    assert minimums == sorted(minimums, reverse=True) and minimums[-1] == 0
+    # Settings says Edexcel: the panel's boundary grid starts on the Edexcel preset.
+    config = load_config()
+    config.general.board = "edexcel"
+    assert config.save() is None
+    grid = next(w for w in panel_spec().inputs if isinstance(w, EditableTable))
+    assert grid.rows == rows
