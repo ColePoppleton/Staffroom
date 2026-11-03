@@ -176,6 +176,14 @@ def trim(python: Path) -> list[str]:
     return removed
 
 
+def ships(rel: Path) -> bool:
+    """Whether a file of the unpacked Python goes into the app: not the pin
+    marker, and no ``.pyc``. Pupil code runs with ``-B``, so nothing is ever
+    compiled into the app; a cache left by running this copy at build time
+    would only be overwritten at the first run and break the signature."""
+    return rel.name != PIN_MARKER and "__pycache__" not in rel.parts and rel.suffix != ".pyc"
+
+
 def fetch_python(dest: Path, tarball: Path | None = None, pin: Path = PIN) -> Path:
     """The pinned Python, checked and unpacked into ``dest``. Downloads it
     unless ``tarball`` (an archive already here) is given; either way the

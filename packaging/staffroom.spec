@@ -40,7 +40,7 @@ for package, files in bundle.EXTERNAL_DATA.items():
 datas += [
     (str(path), str(Path(bundle.APP_DIR, path.parent.relative_to(PYTHON))))
     for path in sorted(PYTHON.rglob("*"))
-    if (path.is_file() or path.is_symlink()) and path.name != bundle.PIN_MARKER
+    if (path.is_file() or path.is_symlink()) and bundle.ships(path.relative_to(PYTHON))
 ]
 
 a = Analysis(

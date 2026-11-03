@@ -198,6 +198,10 @@ def test_fetch_checks_the_hash_then_unpacks_and_trims(
         assert not (dest / gone).exists(), gone
     assert not (dest / "lib" / "libpython3.13.dylib").exists()
 
+    assert bundle.ships(Path("lib/python3.13/os.py"))
+    assert not bundle.ships(Path(bundle.PIN_MARKER))
+    assert not bundle.ships(Path("lib/python3.13/__pycache__/os.cpython-313.pyc"))
+    assert "bundle.ships(" in SPEC.read_text()
     # Unpacked once from the pinned archive: the next build reuses it.
     assert bundle.fetch_python(dest, pin=pin) == dest
 

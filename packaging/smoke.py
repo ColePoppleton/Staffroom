@@ -106,7 +106,7 @@ def check_python(app: Path) -> None:
     if not python.exists():
         raise SmokeError(f"no Python for pupil code at {python}")
     proc = subprocess.run(
-        [str(python), "-I", "-c", "import sys; print(sys.version.split()[0])"],
+        [str(python), "-I", "-B", "-c", "import sys; print(sys.version.split()[0])"],
         capture_output=True,
         text=True,
         timeout=60,
@@ -177,7 +177,11 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         shutil.rmtree(work, ignore_errors=True)
     size = bundle.tree_size(app)
-    python = bundle.tree_size(app / "Contents" / "Resources" / bundle.APP_DIR)
+    # PyInstaller splits it: code under Frameworks, the rest under Resources.
+    python = sum(
+        bundle.tree_size(app / "Contents" / part / bundle.APP_DIR)
+        for part in ("Frameworks", "Resources")
+    )
     print(f"size {size / 1e6:.0f} MB on disk ({python / 1e6:.0f} MB of it the pupil-code Python)")
     return 0
 
