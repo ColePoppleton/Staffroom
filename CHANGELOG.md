@@ -11,6 +11,15 @@ full list for contributors, grouped under Added, Changed and Fixed. Versions up 
 later entries refer to this repository's issues.
 
 ## [Unreleased]
+### Changed
+- The source distribution carries only the package, its tests and the examples: 1.2 MB
+  instead of 40 MB (no docs images, audits or `.claude/`). Tests about the repository
+  around the package are marked `checkout` and skipped there; the Release workflow runs
+  the tests from the sdist, and the wheel job checks its size and that it builds the same
+  wheel as the checkout (#22).
+- Bugs and Parsons pick a plausible wrong variable by one shared rule, `core/pyscope.py`,
+  instead of two copies that could drift apart (#48).
+
 ### Fixed
 - Help texts say what the tools do: Parsons' *Split at* (an `if`/`for`/`def` line is a block
   of its own), Fade's line-range messages in the panel's words (*Only the lines I list*;
@@ -32,6 +41,8 @@ later entries refer to this repository's issues.
   they are shown and keep their orientation; PDF pages are drawn in Qt's own renderer
   thread; arrowing through many files runs one decode at a time and shows only the last;
   the last few previews are kept, so going back is instant (#64).
+- Parsons counts a name set by unpacking (`a, b = b, a + b`, `for i, x in …`) as set on
+  that line when it picks the most recently set wrong variable, as Bugs always did (#48).
 
 ## [0.9.1] - 2026-10-12
 Nothing changes for teachers since 0.9.0. This version only fixes a check that stopped

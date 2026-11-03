@@ -5,6 +5,8 @@ import time
 from importlib import import_module
 from pathlib import Path
 
+import pytest
+
 from staffroom.core.runner import (
     MAX_OUTPUT_BYTES,
     blocked_imports,
@@ -111,6 +113,7 @@ def test_import_calls_with_literal_names_are_caught() -> None:
     assert blocked_imports("__import__('os')\n") == []
 
 
+@pytest.mark.checkout
 def test_limits_are_stated_where_a_teacher_reads_them() -> None:
     note = limits_note(10.0)
     assert "10 s" in note and "1 MB" in note and "not a security" in note.lower()
