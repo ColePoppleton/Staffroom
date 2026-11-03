@@ -99,6 +99,11 @@ def test_cli_follows_the_exam_board_in_settings(example_marks_max: Path, tmp_pat
     r = runner.invoke(app, ["marks", "run", str(example_marks_max), "--out", str(tmp_path)])
     assert r.exit_code == 0, r.output
     assert "Boundaries:    AQA 8525 · %" in r.output
+    config.general.board = "edexcel"  # #62
+    config.save()
+    r = runner.invoke(app, ["marks", "run", str(example_marks_max), "--out", str(tmp_path)])
+    assert r.exit_code == 0, r.output
+    assert "Boundaries:    Edexcel 1CP2 · %" in r.output
     r = runner.invoke(
         app,
         ["marks", "run", str(example_marks_max), "-p", "A-level (A*-E)", "--out", str(tmp_path)],
