@@ -202,6 +202,9 @@ class MainWindow(QMainWindow):
         if not self.settings.wait_for_workers(timeout_ms):
             log.error("the release check did not stop within %d ms", timeout_ms)
             stopped = False
+        if not self.library_page.preview.picture.wait_for_workers(timeout_ms):
+            log.error("the Library preview did not finish within %d ms", timeout_ms)
+            stopped = False
         for panel in self.panels.values():
             worker = panel.worker
             if worker is not None and worker.isRunning() and not worker.wait(timeout_ms):

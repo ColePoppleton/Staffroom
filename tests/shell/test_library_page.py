@@ -91,15 +91,21 @@ def test_cloud_only_banner(window: MainWindow) -> None:
     assert preview.content.currentWidget() is preview.card
 
 
-def test_pdf_and_image_previews(window: MainWindow) -> None:
+def test_pdf_and_image_previews(window: MainWindow, qtbot: QtBot) -> None:
+    """PDFs and images are pictures (drawn off the GUI thread, #64): a PDF
+    shows its first page and a page count, whether or not it has text."""
     page = window.library_page
-    page.show_resource("Python/OCR Booklet/booklet.pdf")
-    assert page.preview.content.currentWidget() is page.preview.text
-    assert "OCR booklet" in page.preview.text.toPlainText()
-    page.show_resource("Python/scan_only.pdf")
-    assert "No text layer" in page.preview.text.toPlainText()
+    picture = page.preview.picture
+    for rel in ("Python/OCR Booklet/booklet.pdf", "Python/scan_only.pdf"):
+        page.show_resource(rel)
+        assert page.preview.content.currentWidget() is picture
+        qtbot.waitUntil(lambda: not picture.busy(), timeout=30_000)
+        assert picture.view.picture() is not None
+        assert picture.page_label.text() == "Page 1 of 1"
     page.show_resource("Scratch/diagram.png")
-    assert page.preview.content.currentWidget() is page.preview.image
+    assert page.preview.content.currentWidget() is picture
+    qtbot.waitUntil(lambda: not picture.busy(), timeout=30_000)  # (the fixture PNG is 1 px)
+    assert not picture.pager.isVisibleTo(picture)
 
 
 def test_search_lists_results_and_selecting_previews(window: MainWindow) -> None:

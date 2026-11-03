@@ -207,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             QTimer.singleShot(200, panel.start_run)
         else:
-            QTimer.singleShot(400, lambda: _save_screenshot(app, window, args.screenshot))
+            QTimer.singleShot(400, lambda: _save_when_shown(app, window, args.screenshot))
         return app.exec()
 
     window.show()
@@ -227,6 +227,17 @@ def _save_when_drawn(
         QTimer.singleShot(100, lambda: _save_when_drawn(app, window, panel, path, tries - 1))
         return
     QTimer.singleShot(150, lambda: _save_screenshot(app, window, path))  # the large page too
+
+
+def _save_when_shown(
+    app: QApplication, window: MainWindow, path: Path, tries: int = SETTLE_TRIES
+) -> None:
+    """Save once the Library preview's picture (decoded or drawn in a
+    thread) is on screen, or after :data:`SETTLE_TRIES` tries."""
+    if tries > 0 and window.library_page.preview.picture.busy():
+        QTimer.singleShot(100, lambda: _save_when_shown(app, window, path, tries - 1))
+        return
+    _save_screenshot(app, window, path)
 
 
 def _default_output(panel: ToolPanel) -> Path:
