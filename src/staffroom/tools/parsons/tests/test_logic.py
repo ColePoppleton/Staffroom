@@ -393,6 +393,15 @@ def test_wrong_variables_stay_in_their_function() -> None:
     assert [(s.old, s.new) for s in swaps[7]] == [("rate", "bonus"), ("bonus", "rate")]
 
 
+def test_a_name_set_by_unpacking_counts_as_set() -> None:
+    """``a, b = b, a + b`` sets a and b on line 5, so they, not the loop
+    counter, are the most recent numbers before line 6. Bugs always counted
+    it; Parsons missed it until the two shared one rule (#48)."""
+    source = "a = 0\nb = 1\nn = 10\nfor i in range(n):\n    a, b = b, a + b\nprint(n)\n"
+    swaps = logic.variable_swaps(source)
+    assert [(s.old, s.new) for s in swaps[6]] == [("n", "a")]
+
+
 def test_wrong_variables_are_seed_reproducible() -> None:
     for seed in (1, 2, 3):
         options = logic.Options(seed=seed, distractors=4)
