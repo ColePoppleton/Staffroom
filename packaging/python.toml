@@ -1,0 +1,17 @@
+# The Python the Mac app runs pupil code with (#60). Inside the app,
+# sys.executable is the app itself, so core/runner starts this standalone
+# CPython from python-build-standalone instead. Pinned to one release and
+# checked by SHA-256 before it is unpacked: never "latest".
+#
+# To move to a newer build: pick a release at least two weeks old from
+# https://github.com/astral-sh/python-build-standalone/releases, take the
+# aarch64-apple-darwin install_only_stripped asset for the Python in
+# .python-version, and copy its URL and SHA-256 (the release lists a digest
+# for each asset) here. `uv run python packaging/bundle.py python build/python`
+# fetches and checks it; the Bundle workflow does the same.
+
+[python]
+version = "3.13.16"
+release = "20261013"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-aarch64-apple-darwin-install_only_stripped.tar.gz"
+sha256 = "16a5332fb0dcb77f163fc8f8cbccd95be1644cc53e68e5d2a79f50afd6680a0e"
