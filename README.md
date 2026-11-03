@@ -45,7 +45,8 @@ out.
 
 Your settings, an index of the files (and their text) in your resources folder, run counts
 per tool and a log of file paths are stored on this Mac only; there is no account and no
-server, and the only network call asks GitHub which release is newest. A name, candidate
+server, and the only network call it makes on its own asks GitHub which release is newest
+(an add-on is downloaded only when you press Install). A name, candidate
 number or row of marks from a marks file is never stored: identifier columns are dropped on
 load and only class-level aggregates are saved.
 [Check it yourself](https://colepoppleton.github.io/Staffroom/guide/privacy/).

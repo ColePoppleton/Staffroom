@@ -14,6 +14,7 @@ import pkgutil
 from functools import cache
 from types import ModuleType
 
+from staffroom.core import addons
 from staffroom.core.log import get_logger
 from staffroom.core.plugin import (
     DEFAULT_ORDER,
@@ -23,6 +24,7 @@ from staffroom.core.plugin import (
     plugin_group,
     plugin_hidden,
     plugin_order,
+    plugin_requires,
 )
 
 log = get_logger(__name__)
@@ -68,6 +70,13 @@ def load_plugin(name: str, package: str = TOOLS_PACKAGE) -> ToolPlugin:
         raise TypeError(msg)
     if plugin.name != name:
         msg = f"plugin in package {name!r} calls itself {plugin.name!r}; they must match"
+        raise ValueError(msg)
+    unknown_addons = addons.unknown(plugin_requires(plugin))
+    if unknown_addons:
+        msg = (
+            f"{name}: requires unknown add-on {unknown_addons[0]!r} "
+            f"(known: {', '.join(addons.ADDONS)})"
+        )
         raise ValueError(msg)
     try:
         plugin.panel_spec()

@@ -89,6 +89,22 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(update, "https_get", offline)
 
 
+@pytest.fixture(autouse=True)
+def no_addon_installs(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """No test runs uv or downloads an add-on (#5): the real runner fails
+    the test. Tests pass a fake runner (or ``change``) of their own. The
+    cached answers of what is installed are forgotten after each test."""
+    from staffroom.core import addons
+
+    def refuse(command: object, *_args: object) -> int:
+        pytest.fail(f"a test ran the real add-on installer: {command}", pytrace=False)
+
+    cached = addons.is_installed  # tests may replace it; clear the real one
+    monkeypatch.setattr(addons, "run_command", refuse)
+    yield
+    cached.cache_clear()
+
+
 @pytest.fixture
 def example_marks() -> Path:
     return EXAMPLES / "marks_10x.csv"

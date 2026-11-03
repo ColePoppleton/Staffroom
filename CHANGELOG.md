@@ -11,6 +11,19 @@ full list for contributors, grouped under Added, Changed and Fixed. Versions up 
 later entries refer to this repository's issues.
 
 ## [Unreleased]
+### Added
+- Optional add-ons (#5): `staffroom[web]` (QtWebEngine) and `staffroom[media]`
+  (QtMultimedia), pinned to the slim install's Qt release. Settings › Add-ons installs and
+  removes them in the background, with progress, the installer's log behind *Details*, one
+  sentence when it fails (no network, a school proxy) and a restart prompt; `staff addons`
+  does the same from Terminal. A change is tried in a throwaway environment first, so a
+  failed download or an add-on that does not start leaves the copy as it was. A uv tool
+  re-installs from its own source into its own folders, a checkout runs
+  `uv sync --extra`, a bundle shows the line to paste. A plugin declares
+  `requires = ("web",)`: while the add-on is missing the sidebar greys the tool and opening
+  it offers the install. The kit adds `AddOnBanner` and `import_addon` for widgets with a
+  fallback.
+
 ### Changed
 - The source distribution carries only the package, its tests and the examples: 1.2 MB
   instead of 40 MB (no docs images, audits or `.claude/`). Tests about the repository
@@ -19,6 +32,8 @@ later entries refer to this repository's issues.
   wheel as the checkout (#22).
 - Bugs and Parsons pick a plausible wrong variable by one shared rule, `core/pyscope.py`,
   instead of two copies that could drift apart (#48).
+- `staff update` and *Update now* in a checkout keep the add-ons installed: a plain
+  `uv sync` removed them, and with them files the Qt packages share.
 
 ### Fixed
 - Help texts say what the tools do: Parsons' *Split at* (an `if`/`for`/`def` line is a block
