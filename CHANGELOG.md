@@ -41,6 +41,13 @@ later entries refer to this repository's issues.
   they are shown and keep their orientation; PDF pages are drawn in Qt's own renderer
   thread; arrowing through many files runs one decode at a time and shows only the last;
   the last few previews are kept, so going back is instant (#64).
+- The result strip grows for a rewrapped message in the same layout pass as the resize that
+  rewrapped it, so a long failure is never shown squeezed into the old height for a frame
+  (its message reports its height for a width, an opt-in on `ElidedLabel`). This also fixes
+  the flaky `test_a_long_failure_shows_whole_and_the_strip_grows` (#45).
+- The Quiz's bank chip no longer builds its button row only to take it out and drop it.
+  Under PySide 6.11 that left a stale spacer wrapper, which could come back as the next tool's
+  tab bar and stop the tool from opening (#54).
 - Parsons counts a name set by unpacking (`a, b = b, a + b`, `for i, x in …`) as set on
   that line when it picks the most recently set wrong variable, as Bugs always did (#48).
 
