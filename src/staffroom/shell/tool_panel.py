@@ -124,9 +124,15 @@ class AddOnNeededPanel(QWidget):
         body = QVBoxLayout()
         body.setContentsMargins(28, 24, 28, 24)
         self.card = AddOnNeeded(self.spec.title or plugin.name, missing)
-        self.card.setMaximumWidth(620)
+        # A fixed measure: wrapped lines need a width to lay out against.
+        self.card.setFixedWidth(560)
         self.card.install_requested.connect(self.install_requested)
-        body.addWidget(self.card, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        # In a row, not aligned: an aligned widget gets its plain size hint,
+        # which cuts off the last line of a wrapped label.
+        row = QHBoxLayout()
+        row.addWidget(self.card)
+        row.addStretch(1)
+        body.addLayout(row)
         body.addStretch(1)
         root.addLayout(body, 1)
 

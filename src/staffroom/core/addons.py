@@ -28,7 +28,7 @@ uv downloads and unpacks every wheel before it changes an environment, so a
 failed download (no network, a school proxy) leaves the copy as it was.
 After a change, :func:`apply` starts the environment's own Python and
 imports the Qt modules the app needs plus the add-ons wanted; if that fails
-it puts the previous set back (from uv's cache, no download) and says so.
+it puts the previous set back (uv has those wheels already) and says so.
 
 The Qt wheels share four files (``PySide6/__init__.py`` and friends), so
 uninstalling an add-on's wheel deletes them from under the slim pair: the

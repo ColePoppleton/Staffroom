@@ -107,7 +107,8 @@ class AddOnRow(QWidget):
     def show_state(self, installed: bool, note: str = "") -> None:
         self.state.setText(note or ("Installed" if installed else "Not installed"))
         self.button.setText("Remove" if installed else "Install")
-        self.button.setProperty("role", "ghost" if installed else "primary")
+        # Never red: on Settings nothing is the page's one primary action.
+        self.button.setProperty("role", "ghost" if installed else "")
         self.button.style().unpolish(self.button)
         self.button.style().polish(self.button)
 
@@ -155,8 +156,11 @@ class AddOnsCard(Card):
             self.rows[name] = row
             self.body.addWidget(row)
 
-        # How a change is going: a progress line, then the outcome.
-        status = QHBoxLayout()
+        # How a change is going: a progress line, then the outcome. Hidden
+        # (taking no room) until the first change.
+        self.status_row = QWidget()
+        status = QHBoxLayout(self.status_row)
+        status.setContentsMargins(0, 0, 0, 0)
         status.setSpacing(10)
         self.progress = QProgressBar()
         self.progress.setObjectName("AddOnProgress")
@@ -180,7 +184,8 @@ class AddOnsCard(Card):
         status.addWidget(self.status, 1)
         status.addWidget(self.details_button, 0, Qt.AlignmentFlag.AlignVCenter)
         status.addWidget(self.restart_button, 0, Qt.AlignmentFlag.AlignVCenter)
-        self.body.addLayout(status)
+        self.status_row.hide()
+        self.body.addWidget(self.status_row)
         self.log_view = QPlainTextEdit()
         self.log_view.setObjectName("AddOnLog")
         self.log_view.setReadOnly(True)
@@ -281,6 +286,7 @@ class AddOnsCard(Card):
         self.log_view.clear()
         self.manual.hide()
         self.restart_button.hide()
+        self.status_row.show()
         self.progress.show()
         self.details_button.show()
         self._set_status("Starting…", "muted")

@@ -73,8 +73,7 @@ The card says what went wrong in one sentence:
 
 A failed download changes nothing: uv fetches everything before it touches
 your copy. After a change Staffroom checks that it still starts; if it does
-not, it puts back the add-ons you had (from what it already downloaded) and
-says so.
+not, it puts back the add-ons you had and says so.
 
 ## Privacy
 
