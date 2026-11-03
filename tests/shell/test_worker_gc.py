@@ -33,6 +33,7 @@ from staffroom.shell.library.worker import IndexWorker
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.tool_panel import ToolPanel
 from staffroom.shell.update_worker import ApplyWorker, ReleaseWorker, UpdateWorker
+from staffroom.shell.widgets.picture_preview import PictureWorker
 from staffroom.shell.worker import GuiWorker, RunWorker, workers_running
 
 EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
@@ -191,7 +192,7 @@ def test_long_runs_are_collected_on_the_gui_thread_meanwhile(
 
 
 def test_every_shell_worker_is_guarded() -> None:
-    for cls in (RunWorker, IndexWorker, UpdateWorker, ReleaseWorker, ApplyWorker):
+    for cls in (RunWorker, IndexWorker, UpdateWorker, ReleaseWorker, ApplyWorker, PictureWorker):
         assert issubclass(cls, GuiWorker), cls.__name__
     # A new worker must derive from GuiWorker too, not straight from QThread.
     shell = Path(worker_module.__file__).parent
