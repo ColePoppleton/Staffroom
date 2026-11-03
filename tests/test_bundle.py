@@ -35,6 +35,12 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 FILE_NAME = re.compile(r"[\w.-]+\.py")
 
 
+if not (ROOT / "packaging").is_dir():  # the sdist: collection must not fail either
+    pytest.skip(
+        "needs the git checkout; the source distribution has no packaging/", allow_module_level=True
+    )
+
+
 def _load_bundle() -> ModuleType:
     spec = importlib.util.spec_from_file_location("bundle", ROOT / "packaging" / "bundle.py")
     assert spec is not None and spec.loader is not None
