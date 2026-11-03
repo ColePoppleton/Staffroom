@@ -15,7 +15,11 @@ import re
 import unicodedata
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
+# About the repository, not the package: skipped in the source distribution (#22).
+pytestmark = pytest.mark.checkout
 DOCS = ROOT / "docs"
 INDEX = DOCS / "index.md"
 PRIVACY = DOCS / "guide" / "privacy.md"

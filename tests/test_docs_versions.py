@@ -15,7 +15,11 @@ import re
 import tomllib
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
+# About the repository, not the package: skipped in the source distribution (#22).
+pytestmark = pytest.mark.checkout
 DOCS = ROOT / "docs"
 SKIP = {DOCS / "changelog.md"}
 SKIP_DIRS = {DOCS / "audits"}
