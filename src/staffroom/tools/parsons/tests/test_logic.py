@@ -321,6 +321,29 @@ def test_year9_at_seed_1_has_wrong_variables() -> None:
         ]
 
 
+def test_year9_sheets_are_pinned() -> None:
+    """The rule moved to ``core.pyscope`` (#48) without changing a sheet."""
+    expected = {
+        2: [
+            ("total = total + count", "wrong variable"),
+            ("else", "missing colon"),
+            ('print("Average:", count)', "wrong variable"),
+            ("for score in scores", "missing colon"),
+        ],
+        3: [
+            ('print("Average:", count)', "wrong variable"),
+            ("total = score + score", "wrong variable"),
+            ("average = count / count", "wrong variable"),
+            ("if count >= 50:", "wrong variable"),
+        ],
+    }
+    for seed, distractors in expected.items():
+        for granularity in ("statement", "line"):
+            options = logic.Options(seed=seed, distractors=4, granularity=granularity)
+            problem = logic.make_problem(CORPUS["year9"], options)
+            assert [(b.lines[0], b.kind) for b in problem.shuffled if b.distractor] == distractors
+
+
 def test_wrong_variables_in_year9() -> None:
     """Each name read is swapped for the number most recently set before its
     line; the list, the loop's own header and the literals are left alone."""
