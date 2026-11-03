@@ -24,11 +24,15 @@ follows how this copy was installed (:func:`staffroom.core.install.detect`):
 * **anything else** (a PyInstaller bundle, pip into a venv) gets the manual
   route: the line to paste, never a guess.
 
-uv downloads and unpacks every wheel before it changes an environment, so a
-failed download (no network, a school proxy) leaves the copy as it was.
-After a change, :func:`apply` starts the environment's own Python and
-imports the Qt modules the app needs plus the add-ons wanted; if that fails
-it puts the previous set back (uv has those wheels already) and says so.
+The running copy is only changed once the change has worked somewhere
+else. :func:`apply` first makes it in a throwaway environment (the same
+command with ``UV_TOOL_DIR`` / ``UV_PROJECT_ENVIRONMENT`` pointing into a
+temporary folder) and imports the Qt modules the app needs plus the add-ons
+wanted in that environment's own Python. A failed download (no network, a
+school proxy) or a set that does not import stops there, with the copy as it
+was. Only then does it run the change for real, from uv's cache, and check
+again; if that fails it puts the previous set back (uv has those wheels
+already) and says so.
 
 The Qt wheels share four files (``PySide6/__init__.py`` and friends), so
 uninstalling an add-on's wheel deletes them from under the slim pair: the
@@ -48,9 +52,10 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import tomllib
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cache
 from importlib import machinery
 from importlib.metadata import PackageNotFoundError, version
@@ -265,6 +270,20 @@ class Plan:
         parts.append(shlex.join(self.command))
         line = " ".join(parts)
         return f"cd {shlex.quote(str(self.cwd))} && {line}" if self.cwd else line
+
+    def trial(self, folder: Path) -> tuple[Plan, Path] | None:
+        """The same change made in a throwaway environment under ``folder``,
+        and that environment's Python; None when there is nothing to run.
+        Nothing outside ``folder`` changes (uv's cache aside)."""
+        if not self.command:
+            return None
+        if self.kind is install.InstallKind.CHECKOUT:
+            env = {"UV_PROJECT_ENVIRONMENT": str(folder / "env")}
+            python = folder / "env" / "bin" / "python"
+        else:
+            env = {"UV_TOOL_DIR": str(folder / "tools"), "UV_TOOL_BIN_DIR": str(folder / "bin")}
+            python = folder / "tools" / install.PROJECT_NAME / "bin" / "python"
+        return replace(self, env={**self.env, **env}), python
 
 
 def extras_spec(wanted: Iterable[str]) -> str:
@@ -551,6 +570,10 @@ NO_UV = (
     "the line below in Terminal instead."
 )
 FAILED = "The add-on could not be changed; Details has the installer's messages."
+WOULD_BREAK = (
+    "The add-on installed but did not start in a test copy, so Staffroom left this one as it "
+    "was; Details has the installer's messages."
+)
 BROKEN = (
     "The change did not work, so Staffroom put the previous add-ons back; Details has the "
     "installer's messages."
@@ -647,12 +670,15 @@ def apply(
     runner: Runner | None = None,
     log_line: Callable[[str], None] = lambda _m: None,
     progress: Callable[[str], None] = lambda _m: None,
+    scratch: Path | None = None,
 ) -> Outcome:
-    """Carry out ``target`` and check the result. ``previous`` is the plan
-    for what the copy had: it is run to put that back when the result does
-    not import. ``log_line`` gets every line of output (the Details log),
-    ``progress`` a short line for each step. Never raises for a failed
-    install: the outcome says it."""
+    """Carry out ``target`` and check the result. It is tried first in a
+    throwaway environment in a temporary folder (inside ``scratch`` when
+    given) and the running copy is left alone unless that works.
+    ``previous`` is the plan for what the copy had: it is run to put that
+    back when the real change does not import. ``log_line`` gets every line
+    of output (the Details log), ``progress`` a short line for each step.
+    Never raises for a failed install: the outcome says it."""
     run = runner or run_command
     if not target.runnable:
         return Outcome(False, target.why_manual or FAILED, command=target.manual)
@@ -666,13 +692,32 @@ def apply(
         if step.startswith(_STEPS):
             progress(step)
 
-    progress("Downloading and installing…" if target.wanted - before else "Removing…")
-    log.info("add-ons %s -> %s: %s", sorted(before), sorted(target.wanted), target.command)
-    code = run(target.command, target.cwd, target.env, keep)
-    if code != 0:
+    def failed(code: int) -> Outcome:
         message = explain(code, "\n".join(lines))
         log.warning("add-on change failed (exit %s): %s", code, message)
         return Outcome(False, message, command=target.manual if code == 127 else "")
+
+    log.info("add-ons %s -> %s: %s", sorted(before), sorted(target.wanted), target.command)
+    progress("Downloading…" if target.wanted - before else "Preparing…")
+    folder = Path(tempfile.mkdtemp(prefix="staffroom-addons-", dir=scratch))
+    try:
+        trial = target.trial(folder)
+        assert trial is not None  # target is runnable
+        test_plan, test_python = trial
+        code = run(test_plan.command, test_plan.cwd, test_plan.env, keep)
+        if code != 0:
+            return failed(code)
+        progress("Checking it works…")
+        if run(verify_command(target.wanted, str(test_python)), None, {}, keep) != 0:
+            log.error("the add-on change does not import in a test copy; nothing changed")
+            return Outcome(False, WOULD_BREAK)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+    progress("Installing…" if target.wanted - before else "Removing…")
+    code = run(target.command, target.cwd, target.env, keep)
+    if code != 0:
+        return failed(code)
     progress("Checking it works…")
     if run(verify_command(target.wanted), None, {}, keep) == 0:
         return Outcome(True, change_text(before, target.wanted), restart=True)

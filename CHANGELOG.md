@@ -16,11 +16,13 @@ later entries refer to this repository's issues.
   (QtMultimedia), pinned to the slim install's Qt release. Settings › Add-ons installs and
   removes them in the background, with progress, the installer's log behind *Details*, one
   sentence when it fails (no network, a school proxy) and a restart prompt; `staff addons`
-  does the same from Terminal. A uv tool re-installs from its own source into its own
-  folders, a checkout runs `uv sync --extra`, a bundle shows the line to paste. A plugin
-  declares `requires = ("web",)`: while the add-on is missing the sidebar greys the tool and
-  opening it offers the install. The kit adds `AddOnBanner` and `import_addon` for widgets
-  with a fallback.
+  does the same from Terminal. A change is tried in a throwaway environment first, so a
+  failed download or an add-on that does not start leaves the copy as it was. A uv tool
+  re-installs from its own source into its own folders, a checkout runs
+  `uv sync --extra`, a bundle shows the line to paste. A plugin declares
+  `requires = ("web",)`: while the add-on is missing the sidebar greys the tool and opening
+  it offers the install. The kit adds `AddOnBanner` and `import_addon` for widgets with a
+  fallback.
 
 ### Changed
 - `staff update` and *Update now* in a checkout keep the add-ons installed: a plain

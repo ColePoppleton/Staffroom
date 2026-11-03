@@ -298,16 +298,27 @@ def test_an_unknown_addon_is_refused(tmp_path: Path) -> None:
 
 
 class FakeUv:
-    """Answers the install command and the import check with set exit codes
-    and output, and records every call."""
+    """Answers the commands :func:`addons.apply` runs, in order: the change in
+    a throwaway environment and its import check, the change for real and its
+    check, then (only when that check fails) putting the old set back and its
+    check. Each gets the exit code set for it; every call is recorded with
+    its environment."""
 
     def __init__(
-        self, install: int = 0, verify: int = 0, output: str = "", restore: int = 0
+        self,
+        install: int = 0,
+        verify: int = 0,
+        output: str = "",
+        restore: int = 0,
+        trial: int = 0,
+        trial_verify: int = 0,
     ) -> None:
-        self.codes = {"install": install, "verify": verify, "restore": restore}
+        self.installs = [trial, install, restore]
+        self.verifies = [trial_verify, verify, 0]
         self.output = output
         self.calls: list[tuple[str, ...]] = []
-        self.installs = 0
+        self.envs: list[Mapping[str, str]] = []
+        self.done = 0  # installs run so far
 
     def __call__(
         self,
@@ -317,13 +328,13 @@ class FakeUv:
         line: Callable[[str], None],
     ) -> int:
         self.calls.append(tuple(command))
+        self.envs.append(dict(env))
         if command[1] == "-c":
-            ok = self.codes["verify"] if self.installs == 1 else 0
-            return ok
-        self.installs += 1
+            return self.verifies[self.done - 1]
+        self.done += 1
         for text in self.output.splitlines():
             line(text)
-        return self.codes["install"] if self.installs == 1 else self.codes["restore"]
+        return self.installs[self.done - 1]
 
 
 def _plans(tmp_path: Path, before: set[str], after: set[str]) -> tuple[Plan, Plan]:
@@ -335,15 +346,46 @@ def test_a_change_that_works_asks_for_a_restart(tmp_path: Path) -> None:
     fake = FakeUv(output="Resolved 40 packages in 1.2s\nInstalled 2 packages in 3s")
     lines: list[str] = []
     steps: list[str] = []
+    target, previous = _plans(tmp_path, set(), {"web"})
     outcome = addons.apply(
-        *_plans(tmp_path, set(), {"web"}), runner=fake, log_line=lines.append, progress=steps.append
+        target,
+        previous,
+        runner=fake,
+        log_line=lines.append,
+        progress=steps.append,
+        scratch=tmp_path,
     )
     assert outcome == Outcome(True, "Installed the Web add-on. Restart Staffroom to use it.", True)
-    assert lines == ["Resolved 40 packages in 1.2s", "Installed 2 packages in 3s"]
+    assert lines == ["Resolved 40 packages in 1.2s", "Installed 2 packages in 3s"] * 2
     assert "Resolved 40 packages in 1.2s" in steps and "Checking it works…" in steps
-    verify = fake.calls[1]
-    assert "QtPdf" in verify[2] and "QtWebEngineWidgets" in verify[2]
-    assert "PySide6.__file__" in verify[2]
+    # Tried, checked, then done for real and checked again.
+    assert fake.calls[0] == fake.calls[2] == target.command
+    real_verify = fake.calls[3]
+    assert "QtPdf" in real_verify[2] and "QtWebEngineWidgets" in real_verify[2]
+    assert "PySide6.__file__" in real_verify[2]
+    assert fake.envs[2] == target.env
+
+
+def test_it_is_tried_in_a_throwaway_environment_first(tmp_path: Path) -> None:
+    fake = FakeUv()
+    target, previous = _plans(tmp_path, set(), {"media"})
+    addons.apply(target, previous, runner=fake, scratch=tmp_path)
+    trial_env = fake.envs[0]
+    trial = Path(trial_env["UV_TOOL_DIR"]).parent
+    assert trial.parent == tmp_path and trial.name.startswith("staffroom-addons-")
+    assert trial_env["UV_TOOL_BIN_DIR"] == str(trial / "bin")
+    # The check runs that environment's own Python, not the running one.
+    assert fake.calls[1][0] == str(trial / "tools" / "staffroom" / "bin" / "python")
+    assert not trial.exists()  # cleared away afterwards
+
+
+def test_a_checkout_is_tried_in_another_project_environment(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    here = Installation(InstallKind.CHECKOUT, root / "src" / "staffroom", root)
+    test_plan, python = addons.plan({"web"}, here, uv=UV).trial(tmp_path / "t")  # type: ignore[misc]
+    assert test_plan.env == {"UV_PROJECT_ENVIRONMENT": str(tmp_path / "t" / "env")}
+    assert test_plan.cwd == root
+    assert python == tmp_path / "t" / "env" / "bin" / "python"
 
 
 @pytest.mark.parametrize(
@@ -360,33 +402,42 @@ def test_a_change_that_works_asks_for_a_restart(tmp_path: Path) -> None:
     ],
 )
 def test_a_failed_download_is_one_sentence(tmp_path: Path, output: str, sentence: str) -> None:
-    fake = FakeUv(install=2, output=output)
-    outcome = addons.apply(*_plans(tmp_path, set(), {"web"}), runner=fake)
+    fake = FakeUv(trial=2, output=output)
+    outcome = addons.apply(*_plans(tmp_path, set(), {"web"}), runner=fake, scratch=tmp_path)
     assert outcome == Outcome(False, sentence)
-    assert len(fake.calls) == 1  # nothing changed, nothing to check or put back
+    # Only the throwaway environment was tried: the copy was never touched.
+    assert len(fake.calls) == 1 and "staffroom-addons-" in fake.envs[0]["UV_TOOL_DIR"]
     assert "\n" not in outcome.message and "Traceback" not in outcome.message
+
+
+def test_a_change_that_does_not_import_in_the_trial_changes_nothing(tmp_path: Path) -> None:
+    fake = FakeUv(trial_verify=1)
+    outcome = addons.apply(*_plans(tmp_path, set(), {"web"}), runner=fake, scratch=tmp_path)
+    assert outcome == Outcome(False, addons.WOULD_BREAK)
+    assert len(fake.calls) == 2  # the trial and its check; no real change
 
 
 def test_a_change_that_breaks_the_copy_is_put_back(tmp_path: Path) -> None:
     fake = FakeUv(verify=1)
     target, previous = _plans(tmp_path, {"media"}, {"media", "web"})
-    outcome = addons.apply(target, previous, runner=fake)
+    outcome = addons.apply(target, previous, runner=fake, scratch=tmp_path)
     assert outcome == Outcome(False, addons.BROKEN, restart=True)
-    assert fake.calls[2] == previous.command  # the old set, from the cache
+    assert fake.calls[4] == previous.command  # the old set, from the cache
+    assert fake.envs[4] == previous.env
 
 
 def test_a_copy_that_cannot_be_put_back_gets_the_repair_line(tmp_path: Path) -> None:
     fake = FakeUv(verify=1, restore=1)
     target, previous = _plans(tmp_path, set(), {"web"})
-    outcome = addons.apply(target, previous, runner=fake)
+    outcome = addons.apply(target, previous, runner=fake, scratch=tmp_path)
     assert not outcome.ok and outcome.message == addons.STUCK
     assert outcome.command == previous.line()
 
 
 def test_uv_that_cannot_start_points_at_the_line(tmp_path: Path) -> None:
-    fake = FakeUv(install=127)
+    fake = FakeUv(trial=127)
     target, previous = _plans(tmp_path, set(), {"media"})
-    outcome = addons.apply(target, previous, runner=fake)
+    outcome = addons.apply(target, previous, runner=fake, scratch=tmp_path)
     assert outcome.message == addons.NO_UV
     assert outcome.command == target.manual
 

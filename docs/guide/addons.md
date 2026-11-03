@@ -70,10 +70,14 @@ The card says what went wrong in one sentence:
 | *There is not enough free space…* | Free some space; the Web add-on needs about 900 MB. |
 | *The download took too long…* | Try again on a faster network. |
 | *…could not start uv…* | Quit Staffroom and run the line shown in Terminal. |
+| *…did not start in a test copy…* | Nothing changed. Details has uv's messages; report it as a bug. |
 
-A failed download changes nothing: uv fetches everything before it touches
-your copy. After a change Staffroom checks that it still starts; if it does
-not, it puts back the add-ons you had and says so.
+Your copy is only changed once the change has worked in a test copy:
+Staffroom first installs the add-ons into a throwaway folder and checks they
+start there. A failed download, or an add-on that would not start, stops at
+that point and leaves your copy as it was. Then it makes the change for real
+(from what it has just downloaded) and checks again; if that fails, it puts
+back the add-ons you had and says so.
 
 ## Privacy
 
