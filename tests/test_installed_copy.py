@@ -212,21 +212,24 @@ def test_the_mac_app_is_updated_by_downloading_it(
     assert "download" in hint and install.APP_ASSET_PATTERN in hint and "uv" not in hint
 
 
-def test_examples_and_project_root_exist_only_in_a_checkout(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """#27: from an installed copy the folders above the package are not
-    Staffroom's, so there is no project root and no examples folder."""
+def test_examples_and_project_root_exist_only_in_a_source_tree(tmp_path: Path) -> None:
+    """#27: a checkout or an unpacked sdist has a project root and its
+    examples; from an installed copy the folders above the package are not
+    Staffroom's, so there is neither."""
     assert paths.project_root() == REPO_ROOT
     assert paths.examples_dir() == REPO_ROOT / "examples"
-    for fake in (
-        install.Installation(InstallKind.UV_TOOL, uv_tool_package(tmp_path / "tools")),
-        install.Installation(InstallKind.OTHER, venv_package(tmp_path)),
-        install.Installation(InstallKind.OTHER, tmp_path / "Frameworks" / "staffroom", app=True),
-    ):
-        monkeypatch.setattr(install, "detect", lambda package_dir=None, fake=fake: fake)
-        assert paths.project_root() is None
-        assert paths.examples_dir() is None
+    sdist = checkout(tmp_path / "staffroom-1.0.0", git_dir=False)  # no .git: not a CHECKOUT
+    assert install.source_root(sdist) == (tmp_path / "staffroom-1.0.0").resolve()
+    assert install.source_root(checkout(tmp_path / "clone")) == (tmp_path / "clone").resolve()
+    assert install.source_root(checkout(tmp_path / "dotfiles", name="dotfiles")) is None
+    assert install.source_root(uv_tool_package(tmp_path / "tools")) is None
+    assert install.source_root(venv_package(tmp_path)) is None
+
+
+def test_the_mac_app_has_no_project_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    assert paths.project_root() is None and paths.examples_dir() is None
+    assert install.source_root(checkout(tmp_path / "frozen")) is None
 
 
 def venv_package(tmp_path: Path) -> Path:

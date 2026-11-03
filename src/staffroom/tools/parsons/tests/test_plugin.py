@@ -15,7 +15,7 @@ from staffroom.tools.parsons.sheet import build_document
 
 runner = CliRunner()
 EXAMPLES = paths.examples_dir()
-assert EXAMPLES is not None, "the tests run from a checkout"
+assert EXAMPLES is not None, "the tests run from a source tree"
 YEAR9 = EXAMPLES / "year9.py"
 CODE = "count = 0\nwhile count < 10:\n    print(count)\n    count += 1\n"
 

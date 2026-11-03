@@ -24,6 +24,9 @@ import pytest
 
 from staffroom.core import install
 
+# packaging/ and .github/ are not in the source distribution (#22).
+pytestmark = pytest.mark.checkout
+
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 PACKAGE = SRC / "staffroom"

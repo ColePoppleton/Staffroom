@@ -167,7 +167,7 @@ def test_off_by_one_never_makes_a_do_nothing_operation(line: str) -> None:
 
 # ----------------------------------------------------- the corpus (#19)
 EXAMPLES = paths.examples_dir()
-assert EXAMPLES is not None, "the tests run from a checkout"
+assert EXAMPLES is not None, "the tests run from a source tree"
 YEAR9 = EXAMPLES / "year9.py"
 CORPUS = {
     **PROGRAMS,

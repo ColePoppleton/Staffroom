@@ -20,7 +20,7 @@ from staffroom.tools.bugs.sheet import build_document
 
 runner = CliRunner()
 EXAMPLES = paths.examples_dir()
-assert EXAMPLES is not None, "the tests run from a checkout"
+assert EXAMPLES is not None, "the tests run from a source tree"
 YEAR9 = EXAMPLES / "year9.py"
 
 PROGRAM = """total = 0

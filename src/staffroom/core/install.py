@@ -131,10 +131,23 @@ def detect(package_dir: Path | None = None) -> Installation:
         if receipt is not None:
             return Installation(InstallKind.UV_TOOL, here, tracks_main=_tracks_main(receipt))
         return Installation(InstallKind.OTHER, here)
-    root = here.parents[1] if here.parent.name == "src" else None
-    if root is not None and _is_this_project(root) and (root / ".git").exists():
+    root = source_root(here)
+    if root is not None and (root / ".git").exists():
         return Installation(InstallKind.CHECKOUT, here, root)
     return Installation(InstallKind.OTHER, here)
+
+
+def source_root(package_dir: Path | None = None) -> Path | None:
+    """The project folder the package runs from when it runs from a source
+    tree: ``<root>/src/staffroom`` with this project's ``pyproject.toml``
+    (a git checkout, or an unpacked sdist, which has no ``.git``). ``None``
+    for an installed copy (site-packages, the Mac app), whose parent folders
+    have nothing to do with Staffroom (#27). Never runs git."""
+    here = (package_dir or Path(__file__).resolve().parents[1]).resolve()
+    if getattr(sys, "frozen", False) or any(p.name in _INSTALLED_DIRS for p in here.parents):
+        return None
+    root = here.parents[1] if here.parent.name == "src" else None
+    return root if root is not None and _is_this_project(root) else None
 
 
 def _tracks_main(receipt: Path) -> bool:

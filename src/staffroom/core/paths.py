@@ -67,15 +67,15 @@ def log_file() -> Path:
 
 
 def project_root() -> Path | None:
-    """The root of the git checkout this copy runs from, or ``None`` for an
-    installed copy (a uv tool, a wheel, the Mac app), which has no checkout:
-    the folder above an installed package is unrelated to Staffroom (#27).
-    :func:`staffroom.core.install.detect` decides."""
-    return install.detect().root
+    """The project folder this copy runs from: a git checkout or an unpacked
+    source distribution. ``None`` for an installed copy (a uv tool, a wheel,
+    the Mac app), where the folders above the package are unrelated to
+    Staffroom (#27). :func:`staffroom.core.install.source_root` decides."""
+    return install.source_root()
 
 
 def examples_dir() -> Path | None:
-    """The checkout's ``examples/`` folder (invented data for tests, docs and
+    """The project's ``examples/`` folder (invented data for tests, docs and
     try-outs), or ``None`` for an installed copy, which does not ship it."""
     root = project_root()
     return root / "examples" if root is not None else None
