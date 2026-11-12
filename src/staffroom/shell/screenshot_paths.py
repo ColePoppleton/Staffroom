@@ -46,12 +46,13 @@ def aliases(config: Config, default_output: Path | None = None) -> Aliases:
     if default_output is not None:
         outputs = neutral(str(default_output), aliases(config))
     pairs: list[tuple[str, str]] = []
+    checkout = paths.project_root()  # None in an installed copy
     for real, shown in (
         (config.general.output_dir, outputs),
         (config.general.resources_root, NEUTRAL_RESOURCES),
         (str(paths.sessions_root(config.general.sessions_root)), NEUTRAL_SESSIONS),
         (str(paths.home_dir()), NEUTRAL_HOME),
-        (str(paths.project_root()), NEUTRAL_CHECKOUT),
+        (str(checkout) if checkout is not None else "", NEUTRAL_CHECKOUT),
         (str(Path.home()), "~"),
     ):
         if not real:
@@ -60,7 +61,20 @@ def aliases(config: Config, default_output: Path | None = None) -> Aliases:
         for variant in {str(path), str(path.resolve())}:  # /var is /private/var on macOS
             if variant not in ("/", "."):
                 pairs.append((variant, shown))
+                # The Library's header shows its folder home-relative
+                # (``~/…``, ``short_path``): that form needs the alias too (#49).
+                home_relative = _home_relative(variant)
+                if home_relative and shown != "~":
+                    pairs.append((home_relative, shown))
     return sorted(set(pairs), key=lambda pair: len(pair[0]), reverse=True)
+
+
+def _home_relative(path: str) -> str:
+    """``~/rest`` for a path under home, else empty."""
+    try:
+        return "~/" + Path(path).relative_to(Path.home()).as_posix()
+    except ValueError:
+        return ""
 
 
 def neutral(text: str, table: Aliases) -> str:

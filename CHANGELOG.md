@@ -12,6 +12,84 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 
+Staffroom now knows Pearson Edexcel GCSE Computer Science as well as OCR and AQA, so spec points,
+grade presets, truth-table gates and the pseudocode tool follow whichever board you choose. You can
+download Staffroom as an ordinary Mac app, and add the larger web and media add-ons from Settings
+when a tool needs them. Pictures and PDFs in the Library open without freezing the window, and PDFs
+show their pages.
+
+### Added
+- A self-contained Mac app (#60): each GitHub Release carries `Staffroom-<version>-macos.zip`
+  for Apple silicon, to unzip and drag to Applications with no Terminal or uv. It brings its
+  own Python 3.13 (python-build-standalone, pinned and checked by SHA-256) so Trace and Bugs run
+  programs through the usual runner, and the release is only published once the built app
+  passes a smoke test (every tool opens; Trace, Bugs and Fade run; Word and PDF export). The
+  Install page offers the download first, with the one-time *Open Anyway* step; Settings ›
+  Updates in the app links to the new release instead of showing a command.
+- Pearson Edexcel GCSE (9–1) Computer Science (1CP2) as a third exam board (#62): its 66
+  spec points (`edexcel:` tags, from the specification's Issue 1, January 2020, named in
+  `core/spec/edexcel.toml`), a choice in Settings and on the first-run card, an
+  *Edexcel 1CP2 (GCSE 9-1)* Marks preset, AND/OR/NOT truth tables, Quiz naming the board's
+  spec points first, and Pseudocode starting on Python, which Edexcel assesses through its
+  Programming Language Subset. The example bank's questions carry Edexcel tags too; a PLS
+  check for Python is #63.
+- Optional add-ons (#5): `staffroom[web]` (QtWebEngine) and `staffroom[media]`
+  (QtMultimedia), pinned to the slim install's Qt release. Settings › Add-ons installs and
+  removes them in the background, with progress, the installer's log behind *Details*, one
+  sentence when it fails (no network, a school proxy) and a restart prompt; `staff addons`
+  does the same from Terminal. A change is tried in a throwaway environment first, so a
+  failed download or an add-on that does not start leaves the copy as it was. A uv tool
+  re-installs from its own source into its own folders, a checkout runs
+  `uv sync --extra`, a bundle shows the line to paste. A plugin declares
+  `requires = ("web",)`: while the add-on is missing the sidebar greys the tool and opening
+  it offers the install. The kit adds `AddOnBanner` and `import_addon` for widgets with a
+  fallback.
+
+### Changed
+- The source distribution carries only the package, its tests and the examples: 1.2 MB
+  instead of 40 MB (no docs images, audits or `.claude/`). Tests about the repository
+  around the package are marked `checkout` and skipped there; the Release workflow runs
+  the tests from the sdist, and the wheel job checks its size and that it builds the same
+  wheel as the checkout (#22).
+- Bugs and Parsons pick a plausible wrong variable by one shared rule, `core/pyscope.py`,
+  instead of two copies that could drift apart (#48).
+- `staff update` and *Update now* in a checkout keep the add-ons installed: a plain
+  `uv sync` removed them, and with them files the Qt packages share.
+
+### Fixed
+- Help texts say what the tools do: Parsons' *Split at* (an `if`/`for`/`def` line is a block
+  of its own), Fade's line-range messages in the panel's words (*Only the lines I list*;
+  `--ranges needs --order ranges` on the command line), Settings' Worksheets card (the exam
+  board sets Marks' starting preset and the truth-table gates, not Quiz tags) and the runner's
+  docstring (Fade runs nothing). `staff marks run` without `--preset` now uses the exam board
+  in Settings, as the panel does, and prints the boundaries it used. The Library screenshots
+  show the pinned day instead of the time of the last index, the fixtures' file dates are
+  pinned too, and screenshot mode also hides a home-relative (`~/…`) checkout path, so the
+  Library shots render from a worktree and no longer change on every `just screenshots` (#49).
+- Marks' *Reteach first* says its threshold is the paper's own facility ("facility below the
+  paper as a whole, 0.75"); Parsons warns above 30 blocks; a wrapped sentence no longer
+  breaks a path after `~/` (the first-run card printed "~/ TeachingSessions") (#23).
+- `paths.examples_dir()` and `paths.project_root()` return nothing in an installed copy (a uv
+  tool, a wheel, the Mac app) instead of a folder above the package that has nothing to do with
+  Staffroom; a checkout or an unpacked sdist still finds its examples (#27).
+- `just install` deletes its build in `dist/` once the app is in Applications, so Spotlight
+  lists Staffroom once instead of twice.
+- The Library preview no longer freezes the app on a big photo or a long PDF, and a PDF
+  shows its page instead of its first page's text, so a scanned booklet looks like itself:
+  *Page 1 of N* with Previous and Next. Photos are decoded off the GUI thread at the size
+  they are shown and keep their orientation; PDF pages are drawn in Qt's own renderer
+  thread; arrowing through many files runs one decode at a time and shows only the last;
+  the last few previews are kept, so going back is instant (#64).
+- The result strip grows for a rewrapped message in the same layout pass as the resize that
+  rewrapped it, so a long failure is never shown squeezed into the old height for a frame
+  (its message reports its height for a width, an opt-in on `ElidedLabel`). This also fixes
+  the flaky `test_a_long_failure_shows_whole_and_the_strip_grows` (#45).
+- The Quiz's bank chip no longer builds its button row only to take it out and drop it.
+  Under PySide 6.11 that left a stale spacer wrapper, which could come back as the next tool's
+  tab bar and stop the tool from opening (#54).
+- Parsons counts a name set by unpacking (`a, b = b, a + b`, `for i, x in …`) as set on
+  that line when it picks the most recently set wrong variable, as Bugs always did (#48).
+
 ## [0.9.1] - 2026-10-12
 Nothing changes for teachers since 0.9.0. This version only fixes a check that stopped
 0.9.0's release page from being published.

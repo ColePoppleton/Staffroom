@@ -65,6 +65,24 @@ def test_many_seeds_shuffle_but_never_lose_blocks(seed: int) -> None:
     assert [b.text for b in again.shuffled] == [b.text for b in problem.shuffled]
 
 
+def test_split_at_help_says_what_each_choice_does() -> None:
+    """#49: the help said a compound header came with its body; it does not.
+    What the help promises is what the splitter does."""
+    from dataclasses import fields
+
+    help_text = next(f for f in fields(logic.Options) if f.name == "granularity").metadata["help"]
+    assert "with its body" not in help_text
+    assert "a line ending in a colon (if, for, def…) is a block of its own" in help_text
+    assert "a statement written over several lines stays in one piece" in help_text
+    source = "marks = [\n    4,\n    7,\n]\nfor m in marks:\n    print(m)\n"
+    assert [b.text for b in logic.split_statements(source)] == [
+        "marks = [\n    4,\n    7,\n]",
+        "for m in marks:",
+        "print(m)",
+    ]
+    assert len(logic.split_lines(source)) == 6  # Lines: one block per line
+
+
 def test_statement_blocks_keep_headers_and_bodies_apart() -> None:
     blocks = logic.split_statements(PROGRAMS["if_elif_else"])
     assert [b.text for b in blocks] == [
@@ -148,10 +166,13 @@ def test_off_by_one_never_makes_a_do_nothing_operation(line: str) -> None:
 
 
 # ----------------------------------------------------- the corpus (#19)
+EXAMPLES = paths.examples_dir()
+assert EXAMPLES is not None, "the tests run from a source tree"
+YEAR9 = EXAMPLES / "year9.py"
 CORPUS = {
     **PROGRAMS,
-    "year9": (paths.examples_dir() / "year9.py").read_text(),
-    "year9_tabs": (paths.examples_dir() / "year9.py").read_text().replace("    ", "\t"),
+    "year9": YEAR9.read_text(),
+    "year9_tabs": YEAR9.read_text().replace("    ", "\t"),
     "plugin": "count = 0\nwhile count < 10:\n    print(count)\n    count += 1\n",
 }
 
@@ -303,6 +324,29 @@ def test_year9_at_seed_1_has_wrong_variables() -> None:
         ]
 
 
+def test_year9_sheets_are_pinned() -> None:
+    """The rule moved to ``core.pyscope`` (#48) without changing a sheet."""
+    expected = {
+        2: [
+            ("total = total + count", "wrong variable"),
+            ("else", "missing colon"),
+            ('print("Average:", count)', "wrong variable"),
+            ("for score in scores", "missing colon"),
+        ],
+        3: [
+            ('print("Average:", count)', "wrong variable"),
+            ("total = score + score", "wrong variable"),
+            ("average = count / count", "wrong variable"),
+            ("if count >= 50:", "wrong variable"),
+        ],
+    }
+    for seed, distractors in expected.items():
+        for granularity in ("statement", "line"):
+            options = logic.Options(seed=seed, distractors=4, granularity=granularity)
+            problem = logic.make_problem(CORPUS["year9"], options)
+            assert [(b.lines[0], b.kind) for b in problem.shuffled if b.distractor] == distractors
+
+
 def test_wrong_variables_in_year9() -> None:
     """Each name read is swapped for the number most recently set before its
     line; the list, the loop's own header and the literals are left alone."""
@@ -350,6 +394,15 @@ def test_wrong_variables_stay_in_their_function() -> None:
     # bonus, set after it. At the top level, never the function's locals.
     assert [(s.old, s.new) for s in swaps[5]] == [("base", "extra"), ("extra", "base")]
     assert [(s.old, s.new) for s in swaps[7]] == [("rate", "bonus"), ("bonus", "rate")]
+
+
+def test_a_name_set_by_unpacking_counts_as_set() -> None:
+    """``a, b = b, a + b`` sets a and b on line 5, so they, not the loop
+    counter, are the most recent numbers before line 6. Bugs always counted
+    it; Parsons missed it until the two shared one rule (#48)."""
+    source = "a = 0\nb = 1\nn = 10\nfor i in range(n):\n    a, b = b, a + b\nprint(n)\n"
+    swaps = logic.variable_swaps(source)
+    assert [(s.old, s.new) for s in swaps[6]] == [("n", "a")]
 
 
 def test_wrong_variables_are_seed_reproducible() -> None:

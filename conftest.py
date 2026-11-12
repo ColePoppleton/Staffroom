@@ -18,6 +18,20 @@ EXAMPLES = paths.examples_dir()
 # Read once, before any test can monkeypatch HOME.
 REAL_HOME = Path.home().resolve()
 UNRECORDED_SESSIONS_ROOT = paths.sessions_root
+# An unpacked source distribution (#22) has PKG-INFO at its root, which a git
+# checkout never has. It carries src/, tests/ and examples/ only, so the tests
+# about the repository around the package (the docs site, the CI workflows, the
+# release and packaging scripts) are marked ``checkout`` and skipped there.
+FROM_SDIST = (Path(__file__).resolve().parent / "PKG-INFO").is_file()
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    if not FROM_SDIST:
+        return
+    skip = pytest.mark.skip(reason="needs the git checkout; the source distribution has no docs")
+    for item in items:
+        if item.get_closest_marker("checkout"):
+            item.add_marker(skip)
 
 
 @pytest.fixture(autouse=True)
@@ -73,6 +87,22 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
         raise OSError(f"network disabled in tests: {url}")
 
     monkeypatch.setattr(update, "https_get", offline)
+
+
+@pytest.fixture(autouse=True)
+def no_addon_installs(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """No test runs uv or downloads an add-on (#5): the real runner fails
+    the test. Tests pass a fake runner (or ``change``) of their own. The
+    cached answers of what is installed are forgotten after each test."""
+    from staffroom.core import addons
+
+    def refuse(command: object, *_args: object) -> int:
+        pytest.fail(f"a test ran the real add-on installer: {command}", pytrace=False)
+
+    cached = addons.is_installed  # tests may replace it; clear the real one
+    monkeypatch.setattr(addons, "run_command", refuse)
+    yield
+    cached.cache_clear()
 
 
 @pytest.fixture

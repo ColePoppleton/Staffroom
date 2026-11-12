@@ -33,6 +33,12 @@ class Options:
 
 
 RANGES_HINT = "Line ranges like 3-5, 8"
+# What the panel calls each Fade order; the messages below use the same words.
+ORDER_LABELS = {
+    "bottom_up": "Last lines first",
+    "top_down": "First lines first",
+    "ranges": "Only the lines I list",
+}
 
 
 def parse_ranges(text: str) -> list[int]:
@@ -133,13 +139,14 @@ def _check_ranges(source: str, options: Options) -> None:
     if options.order != "ranges":
         if options.ranges.strip():
             msg = (
-                f"Line ranges are listed but Fade order is '{options.order}'. "
-                "Choose 'ranges' to fade only those lines, or clear the ranges."
+                f"Line ranges are listed but Fade order is “{ORDER_LABELS[options.order]}”. "
+                f"Choose “{ORDER_LABELS['ranges']}” to fade only those lines, "
+                "or clear Line ranges."
             )
             raise ValueError(msg)
         return
     if not options.ranges.strip():
-        msg = f"Fade order is 'ranges' but no lines are listed. {RANGES_HINT}."
+        msg = f"Fade order is “{ORDER_LABELS['ranges']}” but no lines are listed. {RANGES_HINT}."
         raise ValueError(msg)
     wanted = parse_ranges(options.ranges)
     total = len(source.splitlines())

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 from pytestqt.qtbot import QtBot
 
 from staffroom import __version__
@@ -195,6 +195,42 @@ def test_a_pip_copy_has_no_command_but_still_learns_of_releases(
     assert card.steps.text() == other.update_hint()
 
 
+def test_the_mac_app_links_to_the_new_app_and_shows_no_command(
+    qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#60: the downloaded app has nothing to paste into Terminal. The card
+    and the footer say a release is out, and a link opens the release page
+    where the zipped app is attached."""
+    app = Installation(InstallKind.OTHER, PACKAGE, app=True)
+    monkeypatch.setattr(install, "detect", lambda package_dir=None: app)
+    monkeypatch.setattr(update.subprocess, "run", lambda *a, **k: pytest.fail("ran git"))
+    github(monkeypatch, answer(f"v{NEWER}"))
+    page = settings(qtbot)
+    card = page.installed_updates
+    assert card is not None
+    intro = [label.text() for label in card.findChildren(QLabel) if "Staffroom app" in label.text()]
+    assert intro and "uv" not in intro[0] and "Terminal" not in intro[0]
+    assert not card.command_box.isVisibleTo(card)
+    assert not card.download.isVisibleTo(card)  # nothing to download before a check
+    assert card.steps.text() == app.update_hint()
+    with qtbot.waitSignal(page.update_available) as footer:
+        checked(page, qtbot)
+    assert footer.args == [True, f"{NEWER} out"]
+    assert card.download.isVisibleTo(card)
+    assert card.download.text() == f"Download Staffroom {NEWER} ↗"
+    assert f"Staffroom-{NEWER}-macos.zip" in card.steps.text()
+    assert "Terminal" not in card.steps.text() and not card.command_box.isVisibleTo(card)
+    opened: list[str] = []
+    monkeypatch.setattr(QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
+    card.download.click()
+    assert opened == [f"https://github.com/ColePoppleton/Staffroom/releases/tag/v{NEWER}"]
+
+    github(monkeypatch, answer(f"v{__version__}"))
+    checked(page, qtbot)
+    assert not card.download.isVisibleTo(card)
+    assert card.steps.text().startswith("You have the newest release.")
+
+
 # -- when it asks ---------------------------------------------------------------
 
 
@@ -273,6 +309,7 @@ def test_screenshot_mode_never_asks(qtbot: QtBot, monkeypatch: pytest.MonkeyPatc
 # -- a checkout keeps its card -----------------------------------------------------
 
 
+@pytest.mark.checkout
 def test_a_checkout_keeps_its_git_card_and_never_asks_github(
     qtbot: QtBot, monkeypatch: pytest.MonkeyPatch
 ) -> None:

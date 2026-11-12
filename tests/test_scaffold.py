@@ -130,6 +130,7 @@ def test_scaffolded_tool_is_lint_clean_tested_and_writes_only_an_aggregate_elsew
     assert summary.columns[0] == "Question"
 
 
+@pytest.mark.checkout
 def test_adding_a_tool_examples_keep_the_rules() -> None:
     """The contributor guide's code models the hard rules (#18): no per-row file
     such as ``_graded.csv``, no "pupils" for rows, the current vocabulary."""

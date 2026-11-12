@@ -27,8 +27,14 @@ key as a separate file, in PDF and Word.
 
 ## Install (macOS 14 or later)
 
-Two lines in Terminal. The first installs [uv](https://docs.astral.sh/uv/), which fetches
-everything else; skip it if you have uv, or open a new Terminal window after it.
+**The Mac app** (Apple silicon): download `Staffroom-<version>-macos.zip` from the
+[newest release](https://github.com/ColePoppleton/Staffroom/releases/latest), unzip it and drag
+Staffroom to Applications. The app is not signed with a paid Apple account, so the first time
+macOS needs *Open Anyway* in System Settings › Privacy & Security; the
+[Install guide](https://colepoppleton.github.io/Staffroom/guide/install/) shows where.
+
+**Or with uv**, two lines in Terminal. The first installs [uv](https://docs.astral.sh/uv/),
+which fetches everything else; skip it if you have uv, or open a new Terminal window after it.
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -45,7 +51,8 @@ out.
 
 Your settings, an index of the files (and their text) in your resources folder, run counts
 per tool and a log of file paths are stored on this Mac only; there is no account and no
-server, and the only network call asks GitHub which release is newest. A name, candidate
+server, and the only network call it makes on its own asks GitHub which release is newest
+(an add-on is downloaded only when you press Install). A name, candidate
 number or row of marks from a marks file is never stored: identifier columns are dropped on
 load and only class-level aggregates are saved.
 [Check it yourself](https://colepoppleton.github.io/Staffroom/guide/privacy/).

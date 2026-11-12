@@ -2,7 +2,13 @@
 ellipsis (at the end, or in the middle for paths) and shown in full in the
 tooltip. ``text()`` still returns the whole string, so callers (and tests)
 read what was set, not what fits. With ``whole_words`` the cut falls between
-words, never inside one (a sentence reads better short than broken)."""
+words, never inside one (a sentence reads better short than broken).
+
+With ``height_for_width`` a multi-line label tells its layout how tall it is
+at a given width (Qt's height-for-width), so a resize that rewraps it also
+gives it the height for the new lines in the same layout pass. Only for a
+label outside a scroll area: inside one, Qt sizes a height-for-width page by
+its preferred heights and shows a scroll bar it did not need before."""
 
 from __future__ import annotations
 
@@ -23,11 +29,13 @@ class ElidedLabel(QLabel):
         mode: Qt.TextElideMode = Qt.TextElideMode.ElideRight,
         auto_tooltip: bool = True,
         whole_words: bool = False,
+        height_for_width: bool = False,
     ) -> None:
         super().__init__(parent)
         self.max_lines = max(1, max_lines)
         self.mode = mode
         self.whole_words = whole_words
+        self.height_for_width = height_for_width
         self.auto_tooltip = auto_tooltip  # False: the caller sets its own tooltip
         self._full = ""
         self.setWordWrap(False)  # lines are broken by _elide, exactly
@@ -44,6 +52,22 @@ class ElidedLabel(QLabel):
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
         return QSize(40, super().minimumSizeHint().height())
+
+    def hasHeightForWidth(self) -> bool:  # noqa: N802
+        return self.height_for_width and self.max_lines > 1
+
+    def heightForWidth(self, width: int) -> int:  # noqa: N802
+        """How tall the label is at ``width``: as many lines as the text
+        breaks into there. The layout asks this while it hands out the new
+        width, so a rewrap and the room for it arrive in the same layout pass,
+        never one event-loop pass apart (a frame with the new lines squeezed
+        into the old height, #45)."""
+        if not self.hasHeightForWidth():
+            return super().heightForWidth(width)
+        chrome = self.width() - self.contentsRect().width()
+        lines = self._elide(self._full, max(width - chrome, 40)).count("\n") + 1
+        shown = QLabel.text(self).count("\n") + 1
+        return self.sizeHint().height() + (lines - shown) * self.fontMetrics().lineSpacing()
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
         super().resizeEvent(event)

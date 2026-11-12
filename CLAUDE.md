@@ -1,7 +1,7 @@
 # Staffroom — conventions
 
 A monorepo of small Python tools for UK secondary computing teachers (KS3,
-GCSE OCR J277 / AQA 8525, A-level), run locally on the teacher's own Mac. Outputs (PDF, docx,
+GCSE OCR J277 / AQA 8525 / Pearson Edexcel 1CP2, A-level), run locally on the teacher's own Mac. Outputs (PDF, docx,
 CSV, PNG) are taken into school systems by hand. Optimise for the teacher's
 workflow, not for deployment.
 
@@ -59,7 +59,8 @@ src/staffroom/
                     library/ (Resource Library: index, search, tags, service),
                     export/ (house style: Document → docx / PDF / text),
                     runner/ (sandboxed subprocess with timeout), codeinput,
-                    spec/ (OCR J277 / AQA 8525 taxonomies as TOML)
+                    pyscope (the wrong-variable rule Bugs and Parsons share),
+                    spec/ (OCR J277 / AQA 8525 / Edexcel 1CP2 taxonomies as TOML)
   shell/            staffroom: the PySide6 launcher and its widget kit
   tools/<name>/     one package per tool: __init__ (plugin), cli, logic, panel, tests/
 examples/           small FAKE data files (marker row required, no names)
@@ -120,7 +121,8 @@ app runs. Nothing merges without a PR and green CI.
 
 * `just setup`, `just test`, `just lint`, `just gui`, `just new <name>`,
   `just install` (thin launcher app in /Applications), `just bundle`
-  (PyInstaller), `just icon`, `just screenshots`, `just update`.
+  (the self-contained Mac app: PyInstaller plus a pinned Python for pupil code,
+  smoke-tested by `packaging/smoke.py`), `just icon`, `just screenshots`, `just update`.
 * The installed app runs this checkout via uv: commit and push to
   github.com/ColePoppleton/Staffroom and the app offers the update.
 * `uv` manages the environment; Python 3.12+; src layout.
@@ -134,7 +136,7 @@ app runs. Nothing merges without a PR and green CI.
 * Keep tools small. `hello` is the reference: read it before writing a tool.
   `marks` shows presets, charts and aggregate-only saving; `classroom`
   shows row actions and the Resource Library; `worksheet` and `parsons`
-  show the house-style export; `trace`, `bugs` and `fade` show the sandboxed runner; `pseudocode` is an AST → IR → text translator.
+  show the house-style export; `trace` and `bugs` show the sandboxed runner; `pseudocode` is an AST → IR → text translator.
 * Screenshots for docs: `just screenshots` (renders offscreen via `staffroom
   --screenshot`).
 * Config lives at `~/.config/staffroom/` (config.toml, logs/, library.db,

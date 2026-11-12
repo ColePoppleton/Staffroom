@@ -19,7 +19,9 @@ from staffroom.tools.bugs.logic import KIND_LABELS, Options
 from staffroom.tools.bugs.sheet import build_document
 
 runner = CliRunner()
-YEAR9 = paths.examples_dir() / "year9.py"
+EXAMPLES = paths.examples_dir()
+assert EXAMPLES is not None, "the tests run from a source tree"
+YEAR9 = EXAMPLES / "year9.py"
 
 PROGRAM = """total = 0
 count = 1
@@ -444,6 +446,43 @@ def test_year9_wrong_variable_bugs_mostly_change_the_output(
     crashes = [m for m, o in wrong_names.items() if o == "crash"]
     assert len(crashes) <= 1, crashes  # only `for score in score:`, a NameError
     assert sum(o == "wrong_output" for o in wrong_names.values()) >= len(wrong_names) - 1
+
+
+def test_wrong_variable_bugs_are_pinned() -> None:
+    """The rule moved to ``core.pyscope`` (#48) without changing a sheet."""
+    notes = {
+        source: [(m.line, m.note) for m in logic.candidates(source) if m.kind == "wrong_variable"]
+        for source in (YEAR9.read_text(), PROGRAM)
+    }
+    assert notes[YEAR9.read_text()] == [
+        (5, "scores replaced by score"),
+        (8, "total replaced by count"),
+        (8, "count replaced by total"),
+        (9, "average replaced by count"),
+        (13, "average replaced by count"),
+        (6, "total replaced by score"),
+        (6, "score replaced by count"),
+        (7, "count replaced by total"),
+    ]
+    assert notes[PROGRAM] == [
+        (4, "count replaced by limit"),
+        (4, "limit replaced by count"),
+        (10, "score replaced by i"),
+        (14, "total replaced by score"),
+        (5, "total replaced by limit"),
+        (5, "count replaced by limit"),
+        (6, "count replaced by total"),
+        (8, "i replaced by count"),
+    ]
+
+
+def test_wrong_variable_of_unknown_kind_falls_back() -> None:
+    """Bugs, unlike Parsons, still swaps a name whose kind is unclear: for
+    another unclear name first, else for any name already set."""
+    unclear = "a = foo()\nb = bar()\nprint(a)\n"
+    assert _swaps(unclear)[(3, "a")] == "b"
+    only_numbers = "n = 0\nx = foo()\nprint(x)\n"
+    assert _swaps(only_numbers)[(3, "x")] == "n"
 
 
 # ---------------------------------------------------------------- #130: indentation in the key

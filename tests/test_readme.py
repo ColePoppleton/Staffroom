@@ -15,6 +15,8 @@ The install line itself is checked by ``tests/test_install_docs.py``.
 import re
 from pathlib import Path
 
+import pytest
+
 from tests.test_docs_landing import CLAIMS
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +31,7 @@ README_CLAIMS = [
     "an index of the files (and their text) in your resources folder",
     "identifier columns are dropped on load",
     "only class-level aggregates are saved",
-    "the only network call asks GitHub which release is newest",
+    "the only network call it makes on its own asks GitHub which release is newest",
 ]
 
 # Words for the person building Staffroom, not the teacher reading about it.
@@ -47,6 +49,7 @@ def _flat(text: str) -> str:
     return " ".join(text.split())
 
 
+@pytest.mark.checkout
 def test_readme_pictures_are_the_docs_sites_own_renders() -> None:
     text = _text()
     script = (ROOT / "scripts" / "screenshots.sh").read_text(encoding="utf-8")

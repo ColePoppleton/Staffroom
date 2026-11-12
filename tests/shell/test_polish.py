@@ -8,7 +8,7 @@ import pytest
 from PySide6.QtGui import QShortcut
 from pytestqt.qtbot import QtBot
 
-from staffroom.core import usage
+from staffroom.core import paths, usage
 from staffroom.core.config import load_config
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.sidebar import LIBRARY
@@ -77,6 +77,27 @@ def test_settings_board_and_house_style_persist(window: MainWindow) -> None:
     cfg = load_config()
     assert cfg.general.board == "aqa"
     assert cfg.general.house_header == "Example High" and cfg.general.house_footer == "Computing"
+
+
+def test_settings_offers_every_board_and_the_tools_follow_edexcel(window: MainWindow) -> None:
+    from staffroom.core.spec import BOARDS
+
+    s = window.settings
+    assert [s.board.itemText(i) for i in range(s.board.count())] == list(BOARDS.values())
+    assert s.board.findText("Pearson Edexcel 1CP2") >= 0
+    s.board.setCurrentIndex(s.board.findData("edexcel"))
+    assert load_config().general.board == "edexcel"
+    # Panels built after the change start from the Edexcel choices.
+    window.go_to_tool("marks")
+    marks = window.stack.currentWidget()
+    assert isinstance(marks, ToolPanel)
+    assert marks.grids["boundaries"].preset_combo.currentText() == "Edexcel 1CP2 (GCSE 9-1)"
+    window.go_to_tool("quiz")
+    quiz = window.stack.currentWidget()
+    assert isinstance(quiz, ToolPanel)
+    quiz.set_input_path("source", paths.examples_dir() / "question_bank.md")
+    note = quiz.found["source"].notes()[0].text
+    assert "Edexcel, OCR and AQA spec points" in note
 
 
 def test_app_icon_assets_exist() -> None:

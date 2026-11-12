@@ -15,7 +15,11 @@ import re
 import unicodedata
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
+# About the repository, not the package: skipped in the source distribution (#22).
+pytestmark = pytest.mark.checkout
 DOCS = ROOT / "docs"
 INDEX = DOCS / "index.md"
 PRIVACY = DOCS / "guide" / "privacy.md"
@@ -34,8 +38,11 @@ CLAIMS = {
     "only class-level aggregates are saved": "Only aggregates are ever written",
     "No log holds a value from your files.": "neither holds a value from your files",
     "No account and no server": "There is no account and no server",
-    "the only network call asks GitHub which release is newest": (
-        "Its one network call asks GitHub which release is newest"
+    "the only network call it makes on its own asks GitHub which release is newest": (
+        "Its one network call of its own asks GitHub which release is newest"
+    ),
+    "an add-on is downloaded only when you press *Install*": (
+        "an add-on is downloaded only when you press *Install* in Settings › Add-ons"
     ),
     "when you press *Check again* and at most once a day when Staffroom opens": (
         "made when you press *Check again* in Settings › Updates and, at most once a day, "

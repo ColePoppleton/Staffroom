@@ -188,11 +188,18 @@ def main(argv: list[str] | None = None) -> int:
     window = build_window(args)
 
     if args.screenshot:
+        if args.tool and not any(p.name == args.tool for p in window.plugins):
+            # Say so rather than render the home page (a tool skipped at
+            # discovery, as Trace was in the first Mac app build, #60).
+            print(f"no tool named {args.tool!r}; the log says why")
+            return 2
         width, height = (int(x) for x in args.size.lower().split("x"))
         window.resize(width, height)
         window.show()
         if args.run and args.tool:
             panel = window.panel_for(args.tool)
+            # One line on stdout for scripts (packaging/smoke.py): did it run?
+            panel.run_finished.connect(lambda ok: print(_run_line(panel, ok), flush=True))
             if args.expand:
                 panel.run_finished.connect(lambda _ok: _expand(panel))
             if args.select_row:
@@ -207,12 +214,19 @@ def main(argv: list[str] | None = None) -> int:
             )
             QTimer.singleShot(200, panel.start_run)
         else:
-            QTimer.singleShot(400, lambda: _save_screenshot(app, window, args.screenshot))
+            QTimer.singleShot(400, lambda: _save_when_shown(app, window, args.screenshot))
         return app.exec()
 
     window.show()
     log.info("launcher started")
     return app.exec()
+
+
+def _run_line(panel: ToolPanel, ok: bool) -> str:
+    if not ok:
+        return f"run failed: {panel.plugin.name}"
+    summary = panel.last_result.summary if panel.last_result is not None else ""
+    return f"run ok: {panel.plugin.name}: {summary}"
 
 
 SETTLE_TRIES = 40  # x 100 ms: how long a screenshot waits for page thumbnails
@@ -227,6 +241,17 @@ def _save_when_drawn(
         QTimer.singleShot(100, lambda: _save_when_drawn(app, window, panel, path, tries - 1))
         return
     QTimer.singleShot(150, lambda: _save_screenshot(app, window, path))  # the large page too
+
+
+def _save_when_shown(
+    app: QApplication, window: MainWindow, path: Path, tries: int = SETTLE_TRIES
+) -> None:
+    """Save once the Library preview's picture (decoded or drawn in a
+    thread) is on screen, or after :data:`SETTLE_TRIES` tries."""
+    if tries > 0 and window.library_page.preview.picture.busy():
+        QTimer.singleShot(100, lambda: _save_when_shown(app, window, path, tries - 1))
+        return
+    _save_screenshot(app, window, path)
 
 
 def _default_output(panel: ToolPanel) -> Path:

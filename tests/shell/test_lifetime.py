@@ -8,12 +8,15 @@ the window down: no item wrappers, workers stopped before the window goes.
 
 #54 extends the first to every ``QListWidgetItem`` the shell reaches: those
 wrappers are safe for a different reason (PySide invalidates them on
-``clear()`` and with the list), and the tests here pin that down."""
+``clear()`` and with the list), and the tests here pin that down. It also
+covers layout items: a spacer wrapper left stale by a layout row that was
+built, taken out again and dropped came back as a new tool's tab bar."""
 
 from __future__ import annotations
 
 import gc
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -22,7 +25,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtGui import QStandardItem
-from PySide6.QtWidgets import QApplication, QListWidgetItem
+from PySide6.QtWidgets import QApplication, QLayout, QLayoutItem, QListWidgetItem, QTabBar
 from pytestqt.qtbot import QtBot
 from shiboken6 import delete, isValid
 
@@ -31,13 +34,16 @@ from staffroom.core.discovery import visible_plugins
 from staffroom.core.library.model import Resource
 from staffroom.core.library.service import LibraryService
 from staffroom.core.panel import Action, ActionTable
+from staffroom.core.paths import examples_dir
 from staffroom.core.table import Table
 from staffroom.shell.app import _save_screenshot, build_window, parse_args
 from staffroom.shell.library.picker import REL_ROLE, ResourcePickerDialog
 from staffroom.shell.library.tree import REL_PATH_ROLE, ResourceTreeModel
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.sidebar import Sidebar
+from staffroom.shell.tool_panel import ToolPanel
 from staffroom.shell.widgets.action_table import ActionTableWidget
+from staffroom.shell.widgets.flow_layout import FlowLayout
 from staffroom.shell.widgets.string_list import StringListEditor
 
 Progress = Callable[[int, int, str], None] | None
@@ -54,6 +60,20 @@ def _item_wrappers() -> int:
 
 def _list_item_wrappers() -> list[QListWidgetItem]:
     return [o for o in gc.get_objects() if isinstance(o, QListWidgetItem)]
+
+
+def _layout_item_wrappers() -> list[QLayoutItem]:
+    """Wrappers for spacer and widget items (not layouts) that no
+    :class:`FlowLayout` holds. A FlowLayout keeps its items' wrappers on
+    purpose and pops each one before Qt deletes it; any other such wrapper
+    has nothing to tell it when Qt deletes the item (#54)."""
+    objects = gc.get_objects()
+    held = {id(item) for o in objects if isinstance(o, FlowLayout) for item in o._items}
+    return [
+        o
+        for o in objects
+        if isinstance(o, QLayoutItem) and not isinstance(o, QLayout) and id(o) not in held
+    ]
 
 
 @pytest.fixture
@@ -181,6 +201,51 @@ def test_sidebar_holds_no_list_items_and_deletes_cleanly(qapp: QApplication) -> 
         assert row.current
         delete(sidebar)
         assert not isValid(row)
+    finally:
+        gc.enable()
+
+
+def test_opening_tools_from_the_library_leaves_no_layout_item_wrapper(
+    qtbot: QtBot, resources_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """#54: from the use bar to a new tool panel, and on to every other tool,
+    no spacer or widget item is wrapped and no built row is taken back out of
+    a live layout. The Quiz's file chip used to build its button row, add it,
+    then remove and drop it; the row's stretch was deleted while PySide 6.11
+    still held a wrapper for it, and the tab bar made next at that address
+    came back as that stale ``QSpacerItem``."""
+    taken: list[str] = []
+    remove_item = QLayout.removeItem
+
+    def recording(layout: QLayout, item: QLayoutItem) -> None:
+        taken.append(type(item).__name__)
+        remove_item(layout, item)
+
+    monkeypatch.setattr(QLayout, "removeItem", recording)
+    shutil.copy(examples_dir() / "question_bank.md", resources_root / "Python" / "bank.md")
+    service = LibraryService(resources_root, tmp_path / "library.db", opener=lambda _a: None)
+    service.index()
+    config = load_config()
+    config.general.resources_root = str(resources_root)
+    config.general.output_dir = str(tmp_path / "out")
+    gc.disable()  # a wrapper kept alive by a cycle must show up, not be collected
+    try:
+        before = _layout_item_wrappers()  # held, so their ids stay taken
+        base = {id(w) for w in before}
+        window = MainWindow(config, library=service, auto_index=False)
+        qtbot.addWidget(window)
+        window.show()
+        window.show_library()
+        window.resources.select("Python/bank.md")
+        window.use_bar.buttons["quiz"].click()
+        panel = window.stack.currentWidget()
+        assert isinstance(panel, ToolPanel) and panel.plugin.name == "quiz"
+        assert panel.results.tabs is not None
+        assert type(panel.results.tabs.tabBar()) is QTabBar
+        for plugin in window.visible_plugins:
+            window.go_to_tool(plugin.name)
+        assert taken == []
+        assert [w for w in _layout_item_wrappers() if id(w) not in base] == []
     finally:
         gc.enable()
 

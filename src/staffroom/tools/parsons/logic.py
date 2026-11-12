@@ -11,6 +11,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
+from staffroom.core.pyscope import OWN_NAMES, Scopes
+
 Granularity = Literal["statement", "line"]
 
 
@@ -22,7 +24,9 @@ class Options:
         default="statement",
         metadata={
             "label": "Split at",
-            "help": "Statements: a compound header with its body; Lines: every line",
+            "help": "Statements: one block per statement, so a statement written over "
+            "several lines stays in one piece, and a line ending in a colon (if, for, def…) "
+            "is a block of its own. Lines: one block per line.",
         },
     )
     show_indentation: bool = field(
@@ -361,13 +365,13 @@ def make_distractors(
 
 # ---------------------------------------------------------------- wrong variables
 # A pupil who types the wrong name types one they have just been using, of the
-# same sort: ``count`` for ``score``, not the list ``scores`` for a number (the
-# Bugs tool's stand-ins are the model). The stand-in must already be set when
-# the line runs, in the same function or at the top level, and be the same kind
-# of value as far as the program's own assignments show; a name whose kind is
-# unclear (a function's parameter, a value from an unknown call) is never
-# swapped, nor is a name in a list or other literal, a string, or a call's
-# function. Of those, the most recently set is the one a pupil would type.
+# same sort: ``count`` for ``score``, not the list ``scores`` for a number. The
+# rule is ``core.pyscope``, shared with Bugs: already set when the line runs, in
+# the same function or at the top level, the same kind of value, the most
+# recently set. A name whose kind is unclear (a function's parameter, a value
+# from an unknown call) is never swapped. Parsons also leaves alone a name in a
+# list or other literal, a string, a lambda or comprehension, or a call's
+# function.
 @dataclass(frozen=True)
 class Swap:
     """One wrong variable for a line: ``old`` at ``column`` (in the line
@@ -378,138 +382,21 @@ class Swap:
     new: str
 
 
-_NUMBER_CALLS = {"int", "float", "len", "sum", "round", "abs", "min", "max", "ord"}
-_STR_CALLS = {"str", "input", "chr", "repr", "format"}
-_LIST_CALLS = {"list", "sorted"}
-_SCOPES = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef)
-# Names bound in these live only inside them; names in literals are data.
-_OWN_NAMES = (ast.Lambda, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
-_NOT_SWAPPED = (*_CONTAINERS, ast.JoinedStr, *_OWN_NAMES)
+_NOT_SWAPPED = (*_CONTAINERS, ast.JoinedStr, *OWN_NAMES)
 
 
-class _Names:
-    """Which names each scope sets, on which lines, and of what kind."""
-
-    def __init__(self, tree: ast.Module) -> None:
-        self.tree = tree
-        self.stores: dict[ast.AST, dict[str, list[int]]] = {}  # scope -> name -> lines
-        self.values: dict[str, list[ast.expr]] = {}  # name -> what it was set to
-        self.items: dict[str, list[ast.expr]] = {}  # loop variable -> what it loops over
-        self.uses: list[tuple[ast.Name, ast.AST]] = []  # names a pupil could mistype
-        self._walk(tree, tree, swappable=True)
-        # Names set from other names settle in a few passes; each pass reads
-        # only the one before, so the result does not depend on set order.
-        self.kinds: dict[str, str] = {}
-        for _ in range(10):
-            settled = {name: self._name_kind(name) for name in self.values.keys() | self.items}
-            if settled == self.kinds:
-                break
-            self.kinds = settled
-
-    def _walk(self, node: ast.AST, scope: ast.AST, *, swappable: bool) -> None:
-        for child in ast.iter_child_nodes(node):
-            inner = child if isinstance(child, _SCOPES) else scope
-            if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef):
-                args = child.args
-                for a in args.posonlyargs + args.args + args.kwonlyargs:
-                    self.stores.setdefault(child, {}).setdefault(a.arg, []).append(child.lineno)
-            if isinstance(child, ast.Name):
-                if isinstance(child.ctx, ast.Store) and swappable:
-                    self.stores.setdefault(scope, {}).setdefault(child.id, []).append(child.lineno)
-                elif isinstance(child.ctx, ast.Load) and swappable:
-                    called = isinstance(node, ast.Call) and node.func is child
-                    if not called:
-                        self.uses.append((child, scope))
-            if isinstance(child, ast.Assign):
-                for target in child.targets:
-                    if isinstance(target, ast.Name):
-                        self.values.setdefault(target.id, []).append(child.value)
-            elif isinstance(child, ast.AnnAssign | ast.AugAssign):
-                if isinstance(child.target, ast.Name) and child.value is not None:
-                    self.values.setdefault(child.target.id, []).append(child.value)
-            elif isinstance(child, ast.For) and isinstance(child.target, ast.Name):
-                self.items.setdefault(child.target.id, []).append(child.iter)
-            self._walk(child, inner, swappable=swappable and not isinstance(child, _NOT_SWAPPED))
-
-    def _name_kind(self, name: str) -> str:
-        found = {self._kind(v) for v in self.values.get(name, [])}
-        found |= {self._item_kind(it) for it in self.items.get(name, [])}
-        return found.pop() if len(found) == 1 else "unknown"
-
-    def _kind(self, value: ast.expr) -> str:
-        if isinstance(value, ast.Constant):
-            v = value.value
-            if isinstance(v, bool):
-                return "bool"
-            if isinstance(v, int | float):
-                return "number"
-            return "str" if isinstance(v, str) else "unknown"
-        if isinstance(value, ast.JoinedStr):
-            return "str"
-        if isinstance(value, ast.List | ast.ListComp):
-            return "list"
-        if isinstance(value, ast.Dict | ast.DictComp):
-            return "dict"
-        if isinstance(value, ast.Compare | ast.BoolOp):
-            return "bool"
-        if isinstance(value, ast.Name):
-            return self.kinds.get(value.id, "unknown")
-        if isinstance(value, ast.UnaryOp):
-            return "bool" if isinstance(value.op, ast.Not) else self._kind(value.operand)
-        if isinstance(value, ast.BinOp):
-            left, right = self._kind(value.left), self._kind(value.right)
-            if isinstance(value.op, ast.Div) and "number" in (left, right):
-                return "number"
-            return left if left != "unknown" else right
-        if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
-            fn = value.func.id
-            if fn in _NUMBER_CALLS:
-                return "number"
-            if fn in _STR_CALLS:
-                return "str"
-            if fn in _LIST_CALLS:
-                return "list"
-            if fn in ("bool", "dict"):
-                return fn
-        return "unknown"
-
-    def _item_kind(self, iterable: ast.expr) -> str:
-        """The kind of value a ``for`` loop over ``iterable`` hands out."""
-        if (
-            isinstance(iterable, ast.Call)
-            and isinstance(iterable.func, ast.Name)
-            and iterable.func.id == "range"
-        ):
-            return "number"
-        if isinstance(iterable, ast.List | ast.Tuple | ast.Set):
-            kinds = {self._kind(e) for e in iterable.elts}
-            return kinds.pop() if len(kinds) == 1 else "unknown"
-        if isinstance(iterable, ast.Name):
-            if self.kinds.get(iterable.id) == "str":
-                return "str"
-            values = self.values.get(iterable.id, [])
-            listed = [v for v in values if isinstance(v, ast.List)]
-            if listed and len(listed) == len(values):
-                kinds = {self._kind(e) for v in listed for e in v.elts}
-                return kinds.pop() if len(kinds) == 1 else "unknown"
-        return "unknown"
-
-    def stand_in(self, use: ast.Name, scope: ast.AST) -> str | None:
-        """The name a pupil might type instead of ``use``, or None."""
-        kind = self.kinds.get(use.id, "unknown")
-        if kind == "unknown":
-            return None
-        visible = dict(self.stores.get(self.tree, {}))
-        if scope is not self.tree:
-            visible.update(self.stores.get(scope, {}))
-        # Set on an earlier line, so it already exists when this line runs.
-        earlier = {
-            name: max(n for n in at if n < use.lineno)
-            for name, at in visible.items()
-            if name != use.id and min(at) < use.lineno and self.kinds.get(name) == kind
-        }
-        # The most recently set; ties in the order the names were first set.
-        return max(earlier, key=lambda name: earlier[name], default=None)
+def _swappable_uses(node: ast.AST) -> list[ast.Name]:
+    """Every name read in ``node`` that a distractor may swap, in source walk
+    order: not inside a literal, an f-string, a lambda or a comprehension, and
+    not the function of a call."""
+    uses: list[ast.Name] = []
+    for child in ast.iter_child_nodes(node):
+        called = isinstance(node, ast.Call) and node.func is child
+        if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load) and not called:
+            uses.append(child)
+        if not isinstance(child, _NOT_SWAPPED):
+            uses += _swappable_uses(child)
+    return uses
 
 
 def variable_swaps(source: str) -> dict[int, list[Swap]]:
@@ -521,13 +408,13 @@ def variable_swaps(source: str) -> dict[int, list[Swap]]:
         tree = ast.parse(source)
     except SyntaxError:
         return {}
-    names = _Names(tree)
+    scopes = Scopes(tree)
     lines = source.splitlines()
     swaps: dict[int, list[Swap]] = {}
-    for use, scope in names.uses:
+    for use in _swappable_uses(tree):
         if use.end_lineno != use.lineno:
             continue
-        new = names.stand_in(use, scope)
+        new = scopes.stand_in(use)
         if new is None:
             continue
         line = lines[use.lineno - 1]
@@ -538,6 +425,24 @@ def variable_swaps(source: str) -> dict[int, list[Swap]]:
 
 
 # ---------------------------------------------------------------- the problem
+# Past this many blocks a Parsons problem stops being a puzzle and becomes a
+# sorting chore (#23: a 1,501-line file made a 1,501-block problem in silence).
+LONG_PROBLEM_BLOCKS = 30
+
+
+def length_warning(problem: Problem) -> str:
+    """A sentence for the teacher when the problem has more than
+    ``LONG_PROBLEM_BLOCKS`` blocks to order (distractors not counted); empty
+    otherwise."""
+    n = len(problem.solution)
+    if n <= LONG_PROBLEM_BLOCKS:
+        return ""
+    return (
+        f"{n} blocks is a lot to put in order: Parsons problems work best with about "
+        f"{LONG_PROBLEM_BLOCKS} or fewer. Try a shorter program, or one part of this one."
+    )
+
+
 def make_problem(source: str, options: Options | None = None) -> Problem:
     options = options or Options()
     solution = split(source, options.granularity)

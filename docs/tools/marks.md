@@ -12,7 +12,9 @@ After *Analyse* the report reads top to bottom:
   (with the mean mark out of the total); *Median grade*, the grade of the
   median total, with how many scripts reached grade 4 (or, for boundaries
   without a 4, the lowest grade above zero: E for A-level, Pass for
-  Pass/Fail); and *Reteach first*.
+  Pass/Fail); and *Reteach first*, with the paper's own facility as the
+  line the questions fall below ("facility below the paper as a whole,
+  0.75"), so the number changes from paper to paper.
 - **The grade chart**, with the count over each bar and the share of scripts
   under it. *Table* flips it to the numbers (to one decimal place, and the
   *Incomplete scripts* row when there is one).
@@ -64,8 +66,10 @@ Each is also in the run log under *Details*.
 
 A compact grid of grade and minimum, five to a line: click a number to edit
 it. *Boundaries in* switches between percent of the paper and raw marks.
-Built-in presets for OCR J277, AQA 8525 and A-level are starting points:
-choose one, edit it to the published boundaries and *Save as preset*.
+Built-in presets for OCR J277, AQA 8525, Pearson Edexcel 1CP2 and A-level
+are starting points: choose one, edit it to the published boundaries and
+*Save as preset*. The panel starts on the preset for the exam board in
+Settings.
 
 ## Outputs
 
@@ -94,5 +98,6 @@ staff marks presets
 ```
 
 The command line prints the same report: the four headline numbers, the
-grade distribution and the questions hardest first (`--worst N` sets
-*Reteach at most*).
+boundaries used, the grade distribution and the questions hardest first
+(`--worst N` sets *Reteach at most*). Without `--preset` it uses the preset for
+the exam board in Settings, as the panel does.

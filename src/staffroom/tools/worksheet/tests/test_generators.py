@@ -7,6 +7,7 @@ from collections.abc import Callable
 
 import pytest
 
+from staffroom.core import spec
 from staffroom.tools.worksheet import logic
 
 DIFFS = ["easy", "medium", "hard"]
@@ -99,8 +100,13 @@ def test_gate_set_follows_the_board_and_the_level() -> None:
     # A-level adds XOR for every board, and NAND/NOR only at hard.
     assert logic.gate_set("ocr", "a_level", "medium") == ("AND", "OR", "NOT", "XOR")
     assert logic.gate_set("ocr", "a_level", "hard") == ("AND", "OR", "NOT", "XOR", "NAND", "NOR")
+    # Pearson Edexcel 1CP2 1.3.1: AND, OR, NOT in truth tables of up to three inputs.
+    assert logic.gate_set("edexcel") == ("AND", "OR", "NOT")
+    assert logic.gate_set("edexcel", "gcse", "hard") == ("AND", "OR", "NOT")
     # An unknown board gets the smaller set, never the larger one.
-    assert logic.gate_set("edexcel") == logic.gate_set("ocr")
+    assert logic.gate_set("wjec") == logic.gate_set("ocr")
+    # Every board in the one list has a GCSE gate set of its own.
+    assert set(logic.GCSE_GATES) == set(spec.BOARDS)
 
 
 def evaluate_gates(expr: str, env: dict[str, bool]) -> bool:
@@ -153,7 +159,8 @@ SAME_INPUT_BOTH_SIDES = re.compile(r"\b([ABC]) (?:AND|OR|XOR|NAND|NOR) (?:NOT )?
 @pytest.mark.parametrize("seed", SEEDS)
 @pytest.mark.parametrize("difficulty", DIFFS)
 @pytest.mark.parametrize(
-    ("board", "level"), [("ocr", "gcse"), ("aqa", "gcse"), ("ocr", "a_level"), ("aqa", "a_level")]
+    ("board", "level"),
+    [("ocr", "gcse"), ("aqa", "gcse"), ("edexcel", "gcse"), ("ocr", "a_level"), ("aqa", "a_level")],
 )
 def test_truth_tables(seed: int, difficulty: str, board: str, level: str) -> None:
     gates = set(logic.gate_set(board, level, difficulty))  # type: ignore[arg-type]

@@ -11,11 +11,15 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "packaging" / "make_launcher.py"
-spec = importlib.util.spec_from_file_location("make_launcher", SCRIPT)
-assert spec and spec.loader
-make_launcher = importlib.util.module_from_spec(spec)
-sys.modules["make_launcher"] = make_launcher
-spec.loader.exec_module(make_launcher)
+# The script is not in the source distribution (#22): there the module is
+# collected but every test is skipped (conftest.py).
+pytestmark = pytest.mark.checkout
+if not (Path(__file__).resolve().parents[1] / "PKG-INFO").is_file():
+    spec = importlib.util.spec_from_file_location("make_launcher", SCRIPT)
+    assert spec and spec.loader
+    make_launcher = importlib.util.module_from_spec(spec)
+    sys.modules["make_launcher"] = make_launcher
+    spec.loader.exec_module(make_launcher)
 
 
 def test_bundle_runs_natively(tmp_path: Path) -> None:
@@ -62,6 +66,8 @@ def test_install_forgets_the_dist_copy(tmp_path: Path, monkeypatch: pytest.Monke
 
     assert target == applications / "Staffroom.app"
     assert (target / "Contents" / "MacOS" / "staffroom").exists()
+    # The build is gone, so Spotlight cannot list a second Staffroom from dist/.
+    assert not app.exists()
     registrations = [c for c in calls if c[0] == str(lsregister)]
     assert registrations == [
         [str(lsregister), "-u", str(app)],

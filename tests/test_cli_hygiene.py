@@ -59,6 +59,7 @@ def test_only_staff_and_staffroom_are_installed() -> None:
     }
 
 
+@pytest.mark.checkout
 def test_nothing_outside_the_changelog_and_audits_calls_the_old_names() -> None:
     files = [ROOT / name for name in ("README.md", "CLAUDE.md", "justfile", "mkdocs.yml")]
     for folder in ("docs", "scripts", ".github", "packaging"):

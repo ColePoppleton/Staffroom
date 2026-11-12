@@ -1,0 +1,214 @@
+# Pearson Edexcel GCSE (9-1) Computer Science 1CP2 — content map.
+# Codes and subtopics are the specification's own (Topics 1-6); titles are short
+# forms of each point's wording. Built from the document named in [source]; if
+# Pearson publishes a later issue, check the codes and titles against it.
+board = "edexcel"
+title = "Pearson Edexcel 1CP2"
+
+[source]
+document = "Pearson Edexcel Level 1/Level 2 GCSE (9-1) in Computer Science (1CP2) Specification"
+issue = "Issue 1"
+date = "January 2020"
+first_teaching = "September 2020"
+url = "https://qualifications.pearson.com/content/dam/pdf/GCSE/Computer%20Science/2020/specification-and-sample-assessments/GCSE_L1_L2_Computer_Science_2020_Specification.pdf"
+checked = "2026-11-03"  # the issue Pearson's qualification page linked on this date
+
+# -- Paper 1: Principles of Computer Science (1CP2/01) ------------------------
+# Topic 1: Computational thinking
+
+[[units]]
+code = "1.1"
+title = "Decomposition and abstraction"
+points = [
+  { code = "1.1.1", title = "Decomposition and abstraction to model and solve problems" },
+  { code = "1.1.2", title = "Benefits of using subprograms" },
+]
+
+[[units]]
+code = "1.2"
+title = "Algorithms"
+points = [
+  { code = "1.2.1", title = "Follow and write algorithms: sequence, selection, repetition, iteration, input and output" },
+  { code = "1.2.2", title = "Variables, constants and data structures (strings, records, arrays)" },
+  { code = "1.2.3", title = "Arithmetic, relational and logical operators" },
+  { code = "1.2.4", title = "Determining the output of an algorithm; trace tables" },
+  { code = "1.2.5", title = "Types of error (syntax, logic, runtime); correcting logic errors" },
+  { code = "1.2.6", title = "Standard algorithms: bubble sort, merge sort, linear search, binary search" },
+  { code = "1.2.7", title = "Evaluating an algorithm's fitness for purpose and efficiency" },
+]
+
+[[units]]
+code = "1.3"
+title = "Truth tables"
+points = [
+  { code = "1.3.1", title = "Truth tables with AND, OR and NOT (up to three inputs)" },
+]
+
+# Topic 2: Data
+
+[[units]]
+code = "2.1"
+title = "Binary"
+points = [
+  { code = "2.1.1", title = "Binary for data and instructions; states of a bit pattern" },
+  { code = "2.1.2", title = "Unsigned integers and two's complement signed integers" },
+  { code = "2.1.3", title = "Converting between denary and 8-bit binary" },
+  { code = "2.1.4", title = "Binary addition; logical and arithmetic shifts" },
+  { code = "2.1.5", title = "Overflow" },
+  { code = "2.1.6", title = "Hexadecimal and converting to and from binary" },
+]
+
+[[units]]
+code = "2.2"
+title = "Data representation"
+points = [
+  { code = "2.2.1", title = "Character encoding with 7-bit ASCII" },
+  { code = "2.2.2", title = "Bitmap images (pixels, resolution, colour depth)" },
+  { code = "2.2.3", title = "Sound (amplitude, sample rate, bit depth, sample interval)" },
+  { code = "2.2.4", title = "Limits of binary representation with a fixed number of bits" },
+]
+
+[[units]]
+code = "2.3"
+title = "Data storage and compression"
+points = [
+  { code = "2.3.1", title = "Units of storage (bit to tebibyte); file size and capacity calculations" },
+  { code = "2.3.2", title = "Data compression (lossless, lossy)" },
+]
+
+# Topic 3: Computers
+
+[[units]]
+code = "3.1"
+title = "Hardware"
+points = [
+  { code = "3.1.1", title = "Von Neumann stored program concept and the fetch-decode-execute cycle" },
+  { code = "3.1.2", title = "Secondary storage (magnetic, optical, solid state)" },
+  { code = "3.1.3", title = "Embedded systems" },
+]
+
+[[units]]
+code = "3.2"
+title = "Software"
+points = [
+  { code = "3.2.1", title = "Operating systems" },
+  { code = "3.2.2", title = "Utility software" },
+  { code = "3.2.3", title = "Robust software; identifying vulnerabilities (audit trails, code reviews)" },
+]
+
+[[units]]
+code = "3.3"
+title = "Programming languages"
+points = [
+  { code = "3.3.1", title = "Low-level and high-level programming languages" },
+  { code = "3.3.2", title = "Interpreters and compilers" },
+]
+
+# Topic 4: Networks
+
+[[units]]
+code = "4.1"
+title = "Networks"
+points = [
+  { code = "4.1.1", title = "Why computers are connected in a network" },
+  { code = "4.1.2", title = "Types of network (LAN, WAN)" },
+  { code = "4.1.3", title = "Structure of the internet (IP addressing, routers)" },
+  { code = "4.1.4", title = "Wired and wireless connectivity and performance" },
+  { code = "4.1.5", title = "Network speeds; file size, transmission rate and time" },
+  { code = "4.1.6", title = "Network protocols and email protocols" },
+  { code = "4.1.7", title = "The 4-layer TCP/IP model" },
+  { code = "4.1.8", title = "Network topologies (bus, star, mesh)" },
+]
+
+[[units]]
+code = "4.2"
+title = "Network security"
+points = [
+  { code = "4.2.1", title = "Network security: finding vulnerabilities and protecting networks" },
+]
+
+# Topic 5: Issues and impact
+
+[[units]]
+code = "5.1"
+title = "Environmental"
+points = [
+  { code = "5.1.1", title = "Environmental issues of digital devices" },
+]
+
+[[units]]
+code = "5.2"
+title = "Ethical and legal"
+points = [
+  { code = "5.2.1", title = "Ethical and legal issues of personal data" },
+  { code = "5.2.2", title = "Ethical and legal issues of AI, machine learning and robotics" },
+  { code = "5.2.3", title = "Intellectual property protection (copyright, patents, trademarks, licencing)" },
+]
+
+[[units]]
+code = "5.3"
+title = "Cybersecurity"
+points = [
+  { code = "5.3.1", title = "Malware, technical vulnerabilities and social engineering" },
+  { code = "5.3.2", title = "Protecting digital systems and data" },
+]
+
+# -- Paper 2: Application of Computational Thinking (1CP2/02, onscreen, Python) -
+# Topic 6: Problem solving with programming
+
+[[units]]
+code = "6.1"
+title = "Develop code"
+points = [
+  { code = "6.1.1", title = "Decomposition and abstraction to analyse and solve problems" },
+  { code = "6.1.2", title = "Read, write, analyse and refine programs" },
+  { code = "6.1.3", title = "Convert algorithms (flowcharts, pseudocode) into programs" },
+  { code = "6.1.4", title = "Readable programs: layout, indentation, comments, identifiers, white space" },
+  { code = "6.1.5", title = "Identify, locate and correct program errors" },
+  { code = "6.1.6", title = "Test data; evaluating a program's fitness for purpose and efficiency" },
+]
+
+[[units]]
+code = "6.2"
+title = "Constructs"
+points = [
+  { code = "6.2.1", title = "Structural components of programs" },
+  { code = "6.2.2", title = "Sequence, selection, repetition and iteration; single entry and exit points" },
+]
+
+[[units]]
+code = "6.3"
+title = "Data types and structures"
+points = [
+  { code = "6.3.1", title = "Primitive and one- and two-dimensional structured data types" },
+  { code = "6.3.2", title = "Variables and constants" },
+  { code = "6.3.3", title = "String manipulation (length, position, substrings, case conversion)" },
+]
+
+[[units]]
+code = "6.4"
+title = "Input/output"
+points = [
+  { code = "6.4.1", title = "Accepting and responding to user input" },
+  { code = "6.4.2", title = "Reading from and writing to CSV text files" },
+  { code = "6.4.3", title = "Validation (length, presence, range, pattern checks)" },
+  { code = "6.4.4", title = "Authentication (ID and password, lookup)" },
+]
+
+[[units]]
+code = "6.5"
+title = "Operators"
+points = [
+  { code = "6.5.1", title = "Arithmetic operators" },
+  { code = "6.5.2", title = "Relational operators" },
+  { code = "6.5.3", title = "Logical operators (AND, OR, NOT)" },
+]
+
+[[units]]
+code = "6.6"
+title = "Subprograms"
+points = [
+  { code = "6.6.1", title = "Pre-existing (built-in, library) and user-devised subprograms" },
+  { code = "6.6.2", title = "Functions and procedures, with and without parameters" },
+  { code = "6.6.3", title = "Global and local variables" },
+]
