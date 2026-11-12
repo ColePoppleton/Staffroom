@@ -16,7 +16,9 @@ Staffroom now knows Pearson Edexcel GCSE Computer Science as well as OCR and AQA
 grade presets, truth-table gates and the pseudocode tool follow whichever board you choose. You can
 download Staffroom as an ordinary Mac app, and add the larger web and media add-ons from Settings
 when a tool needs them. Pictures and PDFs in the Library open without freezing the window, and PDFs
-show their pages.
+show their pages. Worksheets are now one sheet per lesson: choose a unit, then a lesson, and the
+sheet opens with a worked example and climbs from warm-up to stretch, with your board's spec point
+on it; the old mixed sheets are each unit's Review, unchanged.
 
 ### Added
 - A self-contained Mac app (#60): each GitHub Release carries `Staffroom-<version>-macos.zip`
