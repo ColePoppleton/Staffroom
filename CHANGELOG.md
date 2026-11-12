@@ -11,6 +11,13 @@ full list for contributors, grouped under Added, Changed and Fixed. Versions up 
 later entries refer to this repository's issues.
 
 ## [Unreleased]
+
+Staffroom now knows Pearson Edexcel GCSE Computer Science as well as OCR and AQA, so spec points,
+grade presets, truth-table gates and the pseudocode tool follow whichever board you choose. You can
+download Staffroom as an ordinary Mac app, and add the larger web and media add-ons from Settings
+when a tool needs them. Pictures and PDFs in the Library open without freezing the window, and PDFs
+show their pages.
+
 ### Added
 - A self-contained Mac app (#60): each GitHub Release carries `Staffroom-<version>-macos.zip`
   for Apple silicon, to unzip and drag to Applications with no Terminal or uv. It brings its
