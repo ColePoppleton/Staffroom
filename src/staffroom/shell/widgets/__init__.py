@@ -15,6 +15,7 @@ from staffroom.shell.widgets.command_box import CommandBox
 from staffroom.shell.widgets.compact_table import CompactTableWidget
 from staffroom.shell.widgets.first_run import FirstRunCard
 from staffroom.shell.widgets.fit_table import FitTable
+from staffroom.shell.widgets.grouped_choice import GroupedChoiceWidget
 from staffroom.shell.widgets.image_view import ImageViewWidget
 from staffroom.shell.widgets.input_group import InputGroup, eyebrow
 from staffroom.shell.widgets.load_summary import FoundWidget, LoadSummaryWidget
@@ -54,6 +55,7 @@ __all__ = [
     "FirstRunCard",
     "FitTable",
     "FoundWidget",
+    "GroupedChoiceWidget",
     "ImageViewWidget",
     "InputGroup",
     "LineLink",
