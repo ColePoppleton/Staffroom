@@ -12,6 +12,7 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-12
 Opening a tool no longer makes the screen flash black or sends Staffroom out of full screen.
 Parts of a tool's page were briefly shown as windows of their own before they were placed.
 
