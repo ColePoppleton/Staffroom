@@ -98,8 +98,9 @@ def panel_header(title: str, description: str) -> QWidget:
     # One line that never widens the window: elided, whole in the tooltip.
     subtitle = ElidedLabel(description)
     subtitle.setProperty("role", "subtitle")
-    subtitle.setVisible(bool(description))
     layout.addWidget(subtitle, 1, Qt.AlignmentFlag.AlignBaseline)
+    if not description:
+        subtitle.hide()
     return header
 
 

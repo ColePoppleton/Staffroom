@@ -12,13 +12,45 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 
+Worksheets are now one sheet per lesson. Choose a unit, then a lesson, and the sheet opens with a
+worked example and climbs from warm-up to stretch, with your board's spec point on it. The old
+mixed sheets are each unit's Review lesson, unchanged.
+
+### Changed
+- Worksheets are one sheet per lesson, not per unit (#75). Pick a unit (*Binary & hex*),
+  then a lesson (*Denary to binary*): the sheet states its aim, solves a worked example in
+  full (place-value table, column addition or truth table), then climbs through Warm-up,
+  Practice and Stretch, with working in the key for every question. Each lesson shows its
+  spec point for OCR J277, AQA 8525 and Pearson Edexcel 1CP2, checked against the published
+  specifications; a lesson not on your board stays choosable, greyed, saying whose it is.
+  Edexcel file sizes are in KiB. Each old topic is now a unit's *Review* lesson and makes
+  exactly the sheet it made before, so old seeds and `--topic` commands keep working;
+  `staff worksheet make <unit> --lesson <lesson>` and `staff worksheet lessons` are new. The
+  kit adds `GroupedChoice` (chips over a list of rows, which can follow Settings) and the
+  house style a `WorkedExample` block; PDF and Word keep a question with its table, and a
+  heading with what follows it, on one page.
+
+## [0.10.1] - 2026-11-12
+Opening a tool no longer makes the screen flash black or sends Staffroom out of full screen.
+Parts of a tool's page were briefly shown as windows of their own before they were placed.
+
+### Fixed
+- Opening a tool, the Library or Settings shows nothing as a separate window: labels, the
+  output pane's empty states, the Marks preset row and the bar chart were told to show before
+  they sat in the window, so each became a window for a moment (a black flash on macOS, and a
+  switch away from full screen). They are now hidden while they should be hidden and placed
+  before they show; a test opens every page and fails if any stray window appears.
+- The add-on tests no longer depend on how the tests are run. From the unpacked source
+  download the release job tests, the running copy is not a checkout, so the add-on card
+  offered the manual route and two tests failed; that stopped the 0.10.0 GitHub Release from
+  being published. The tests now fix the copy they describe.
+
+## [0.10.0] - 2026-11-12
 Staffroom now knows Pearson Edexcel GCSE Computer Science as well as OCR and AQA, so spec points,
 grade presets, truth-table gates and the pseudocode tool follow whichever board you choose. You can
 download Staffroom as an ordinary Mac app, and add the larger web and media add-ons from Settings
 when a tool needs them. Pictures and PDFs in the Library open without freezing the window, and PDFs
-show their pages. Worksheets are now one sheet per lesson: choose a unit, then a lesson, and the
-sheet opens with a worked example and climbs from warm-up to stretch, with your board's spec point
-on it; the old mixed sheets are each unit's Review, unchanged.
+show their pages.
 
 ### Added
 - A self-contained Mac app (#60): each GitHub Release carries `Staffroom-<version>-macos.zip`
@@ -48,18 +80,6 @@ on it; the old mixed sheets are each unit's Review, unchanged.
   fallback.
 
 ### Changed
-- Worksheets are one sheet per lesson, not per unit (#75). Pick a unit (*Binary & hex*),
-  then a lesson (*Denary to binary*): the sheet states its aim, solves a worked example in
-  full (place-value table, column addition or truth table), then climbs through Warm-up,
-  Practice and Stretch, with working in the key for every question. Each lesson shows its
-  spec point for OCR J277, AQA 8525 and Pearson Edexcel 1CP2, checked against the published
-  specifications; a lesson not on your board stays choosable, greyed, saying whose it is.
-  Edexcel file sizes are in KiB. Each old topic is now a unit's *Review* lesson and makes
-  exactly the sheet it made before, so old seeds and `--topic` commands keep working;
-  `staff worksheet make <unit> --lesson <lesson>` and `staff worksheet lessons` are new. The
-  kit adds `GroupedChoice` (chips over a list of rows, which can follow Settings) and the
-  house style a `WorkedExample` block; PDF and Word keep a question with its table, and a
-  heading with what follows it, on one page.
 - The source distribution carries only the package, its tests and the examples: 1.2 MB
   instead of 40 MB (no docs images, audits or `.claude/`). Tests about the repository
   around the package are marked `checkout` and skipped there; the Release workflow runs

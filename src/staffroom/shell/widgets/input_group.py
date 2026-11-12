@@ -47,7 +47,8 @@ class InputGroup(QWidget):
         head = QHBoxLayout()
         head.setSpacing(8)
         self.title_label = make_label(title, "muted") if joined else eyebrow(title)
-        self.title_label.setVisible(bool(title))
+        if not title:
+            self.title_label.hide()
         head.addWidget(self.title_label)
         head.addStretch(1)
         self.trailing = QHBoxLayout()
@@ -61,7 +62,8 @@ class InputGroup(QWidget):
 
         self.help_text = help_text
         self.help_label = make_label(help_text, "faint", wrap=True)
-        self.help_label.setVisible(bool(help_text))
+        if not help_text:
+            self.help_label.hide()
         outer.addWidget(self.help_label)
         self.flagged = False
         self._widgets: list[QWidget] = []
