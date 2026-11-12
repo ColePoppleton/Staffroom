@@ -90,8 +90,12 @@ def _with_web(monkeypatch: pytest.MonkeyPatch, present: bool) -> None:
 
 
 @pytest.fixture
-def window(qtbot: QtBot, tmp_path: Path) -> MainWindow:
+def window(qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> MainWindow:
+    # The same copy wherever the tests run: a git checkout, the unpacked sdist the
+    # release job tests (no .git, so detect() says OTHER and add-ons are manual) or CI.
+    monkeypatch.setattr(install, "detect", lambda package_dir=None: UV_TOOL)
     config = load_config()
+    config.general.check_for_releases = False  # never ask GitHub from a test
     config.general.output_dir = str(tmp_path / "out")
     config.general.resources_root = str(tmp_path / "resources")
     plugins = (get_plugin("classroom"), Needy(), get_plugin("hello"))
