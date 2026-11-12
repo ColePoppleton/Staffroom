@@ -262,7 +262,7 @@ def test_output_pane_waits_with_a_hint_then_shows_the_result(
     panel = open_tool(window, "worksheet")
     view = first_result(panel)
     assert not view.isVisible()  # the hint shows until there is something
-    assert panel.results.empty_text.startswith("Press Make worksheet")
+    assert panel.results.empty_text.startswith("Press Make lesson sheet")
     run(panel, qtbot)
     assert view.isVisible()
     # The top edge holds the result strip (#84).

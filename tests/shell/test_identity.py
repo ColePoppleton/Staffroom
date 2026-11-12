@@ -87,6 +87,8 @@ _ACCENT_ALLOWED = re.compile(
     r'|\[selected="true"\]'
     # a toggle chip that is on is a selection: a topic picked (#17)
     r'|#Chip\w*\[on="true"\]|#ToggleChip\[on="true"\]'
+    # a lesson row that is chosen is a selection: a worksheet's lesson (#75)
+    r'|#ListRow\[on="true"\]'
 )
 
 
