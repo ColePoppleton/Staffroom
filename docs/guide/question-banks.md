@@ -31,7 +31,7 @@ answer: 10
 | Field | Meaning |
 | --- | --- |
 | `type` | `mcq`, `short` or `tf`. Defaults to `mcq` when options are present, else `short`. |
-| `tags` | Comma-separated. `ocr:1.2.4` / `aqa:3.3.4` are spec points (`staff quiz spec ocr` lists them); `topic:...` tags drive filters and retrieval. |
+| `tags` | Comma-separated. `ocr:1.2.4`, `aqa:3.3.4` and `edexcel:2.1.3` are spec points (`staff quiz spec ocr`, `aqa` or `edexcel` lists them); `topic:...` tags drive filters and retrieval. |
 | `- [x]` / `- [ ]` | Options for an mcq; `x` marks a correct one (several allowed). |
 | `answer` | The answer for `short`; `true` or `false` for `tf`. |
 | `time` | Seconds for Kahoot (snapped to 5, 10, 20, 30, 60, 90, 120 or 240). |

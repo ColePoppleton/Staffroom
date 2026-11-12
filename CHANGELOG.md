@@ -19,6 +19,13 @@ later entries refer to this repository's issues.
   passes a smoke test (every tool opens; Trace, Bugs and Fade run; Word and PDF export). The
   Install page offers the download first, with the one-time *Open Anyway* step; Settings ›
   Updates in the app links to the new release instead of showing a command.
+- Pearson Edexcel GCSE (9–1) Computer Science (1CP2) as a third exam board (#62): its 66
+  spec points (`edexcel:` tags, from the specification's Issue 1, January 2020, named in
+  `core/spec/edexcel.toml`), a choice in Settings and on the first-run card, an
+  *Edexcel 1CP2 (GCSE 9-1)* Marks preset, AND/OR/NOT truth tables, Quiz naming the board's
+  spec points first, and Pseudocode starting on Python, which Edexcel assesses through its
+  Programming Language Subset. The example bank's questions carry Edexcel tags too; a PLS
+  check for Python is #63.
 - Optional add-ons (#5): `staffroom[web]` (QtWebEngine) and `staffroom[media]`
   (QtMultimedia), pinned to the slim install's Qt release. Settings › Add-ons installs and
   removes them in the background, with progress, the installer's log behind *Details*, one

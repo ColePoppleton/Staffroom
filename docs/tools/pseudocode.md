@@ -17,6 +17,15 @@ functions and procedures, lists and indexing, string length / substring /
 upper / lower, casts, random, basic file methods, comments. *ERL* and the
 other names are in the [Glossary](../guide/glossary.md#pseudocode).
 
+**Pearson Edexcel 1CP2 has no pseudocode of its own.** Its Paper 2 is
+answered on screen in Python 3 with Pearson's Programming Language Subset
+(PLS) as an insert, Paper 1 algorithms use the PLS too, and its
+specification calls pseudocode an informal description with no fixed
+syntax. So when Settings says Edexcel, *To* starts on Python: translate an
+OCR or AQA sheet into the language your papers use. A check of Python
+against the PLS is planned
+([#63](https://github.com/ColePoppleton/Staffroom/issues/63)).
+
 The panel writes the translation as `<stem>.ocr.txt`, `<stem>.aqa.txt` or
 `<stem>.py` unless *Save output* is set to *Don't save*; the terminal commands
 only write with `--save` ([Outputs](../guide/outputs.md)).
