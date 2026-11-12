@@ -100,6 +100,13 @@ def load_pdf(path: Path) -> tuple[QPdfDocument, QBuffer] | None:
     except OSError as exc:
         log.warning("could not read %s for the page preview: %s", path, exc)
         return None
+    return open_pdf(data, path)
+
+
+def open_pdf(data: bytes, path: Path) -> tuple[QPdfDocument, QBuffer] | None:
+    """A PDF's bytes (read already, perhaps off the GUI thread) opened from
+    memory, or None when they are not a PDF with pages. ``path`` names it in
+    the log. The buffer must live as long as the document."""
     buffer = QBuffer()
     buffer.setData(QByteArray(data))
     buffer.open(QIODevice.OpenModeFlag.ReadOnly)

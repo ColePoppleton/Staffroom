@@ -14,28 +14,30 @@ what is showing, so the highlight cannot disagree with the page."""
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QProcess, Qt
 from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
-from staffroom.core import paths
+from staffroom.core import addons, paths
 from staffroom.core.config import Config, Theme
 from staffroom.core.discovery import discover_plugins, visible_plugins
 from staffroom.core.library.model import IndexStats
 from staffroom.core.library.service import ExtFilter, LibraryService
 from staffroom.core.log import get_logger
 from staffroom.core.panel import TextField, main_file_input
-from staffroom.core.plugin import ToolPlugin, plugin_glyph
+from staffroom.core.plugin import ToolPlugin, plugin_glyph, plugin_requires
 from staffroom.shell.library.page import LibraryPage, counts_detail
 from staffroom.shell.library.picker import pick_resource
 from staffroom.shell.library.use_bar import UseTool
@@ -43,7 +45,7 @@ from staffroom.shell.log_drawer import LogDrawer
 from staffroom.shell.settings_page import SettingsPage
 from staffroom.shell.sidebar import LIBRARY, SETTINGS, Sidebar
 from staffroom.shell.theme import load_fonts, stylesheet
-from staffroom.shell.tool_panel import ToolPanel
+from staffroom.shell.tool_panel import AddOnNeededPanel, ToolPanel
 from staffroom.shell.widgets import FirstRunCard, make_label
 
 log = get_logger(__name__)
@@ -88,6 +90,9 @@ class MainWindow(QMainWindow):
         self.plugins = plugins if plugins is not None else discover_plugins()
         self.visible_plugins = visible_plugins(self.plugins)
         self.panels: dict[str, ToolPanel] = {}
+        # Tools whose ``requires`` add-on is missing open this page instead (#5).
+        self.addon_pages: dict[str, AddOnNeededPanel] = {}
+        self._close_after_change = False
         self.library = library or LibraryService(
             Path(config.general.resources_root),
             picker=self._pick_resource,
@@ -105,7 +110,7 @@ class MainWindow(QMainWindow):
         self.sidebar = Sidebar(self.visible_plugins)
         self.stack = QStackedWidget()
         self.welcome = WelcomePage(bool(self.visible_plugins))
-        self.settings = SettingsPage(config)
+        self.settings = SettingsPage(config, plugins=self.plugins)
         self.library_page = LibraryPage(self.library, config)
         self.resources = self.library_page.column  # search, filters, tree
         self.use_bar = self.library_page.preview.use_bar
@@ -141,6 +146,8 @@ class MainWindow(QMainWindow):
         self.settings.library_exclude_changed.connect(self.set_library_exclude)
         self.settings.update_available.connect(self.sidebar.set_update_available)
         self.sidebar.updates_requested.connect(self.show_updates)
+        self.settings.addons_card.restart_requested.connect(self.restart)
+        self.settings.addons_card.busy_changed.connect(self._on_addons_busy)
         self.settings.announce_update_state()  # an installed copy's last check
         res = self.resources
         res.search_changed.connect(self._on_search)
@@ -202,6 +209,9 @@ class MainWindow(QMainWindow):
         if not self.settings.wait_for_workers(timeout_ms):
             log.error("the release check did not stop within %d ms", timeout_ms)
             stopped = False
+        if not self.library_page.preview.picture.wait_for_workers(timeout_ms):
+            log.error("the Library preview did not finish within %d ms", timeout_ms)
+            stopped = False
         for panel in self.panels.values():
             worker = panel.worker
             if worker is not None and worker.isRunning() and not worker.wait(timeout_ms):
@@ -210,8 +220,37 @@ class MainWindow(QMainWindow):
         return stopped
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        card = self.settings.addons_card
+        if card.busy():
+            # Stopping uv half-way could leave the copy half-changed: close
+            # as soon as it has finished instead (#5).
+            event.ignore()
+            self._close_after_change = True
+            card.ask_after = False
+            self.show_addons()
+            QMessageBox.information(
+                self,
+                "Installing an add-on",
+                "Staffroom is still changing an add-on and will close as soon as that is done.",
+            )
+            return
         self.wait_for_workers()
         super().closeEvent(event)
+
+    def restart(self) -> None:
+        """Close the window (waiting for workers as a close does) and start
+        Staffroom again the way it was started, so a new add-on loads."""
+        if not self.close():
+            return
+        program, args = sys.executable, list(sys.argv)
+        if getattr(sys, "frozen", False):
+            args = args[1:]
+        QProcess.startDetached(program, args)
+        log.info("restarting: %s %s", program, args)
+
+    def _on_addons_busy(self, busy: bool) -> None:
+        if not busy and self._close_after_change:
+            self.close()
 
     # -- navigation ------------------------------------------------------
     def _show(self, page: QWidget, key: str) -> None:
@@ -231,12 +270,41 @@ class MainWindow(QMainWindow):
         if name not in self.panels:
             plugin = next(p for p in self.plugins if p.name == name)
             panel = ToolPanel(plugin, self.config, resources=self.library)
+            panel.addon_install_requested.connect(self.install_addon)
             self.panels[name] = panel
             self.stack.addWidget(panel)
         return self.panels[name]
 
+    def missing_addons(self, name: str) -> tuple[addons.AddOn, ...]:
+        """The add-ons the tool ``name`` requires and this copy lacks."""
+        plugin = next(p for p in self.plugins if p.name == name)
+        return addons.missing(plugin_requires(plugin))
+
+    def page_for(self, name: str) -> ToolPanel | AddOnNeededPanel:
+        """The tool's panel, or the card that installs the add-on it needs."""
+        lacking = self.missing_addons(name)
+        if not lacking:
+            return self.panel_for(name)
+        if name not in self.addon_pages:
+            plugin = next(p for p in self.plugins if p.name == name)
+            page = AddOnNeededPanel(plugin, lacking)
+            page.install_requested.connect(self.install_addon)
+            self.addon_pages[name] = page
+            self.stack.addWidget(page)
+        return self.addon_pages[name]
+
+    def install_addon(self, name: str) -> None:
+        """A tool asked for its add-on: Settings > Add-ons installs it there,
+        where its progress shows."""
+        self.show_addons()
+        self.settings.addons_card.request_install(name)
+
+    def show_addons(self) -> None:
+        self.show_settings()
+        self.settings.show_addons()
+
     def show_tool(self, name: str) -> None:
-        panel = self.panel_for(name)
+        panel = self.page_for(name)
         self._show(panel, name)  # a hidden tool is in no row: nothing lit
         self._remember_place("tools")
         if self.config.general.last_tool != name:
@@ -309,7 +377,7 @@ class MainWindow(QMainWindow):
         if not any(p.name == name for p in self.plugins):
             return
         self.show_tool(name)
-        if path is not None:
+        if path is not None and not self.missing_addons(name):
             panel = self.panel_for(name)
             file_input = main_file_input(panel.spec)
             if file_input is not None:
@@ -344,7 +412,7 @@ class MainWindow(QMainWindow):
         tools: list[UseTool] = []
         for name in self.sidebar.tool_names():
             plugin = by_name.get(name)
-            if plugin is None or name == CLASSROOM:
+            if plugin is None or name == CLASSROOM or addons.missing(plugin_requires(plugin)):
                 continue
             spec = plugin.panel_spec()
             file_input = main_file_input(spec)

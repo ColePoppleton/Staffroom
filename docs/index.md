@@ -83,10 +83,11 @@ log holds a value from your files.
 
 <p class="sr-privacy__title"><span aria-hidden="true">⌕</span> Check it yourself</p>
 
-No account and no server: the only network call asks GitHub which release is
-newest, when you press *Check again* and at most once a day when Staffroom
-opens (untick it in Settings › Updates). Removing every trace is deleting a
-short list of folders. [Which ones](guide/privacy.md#deleting-everything).
+No account and no server: the only network call it makes on its own asks
+GitHub which release is newest, when you press *Check again* and at most once
+a day when Staffroom opens (untick it in Settings › Updates); an add-on is
+downloaded only when you press *Install* in Settings › Add-ons. Removing every
+trace is deleting a short list of folders. [Which ones](guide/privacy.md#deleting-everything).
 
 </div>
 

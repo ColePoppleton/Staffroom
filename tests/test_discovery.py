@@ -19,6 +19,7 @@ from staffroom.core.plugin import (
     plugin_group,
     plugin_hidden,
     plugin_order,
+    plugin_requires,
 )
 
 
@@ -171,3 +172,35 @@ def test_invalid_panel_spec_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None
 def test_unknown_plugin() -> None:
     with pytest.raises(KeyError):
         get_plugin("nope")
+
+
+def test_requires_is_read_like_the_other_optional_attributes() -> None:
+    """``requires`` (#5) names the add-ons a tool cannot work without."""
+    assert plugin_requires(_Stub("a")) == ()
+    assert plugin_requires(_Stub("a", requires=("web",))) == ("web",)
+    assert plugin_requires(_Stub("a", requires=["web", "media"])) == ("web", "media")
+    assert plugin_requires(_Stub("a", requires="web")) == ("web",)
+    assert plugin_requires(_Stub("a", requires=None)) == ()
+
+
+def test_no_shipped_tool_needs_an_addon_yet() -> None:
+    # Every add-on name a shipped tool uses is a real one (discovery refuses
+    # others), and the default install still opens every listed tool.
+    from staffroom.core import addons
+
+    for plugin in discover_plugins():
+        assert not addons.unknown(plugin_requires(plugin)), plugin.name
+
+
+def test_an_unknown_addon_name_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A typo in ``requires`` is caught at discovery, like a broken panel."""
+    import types
+
+    from staffroom.core.discovery import load_plugin
+
+    stub = _Stub("needy", requires=("webb",))
+    module = types.ModuleType("staffroom.tools.needy")
+    module.plugin = stub  # type: ignore[attr-defined]
+    monkeypatch.setitem(__import__("sys").modules, "staffroom.tools.needy", module)
+    with pytest.raises(ValueError, match="requires unknown add-on 'webb'"):
+        load_plugin("needy")

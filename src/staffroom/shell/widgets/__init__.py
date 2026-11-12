@@ -3,6 +3,7 @@ by the dataclasses in :mod:`staffroom.core.panel`. New UI needs go here,
 never into a tool package."""
 
 from staffroom.shell.widgets.action_table import ActionTableWidget
+from staffroom.shell.widgets.addon_needed import AddOnBanner, AddOnNeeded, import_addon
 from staffroom.shell.widgets.bar_chart import BarChartWidget
 from staffroom.shell.widgets.card import Card, Divider, make_label
 from staffroom.shell.widgets.card_list import CardListWidget
@@ -37,6 +38,8 @@ from staffroom.shell.widgets.text_view import TextViewWidget
 
 __all__ = [
     "ActionTableWidget",
+    "AddOnBanner",
+    "AddOnNeeded",
     "BarChartWidget",
     "Card",
     "CardListWidget",
@@ -70,5 +73,6 @@ __all__ = [
     "TextFieldWidget",
     "TextViewWidget",
     "eyebrow",
+    "import_addon",
     "make_label",
 ]

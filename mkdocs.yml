@@ -94,6 +94,7 @@ nav:
       - Outputs: guide/outputs.md
       - Running pupil code: guide/running-code.md
       - Updating: guide/updating.md
+      - Add-ons: guide/addons.md
       - Glossary: guide/glossary.md
       - Formats:
           - Question banks: guide/question-banks.md

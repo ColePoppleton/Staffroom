@@ -209,6 +209,9 @@ QFrame#NavItem[current="true"] {{ background: {p.accent_soft}; }}
 QFrame#NavItem:focus {{ border-color: {p.accent}; }}
 QLabel#NavText {{ font-size: 14px; font-weight: 600; color: {p.text}; background: transparent; }}
 QLabel#NavCount {{ font-size: 12px; color: {p.text_muted}; background: transparent; }}
+/* A tool whose add-on is missing (#5): greyed, still clickable. */
+QLabel#NavText[unavailable="true"] {{ color: {p.text_faint}; }}
+QLabel#NavCount[unavailable="true"] {{ color: {p.text_faint}; font-size: 11px; }}
 QLabel#NavGlyph {{
     background: transparent; border: 1px solid {p.border_strong}; border-radius: 6px;
     min-width: 20px; max-width: 20px; min-height: 20px; max-height: 20px;
@@ -318,6 +321,17 @@ QPushButton#UseTool {{ font-size: 13px; font-weight: 600; padding: 6px 9px; }}
 QLabel#UseStatus {{ font-size: 13px; }}
 QFrame#ExternalCard {{
     background: {p.surface_alt}; border: 1px dashed {p.border_strong}; border-radius: {RADIUS_SM}px;
+}}
+/* Add-ons (#5): a tool's page while one is missing, a fallback's banner, the log. */
+QFrame#AddOnNeeded {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+}}
+QFrame#AddOnBanner {{
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
+}}
+QPlainTextEdit#AddOnLog {{
+    font-family: {MONO_FAMILY}; font-size: 12px; color: {p.text_muted};
+    background: {p.surface_alt}; border: 1px solid {p.border}; border-radius: {RADIUS_SM}px;
 }}
 /* Settings > Updates (#11): the command to paste, and the release notes. */
 QFrame#CommandBox {{

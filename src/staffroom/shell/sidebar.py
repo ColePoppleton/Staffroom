@@ -30,9 +30,10 @@ from PySide6.QtWidgets import (
 )
 
 from staffroom import __version__
+from staffroom.core import addons
 from staffroom.core.config import Theme
 from staffroom.core.discovery import grouped
-from staffroom.core.plugin import GROUPS, ToolPlugin, plugin_glyph
+from staffroom.core.plugin import GROUPS, ToolPlugin, plugin_glyph, plugin_requires
 from staffroom.shell.theme import asset, glyph_icon, glyph_pixmap, palette
 
 SIDEBAR_WIDTH = 232
@@ -71,6 +72,8 @@ class NavItem(QFrame):
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(tooltip)
+        self._base_tip = tooltip
+        self.needs = ""
         self.setAccessibleName(title)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(7, 5, 8, 5)
@@ -111,9 +114,27 @@ class NavItem(QFrame):
         self.count.setText(text)
         self.count.setVisible(bool(text))
 
+    def set_needs(self, needs: str) -> None:
+        """Grey the row out for a tool whose add-on is missing (#5):
+        ``needs`` is "Needs the Web add-on", shown in the tooltip, read out
+        to a screen reader and marked "add-on" at the row's end. It still
+        opens: its page offers the install. ``""`` restores the row."""
+        self.needs = needs
+        self.setProperty("unavailable", bool(needs))
+        for widget in (self.label, self.count):
+            widget.setProperty("unavailable", bool(needs))
+        _repolish(self, self.label, self.count)
+        self.setAccessibleDescription(needs)
+        if needs:
+            self.set_count("add-on")
+            self.setToolTip(f"{needs}. Open it to install it.\n{self._base_tip}")
+        self._paint_glyph()
+
     def glyph_color(self) -> str:
         p = palette(self.theme)
-        return p.accent if self.current else p.text_muted
+        if self.current:
+            return p.accent
+        return p.text_faint if self.needs else p.text_muted
 
     def _paint_glyph(self) -> None:
         self.glyph.setPixmap(glyph_pixmap(self.glyph_name, self.glyph_color(), GLYPH_SIZE))
@@ -280,6 +301,9 @@ class Sidebar(QWidget):
                 tip = plugin.description + (f"  (⌘{n})" if n <= 9 else "")
                 title = plugin.panel_spec().title or plugin.name
                 nav.addWidget(self._add_row(plugin.name, title, plugin_glyph(plugin), tip))
+                lacking = addons.missing(plugin_requires(plugin))
+                if lacking:
+                    self.rows[plugin.name].item.set_needs(addons.needs_text(lacking))
         nav.addStretch(1)
         scroll = QScrollArea()
         scroll.setObjectName("NavScroll")
