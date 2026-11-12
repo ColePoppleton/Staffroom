@@ -12,6 +12,13 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 ### Added
+- A self-contained Mac app (#60): each GitHub Release carries `Staffroom-<version>-macos.zip`
+  for Apple silicon, to unzip and drag to Applications with no Terminal or uv. It brings its
+  own Python 3.13 (python-build-standalone, pinned and checked by SHA-256) so Trace and Bugs run
+  programs through the usual runner, and the release is only published once the built app
+  passes a smoke test (every tool opens; Trace, Bugs and Fade run; Word and PDF export). The
+  Install page offers the download first, with the one-time *Open Anyway* step; Settings ›
+  Updates in the app links to the new release instead of showing a command.
 - Pearson Edexcel GCSE (9–1) Computer Science (1CP2) as a third exam board (#62): its 66
   spec points (`edexcel:` tags, from the specification's Issue 1, January 2020, named in
   `core/spec/edexcel.toml`), a choice in Settings and on the first-run card, an
@@ -55,6 +62,9 @@ later entries refer to this repository's issues.
 - Marks' *Reteach first* says its threshold is the paper's own facility ("facility below the
   paper as a whole, 0.75"); Parsons warns above 30 blocks; a wrapped sentence no longer
   breaks a path after `~/` (the first-run card printed "~/ TeachingSessions") (#23).
+- `paths.examples_dir()` and `paths.project_root()` return nothing in an installed copy (a uv
+  tool, a wheel, the Mac app) instead of a folder above the package that has nothing to do with
+  Staffroom; a checkout or an unpacked sdist still finds its examples (#27).
 - `just install` deletes its build in `dist/` once the app is in Applications, so Spotlight
   lists Staffroom once instead of twice.
 - The Library preview no longer freezes the app on a big photo or a long PDF, and a PDF

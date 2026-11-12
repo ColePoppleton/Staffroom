@@ -9,7 +9,15 @@ permissions:
   id-token: write  # PyPI trusted publishing, when the PYPI_PUBLISH repo variable is "true"
 
 jobs:
+  # The Mac app, built and smoke-tested (#60). If it fails, nothing below runs:
+  # no GitHub Release, no wheel, never an app that failed its smoke test.
+  bundle:
+    uses: ./.github/workflows/bundle.yml
+    permissions:
+      contents: read
+
   release:
+    needs: [bundle]
     # Staffroom targets macOS; macOS runners are free on a public repository.
     runs-on: macos-latest
     steps:
@@ -36,15 +44,20 @@ jobs:
           cd "$sdist"
           uv sync --locked
           uv run pytest -q
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac-app
+          path: app  # not dist/: uv publish uploads everything in dist/ to PyPI
       - name: Release notes from CHANGELOG.md
         run: uv run python scripts/release.py notes "${GITHUB_REF_NAME#v}" > notes.md
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          APP_ZIP: app/${{ needs.bundle.outputs.asset }}
         run: |
           extra=""
           case "$GITHUB_REF_NAME" in *-*) extra="--prerelease";; esac
-          gh release create "$GITHUB_REF_NAME" dist/*.whl dist/*.tar.gz --title "$GITHUB_REF_NAME" --notes-file notes.md $extra
+          gh release create "$GITHUB_REF_NAME" dist/*.whl dist/*.tar.gz "$APP_ZIP" --title "$GITHUB_REF_NAME" --notes-file notes.md $extra
       - name: Publish to PyPI
         if: vars.PYPI_PUBLISH == 'true' && !contains(github.ref_name, '-')
         run: uv publish --trusted-publishing always

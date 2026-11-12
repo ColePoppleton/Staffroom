@@ -121,7 +121,8 @@ app runs. Nothing merges without a PR and green CI.
 
 * `just setup`, `just test`, `just lint`, `just gui`, `just new <name>`,
   `just install` (thin launcher app in /Applications), `just bundle`
-  (PyInstaller), `just icon`, `just screenshots`, `just update`.
+  (the self-contained Mac app: PyInstaller plus a pinned Python for pupil code,
+  smoke-tested by `packaging/smoke.py`), `just icon`, `just screenshots`, `just update`.
 * The installed app runs this checkout via uv: commit and push to
   github.com/ColePoppleton/Staffroom and the app offers the update.
 * `uv` manages the environment; Python 3.12+; src layout.

@@ -1,0 +1,63 @@
+name: Bundle
+
+# The self-contained Mac app (#60): build it with PyInstaller, smoke-test it,
+# zip it. The Release workflow runs this first and attaches the zip only when
+# every step passed. It also runs on pull requests that change the packaging,
+# and by hand (Actions > Bundle > Run workflow) to try a build without a
+# release; the zip is then a workflow artifact, not a release asset.
+
+on:
+  workflow_call:
+    outputs:
+      asset:
+        description: "The zip's file name, Staffroom-<version>-macos.zip"
+        value: ${{ jobs.bundle.outputs.asset }}
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packaging/**"
+      - ".github/workflows/bundle.yml"
+      - ".github/workflows/release.yml"
+      - "src/staffroom/core/runner/**"
+      - "src/staffroom/shell/app.py"
+      - "pyproject.toml"
+      - "uv.lock"
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    # Apple silicon (macos-latest is arm64), the Mac the app is built for.
+    runs-on: macos-latest
+    outputs:
+      asset: ${{ steps.zip.outputs.asset }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: Python for pupil code (pinned in packaging/python.toml, SHA-256 checked)
+        run: uv run python packaging/bundle.py python build/python
+      - name: Build the app
+        run: uv run pyinstaller packaging/staffroom.spec --noconfirm --clean
+      - name: Smoke test (every tool opens; Trace, Bugs, Fade run; Word and PDF export)
+        run: uv run python packaging/smoke.py dist/Staffroom.app
+      - name: Zip with ditto
+        id: zip
+        run: |
+          asset=$(uv run python packaging/bundle.py asset-name)
+          ditto -c -k --sequesterRsrc --keepParent dist/Staffroom.app "dist/$asset"
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+      - name: Size
+        run: |
+          disk=$(uv run python packaging/bundle.py size dist/Staffroom.app)
+          zip=$(stat -f %z "dist/${{ steps.zip.outputs.asset }}")
+          echo "Staffroom.app: $((disk / 1000000)) MB on disk; ${{ steps.zip.outputs.asset }}: $((zip / 1000000)) MB" | tee -a "$GITHUB_STEP_SUMMARY"
+          # Target from #60: under 200 MB on disk.
+          [ "$disk" -lt 200000000 ] || { echo "the app is over 200 MB on disk"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-app
+          path: dist/${{ steps.zip.outputs.asset }}
+          if-no-files-found: error
+          retention-days: 14

@@ -50,9 +50,11 @@ app:
 install:
     uv run python packaging/make_launcher.py --install
 
-# Build a frozen, self-contained bundle with PyInstaller (for a machine without the repo)
+# Build the self-contained Mac app (dist/Staffroom.app, #60) with the pinned Python for pupil code, then smoke-test it offscreen
 bundle:
+    uv run python packaging/bundle.py python build/python
     uv run pyinstaller packaging/staffroom.spec --noconfirm --clean
+    uv run python packaging/smoke.py dist/Staffroom.app
 
 # Pull the latest code and sync dependencies (what the app's Update button does)
 update:

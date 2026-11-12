@@ -4,7 +4,10 @@
 anything: it blanks lines out of the solution as text.
 
 A run happens in a separate Python process, started by the app with these
-limits. They are there to stop an accident (a loop that never ends, a print
+limits. In the downloaded Mac app that process is the copy of Python 3.13
+inside the app (without tkinter, so a `turtle` program stops with
+`No module named 'tkinter'`); installed with uv, it is the Python Staffroom
+itself runs on. They are there to stop an accident (a loop that never ends, a print
 flood) from freezing your Mac. They are **not a security boundary**: the file
 is one you chose, written by you or copied from a pupil, and you would run it
 in Thonny anyway.
@@ -24,8 +27,8 @@ in Thonny anyway.
   adds *output capped at 1024 KB*. Trace also caps what it collects inside the run
   at 1 MB, so a `while True: print(i)` traced for 10 seconds stays small.
 - **A fresh, temporary working folder** that is deleted afterwards, a
-  minimal environment, and `python -I` (no site packages, no `PYTHON*`
-  variables from your shell). Inputs you type in the *Inputs* box are fed
+  minimal environment, and `python -I -B` (no site packages, no `PYTHON*`
+  variables from your shell, no `.pyc` files written). Inputs you type in the *Inputs* box are fed
   to `input()`, one line each. When they run out, Trace stops and
   writes nothing: the result strip says which input was missing (*asked for
   a 2nd input, but was given only 1 line*), the result pane says how many

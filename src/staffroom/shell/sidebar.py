@@ -405,7 +405,7 @@ class Sidebar(QWidget):
                 "A newer release is out. Settings › Updates installs it."
                 if (label or "update") == "update"
                 else f"Staffroom {label.removesuffix(' out')} is out. "
-                "Settings › Updates has the one command that updates."
+                "Settings › Updates says how to update."
             )
         state = {None: "", False: " · up to date", True: " ·"}[available]
         self.version_label.setText(f"v{__version__}{state}")

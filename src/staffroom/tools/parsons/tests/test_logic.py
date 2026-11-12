@@ -166,10 +166,13 @@ def test_off_by_one_never_makes_a_do_nothing_operation(line: str) -> None:
 
 
 # ----------------------------------------------------- the corpus (#19)
+EXAMPLES = paths.examples_dir()
+assert EXAMPLES is not None, "the tests run from a source tree"
+YEAR9 = EXAMPLES / "year9.py"
 CORPUS = {
     **PROGRAMS,
-    "year9": (paths.examples_dir() / "year9.py").read_text(),
-    "year9_tabs": (paths.examples_dir() / "year9.py").read_text().replace("    ", "\t"),
+    "year9": YEAR9.read_text(),
+    "year9_tabs": YEAR9.read_text().replace("    ", "\t"),
     "plugin": "count = 0\nwhile count < 10:\n    print(count)\n    count += 1\n",
 }
 
