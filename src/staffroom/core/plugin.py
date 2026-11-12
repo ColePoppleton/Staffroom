@@ -137,6 +137,12 @@ class ToolPlugin(Protocol):
       shell's bundled glyphs (``shell/assets/glyphs/<name>.svg``). An unknown
       or missing name gets the shell's generic glyph. Plain data: the shell
       draws it, so a tool still never touches Qt.
+    * ``requires: tuple[str, ...]`` names the add-ons the tool cannot work
+      without (``("web",)``; see :mod:`staffroom.core.addons`). While one is
+      missing the launcher lists the tool greyed and opens a card that
+      installs it instead of the panel. Leave it out when a kit widget has a
+      fallback (a basic HTML view for the Web add-on): the widget then says
+      what the add-on would add. Discovery refuses an unknown name.
     """
 
     name: str
@@ -176,6 +182,17 @@ def plugin_group(plugin: ToolPlugin) -> str:
     """The plugin's declared ``group``, or :data:`OTHER_GROUP`."""
     value = getattr(plugin, "group", None)
     return value.strip() if isinstance(value, str) and value.strip() else OTHER_GROUP
+
+
+def plugin_requires(plugin: ToolPlugin) -> tuple[str, ...]:
+    """The add-ons the plugin declares it ``requires``, or ``()``. A single
+    string counts as one name."""
+    value = getattr(plugin, "requires", None)
+    if isinstance(value, str):
+        return (value,) if value.strip() else ()
+    if isinstance(value, tuple | list):
+        return tuple(str(v).strip() for v in value if str(v).strip())
+    return ()
 
 
 def plugin_glyph(plugin: ToolPlugin) -> str:

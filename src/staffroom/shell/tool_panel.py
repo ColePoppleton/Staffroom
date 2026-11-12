@@ -25,6 +25,7 @@ from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QKeySequence, QResizeEvent, QShortcut, QShowEvent
 from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
+from staffroom.core import addons
 from staffroom.core.config import Config
 from staffroom.core.csvio import read_table
 from staffroom.core.library.service import ResourceService
@@ -71,6 +72,7 @@ from staffroom.shell.widgets import (
     TextFieldWidget,
     make_label,
 )
+from staffroom.shell.widgets.addon_needed import AddOnBanner, AddOnNeeded
 from staffroom.shell.widgets.elided_label import ElidedLabel
 from staffroom.shell.widgets.run_bar import RUN_SHORTCUT_TEXT, RUN_SHORTCUTS
 from staffroom.shell.worker import RunWorker
@@ -82,9 +84,64 @@ INPUTS_MIN_WIDTH = 340  # at the window's minimum width (1040 px)
 OUTPUT_MIN_WIDTH = 440
 
 
+def panel_header(title: str, description: str) -> QWidget:
+    """The one-line header over a tool's page: its title and description."""
+    header = QWidget()
+    header.setObjectName("PanelHeader")
+    header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+    layout = QHBoxLayout(header)
+    layout.setContentsMargins(28, 16, 28, 12)
+    layout.setSpacing(14)
+    layout.addWidget(make_label(title, "title"), 0, Qt.AlignmentFlag.AlignBaseline)
+    # One line that never widens the window: elided, whole in the tooltip.
+    subtitle = ElidedLabel(description)
+    subtitle.setProperty("role", "subtitle")
+    subtitle.setVisible(bool(description))
+    layout.addWidget(subtitle, 1, Qt.AlignmentFlag.AlignBaseline)
+    return header
+
+
+class AddOnNeededPanel(QWidget):
+    """A tool's page while an add-on it ``requires`` is missing (#5): its
+    header, and the card that installs the add-on, in place of the panel."""
+
+    install_requested = Signal(str)
+
+    def __init__(
+        self,
+        plugin: ToolPlugin,
+        missing: tuple[addons.AddOn, ...],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("ToolPanel")
+        self.plugin = plugin
+        self.spec: PanelSpec = plugin.panel_spec()
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        root.addWidget(panel_header(self.spec.title, self.spec.description))
+        body = QVBoxLayout()
+        body.setContentsMargins(28, 24, 28, 24)
+        self.card = AddOnNeeded(self.spec.title or plugin.name, missing)
+        # A fixed measure: wrapped lines need a width to lay out against.
+        self.card.setFixedWidth(560)
+        self.card.install_requested.connect(self.install_requested)
+        # In a row, not aligned: an aligned widget gets its plain size hint,
+        # which cuts off the last line of a wrapped label.
+        row = QHBoxLayout()
+        row.addWidget(self.card)
+        row.addStretch(1)
+        body.addLayout(row)
+        body.addStretch(1)
+        root.addLayout(body, 1)
+
+
 class ToolPanel(QWidget):
     run_started = Signal()
     run_finished = Signal(bool)  # ok
+    # A kit widget's AddOnBanner (a fallback in use) asked for its add-on.
+    addon_install_requested = Signal(str)
 
     def __init__(
         self,
@@ -215,23 +272,13 @@ class ToolPanel(QWidget):
             for text_field in self.text_fields.values():
                 text_field.edit.textChanged.connect(self._show_output_folder)
         self._show_output_folder()
+        # A kit widget using its fallback offers its add-on; one route to the installer.
+        for banner in self.findChildren(AddOnBanner):
+            banner.install_requested.connect(self.addon_install_requested)
 
     # -- building --------------------------------------------------------
     def _build_header(self) -> QWidget:
-        header = QWidget()
-        header.setObjectName("PanelHeader")
-        header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
-        layout = QHBoxLayout(header)
-        layout.setContentsMargins(28, 16, 28, 12)
-        layout.setSpacing(14)
-        title = make_label(self.spec.title, "title")
-        layout.addWidget(title, 0, Qt.AlignmentFlag.AlignBaseline)
-        # One line that never widens the window: elided, whole in the tooltip.
-        description = ElidedLabel(self.spec.description)
-        description.setProperty("role", "subtitle")
-        description.setVisible(bool(self.spec.description))
-        layout.addWidget(description, 1, Qt.AlignmentFlag.AlignBaseline)
-        return header
+        return panel_header(self.spec.title, self.spec.description)
 
     def _build_inputs(self) -> None:
         for spec in self.spec.inputs:

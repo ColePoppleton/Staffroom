@@ -31,6 +31,14 @@ dependencies = [
     "reportlab>=5.0.1",
 ]
 
+[project.optional-dependencies]
+# Optional add-ons (#5), installed from Settings > Add-ons; core/addons.py
+# describes them. Same Qt release as the slim pair above: every 6.12.0 wheel
+# requires the exact Essentials of its release. QtWebEngine is in
+# PySide6-WebEngine (which needs Addons); QtMultimedia is in PySide6-Addons.
+web = ["pyside6-addons==6.12.0.*", "pyside6-webengine==6.12.0.*"]
+media = ["pyside6-addons==6.12.0.*"]
+
 [project.scripts]
 staffroom = "staffroom.shell.app:main"
 staff = "staffroom.cli:main"
