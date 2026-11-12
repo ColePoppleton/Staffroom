@@ -1,5 +1,6 @@
 """Settings > Updates for an installed copy (#11): the version running, the
-newest release on GitHub with its notes, and the one command that updates.
+newest release on GitHub with its notes, and the one command that updates;
+for the Mac app (#60), a link to download the new app instead.
 
 A git checkout keeps its own card in :mod:`staffroom.shell.settings_page`.
 This card never runs git and never installs anything (the 2026-10-11 audit
@@ -51,7 +52,12 @@ class InstalledUpdatesCard(Card):
     ) -> None:
         """``save`` writes the config (Settings passes its own, which shows a
         save failure under the page title); default ``config.save``."""
-        if installation.kind is install.InstallKind.UV_TOOL:
+        if installation.app:
+            intro = (
+                "This is the Staffroom app. It never rewrites its own files: an update is "
+                "a new copy of the app, downloaded from GitHub."
+            )
+        elif installation.kind is install.InstallKind.UV_TOOL:
             intro = (
                 "This copy was installed with uv. Staffroom never rewrites its own files: "
                 "an update is one line in Terminal."
@@ -135,7 +141,16 @@ class InstalledUpdatesCard(Card):
             wrap=True,
         )
         self.pinned_note.setVisible(bool(command) and not installation.tracks_main)
+        # The Mac app (#60) has no command: a link to the release to download.
+        self.download = QPushButton("Download the new app ↗")
+        self.download.setObjectName("DownloadApp")
+        self.download.setProperty("role", "link")
+        self.download.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.download.setToolTip("Open the release on GitHub, where the app is attached")
+        self.download.clicked.connect(self._open_release_page)
+        self.download.hide()
         self.body.addWidget(self.steps)
+        self.body.addWidget(self.download, 0, Qt.AlignmentFlag.AlignLeft)
         self.body.addWidget(self.command_box)
         self.body.addWidget(self.pinned_note)
         if not command:
@@ -217,7 +232,19 @@ class InstalledUpdatesCard(Card):
             self.notes.setMarkdown(update.notes_for_display(release.notes))
             self._notes_for = release.version
 
-        if not self.command_box.command():
+        self.download.setVisible(self.installation.app and bool(newer) and release is not None)
+        if self.installation.app and newer and release is not None:
+            asset = install.APP_ASSET_PATTERN.replace("<version>", release.version)
+            self.download.setText(f"Download Staffroom {release.version} ↗")
+            self.steps.setText(
+                f"To update: download {asset} from the release, unzip it and drag Staffroom "
+                "to Applications in place of this copy. Your settings and lesson copies are kept."
+            )
+        elif self.installation.app and newer is False:
+            self.steps.setText(
+                "You have the newest release. When a newer one is out, this card links to it."
+            )
+        elif not self.command_box.command():
             self.steps.setText(self.installation.update_hint())
         elif newer is False:
             self.steps.setText(f"You have the newest release. When a newer one is out: {STEPS}")

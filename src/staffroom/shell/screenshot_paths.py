@@ -46,12 +46,13 @@ def aliases(config: Config, default_output: Path | None = None) -> Aliases:
     if default_output is not None:
         outputs = neutral(str(default_output), aliases(config))
     pairs: list[tuple[str, str]] = []
+    checkout = paths.project_root()  # None in an installed copy
     for real, shown in (
         (config.general.output_dir, outputs),
         (config.general.resources_root, NEUTRAL_RESOURCES),
         (str(paths.sessions_root(config.general.sessions_root)), NEUTRAL_SESSIONS),
         (str(paths.home_dir()), NEUTRAL_HOME),
-        (str(paths.project_root()), NEUTRAL_CHECKOUT),
+        (str(checkout) if checkout is not None else "", NEUTRAL_CHECKOUT),
         (str(Path.home()), "~"),
     ):
         if not real:

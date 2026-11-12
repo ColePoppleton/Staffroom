@@ -4,7 +4,8 @@ Used by ``trace`` and ``bugs`` (``fade`` only blanks lines as text and runs
 nothing). This is a convenience fence, not a security boundary: these are the
 teacher's own files. What it does provide:
 
-* ``python -I -u`` (isolated: no site, no env-driven imports) in a fresh
+* ``python -I -B -u`` (isolated: no site, no env-driven imports, no ``.pyc``
+  written anywhere) in a fresh
   temp working directory with a minimal environment;
 * a hard wall-clock timeout, after which the process is killed, plus a CPU
   rlimit as a second guard where the platform supports it;
@@ -18,6 +19,12 @@ teacher's own files. What it does provide:
 What it does not do: it does not stop ``os.system``, file writes, a computed
 import name or a large allocation. ``limits_note`` is the sentence the tools
 show a teacher; ``docs/guide/running-code.md`` is the long version.
+
+Which Python runs the program: :func:`interpreter`. From a checkout or a uv
+install it is the Python running Staffroom. Inside the Mac app (a
+PyInstaller bundle, #60) ``sys.executable`` is the app itself, so the app
+carries its own standalone CPython for pupil code, pinned in
+``packaging/python.toml``; nothing ever runs in the app's own process.
 """
 
 from __future__ import annotations
@@ -34,6 +41,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO
+
+from staffroom.core.plugin import ToolError
 
 BLOCKED_MODULES: frozenset[str] = frozenset(
     {
@@ -62,6 +71,15 @@ BLOCKED_MODULES: frozenset[str] = frozenset(
 # Calls that import by name; only a literal first argument is checked.
 IMPORT_CALLS: frozenset[str] = frozenset(
     {"__import__", "importlib.import_module", "importlib.__import__", "import_module"}
+)
+
+# Where the Mac app keeps the Python for pupil code, under the bundle's
+# ``sys._MEIPASS`` (Contents/Frameworks). packaging/staffroom.spec puts it there.
+BUNDLED_PYTHON = Path("pupil-python") / "bin" / "python3"
+NO_INTERPRETER = "This copy of Staffroom has no Python to run programs with."
+NO_INTERPRETER_NEXT = (
+    "Download the Staffroom app again from its GitHub Releases page: the Python that runs "
+    "programs is part of the app and is missing from this copy."
 )
 
 DEFAULT_TIMEOUT = 5.0
@@ -140,6 +158,23 @@ class RunOutcome:
         if self.truncated:
             text += "; " + capped_note(self.output_limit)
         return text
+
+
+def interpreter() -> Path:
+    """The Python that runs pupil code.
+
+    Unfrozen (a checkout, a uv tool): ``sys.executable``, the interpreter
+    running Staffroom. Frozen (the Mac app): ``sys.executable`` is the app, so
+    the standalone CPython bundled at :data:`BUNDLED_PYTHON` under
+    ``sys._MEIPASS``. A frozen copy without it raises :class:`ToolError`
+    (one sentence for the teacher) rather than run anything in-process."""
+    if not getattr(sys, "frozen", False):
+        return Path(sys.executable)
+    bundle = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+    python = bundle / BUNDLED_PYTHON
+    if python.is_file() and os.access(python, os.X_OK):
+        return python
+    raise ToolError(NO_INTERPRETER, next_step=NO_INTERPRETER_NEXT)
 
 
 def blocked_imports(source: str) -> list[str]:
@@ -230,7 +265,9 @@ def run_file(
         "PYTHONIOENCODING": "utf-8",
         "PYTHONDONTWRITEBYTECODE": "1",
     }
-    cmd = [sys.executable, "-I", "-u", "-X", "utf8", str(path), *(argv or [])]
+    # -B: write no .pyc anywhere. -I ignores PYTHONDONTWRITEBYTECODE, and the
+    # Mac app's Python must stay unchanged or its code signature breaks (#60).
+    cmd = [str(interpreter()), "-I", "-B", "-u", "-X", "utf8", str(path), *(argv or [])]
     started = time.perf_counter()
     proc = subprocess.Popen(
         cmd,

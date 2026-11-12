@@ -29,13 +29,16 @@ DEFAULT_BRANCH = "main"
 # The documented install line (#11): it follows ``main``, so the upgrade
 # command above moves it to the newest release.
 INSTALL_LINE = "uv tool install --python 3.12 git+https://github.com/ColePoppleton/Staffroom@main"
+# The zipped Mac app each GitHub Release carries (#60); packaging/bundle.py
+# names the file the Release workflow attaches.
+APP_ASSET_PATTERN = "Staffroom-<version>-macos.zip"
 _INSTALLED_DIRS = {"site-packages", "dist-packages"}
 
 
 class InstallKind(StrEnum):
     CHECKOUT = "checkout"  # this project's own git work tree (the thin launcher, a clone)
     UV_TOOL = "uv-tool"  # ``uv tool install``, from git or a wheel
-    OTHER = "other"  # pip into a venv, a PyInstaller bundle, an unpacked sdist
+    OTHER = "other"  # pip into a venv, the Mac app (``app=True``), an unpacked sdist
 
 
 @dataclass(frozen=True)
@@ -48,6 +51,10 @@ class Installation:
     # pins a tag (the install line before #11) or a wheel file: ``upgrade``
     # says "Nothing to upgrade" for those, so the install line is the command.
     tracks_main: bool = True
+    # The self-contained Mac app from a GitHub Release (a PyInstaller bundle,
+    # #60). Its kind stays OTHER (nothing to run in Terminal); it is updated
+    # by downloading the newest app, which is what its hint says.
+    app: bool = False
 
     @property
     def is_checkout(self) -> bool:
@@ -76,6 +83,13 @@ class Installation:
             return (
                 "This copy was installed with uv and never updates itself. "
                 f"To update it, quit Staffroom and run: {UV_UPGRADE_COMMAND}"
+            )
+        if self.app:
+            return (
+                "This is the Staffroom app from GitHub and it never updates itself. "
+                f"To update it, download {APP_ASSET_PATTERN} from the newest release, "
+                "unzip it and drag Staffroom to Applications in place of this copy. "
+                "Your settings and lesson copies are kept."
             )
         if self.kind is InstallKind.OTHER:
             return (
@@ -106,7 +120,7 @@ def detect(package_dir: Path | None = None) -> Installation:
     git."""
     here = (package_dir or Path(__file__).resolve().parents[1]).resolve()
     if getattr(sys, "frozen", False):
-        return Installation(InstallKind.OTHER, here)
+        return Installation(InstallKind.OTHER, here, app=True)
     installed_in = next((p for p in here.parents if p.name in _INSTALLED_DIRS), None)
     if installed_in is not None:
         # <env>/lib/pythonX.Y/site-packages/staffroom; on Windows <env>/Lib/site-packages.
@@ -117,10 +131,23 @@ def detect(package_dir: Path | None = None) -> Installation:
         if receipt is not None:
             return Installation(InstallKind.UV_TOOL, here, tracks_main=_tracks_main(receipt))
         return Installation(InstallKind.OTHER, here)
-    root = here.parents[1] if here.parent.name == "src" else None
-    if root is not None and _is_this_project(root) and (root / ".git").exists():
+    root = source_root(here)
+    if root is not None and (root / ".git").exists():
         return Installation(InstallKind.CHECKOUT, here, root)
     return Installation(InstallKind.OTHER, here)
+
+
+def source_root(package_dir: Path | None = None) -> Path | None:
+    """The project folder the package runs from when it runs from a source
+    tree: ``<root>/src/staffroom`` with this project's ``pyproject.toml``
+    (a git checkout, or an unpacked sdist, which has no ``.git``). ``None``
+    for an installed copy (site-packages, the Mac app), whose parent folders
+    have nothing to do with Staffroom (#27). Never runs git."""
+    here = (package_dir or Path(__file__).resolve().parents[1]).resolve()
+    if getattr(sys, "frozen", False) or any(p.name in _INSTALLED_DIRS for p in here.parents):
+        return None
+    root = here.parents[1] if here.parent.name == "src" else None
+    return root if root is not None and _is_this_project(root) else None
 
 
 def _tracks_main(receipt: Path) -> bool:

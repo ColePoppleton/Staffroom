@@ -121,7 +121,8 @@ app runs. Nothing merges without a PR and green CI.
 
 * `just setup`, `just test`, `just lint`, `just gui`, `just new <name>`,
   `just install` (thin launcher app in /Applications), `just bundle`
-  (PyInstaller), `just icon`, `just screenshots`, `just update`.
+  (the self-contained Mac app: PyInstaller plus a pinned Python for pupil code,
+  smoke-tested by `packaging/smoke.py`), `just icon`, `just screenshots`, `just update`.
 * The installed app runs this checkout via uv: commit and push to
   github.com/ColePoppleton/Staffroom and the app offers the update.
 * `uv` manages the environment; Python 3.12+; src layout.
@@ -135,7 +136,7 @@ app runs. Nothing merges without a PR and green CI.
 * Keep tools small. `hello` is the reference: read it before writing a tool.
   `marks` shows presets, charts and aggregate-only saving; `classroom`
   shows row actions and the Resource Library; `worksheet` and `parsons`
-  show the house-style export; `trace`, `bugs` and `fade` show the sandboxed runner; `pseudocode` is an AST → IR → text translator.
+  show the house-style export; `trace` and `bugs` show the sandboxed runner; `pseudocode` is an AST → IR → text translator.
 * Screenshots for docs: `just screenshots` (renders offscreen via `staffroom
   --screenshot`).
 * Config lives at `~/.config/staffroom/` (config.toml, logs/, library.db,

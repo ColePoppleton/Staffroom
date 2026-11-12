@@ -1,5 +1,22 @@
 # Updating
 
+## The Mac app
+
+The app never updates itself. When a new release is out, **Settings ›
+Updates** shows it with *What changed ▸* and a **Download Staffroom
+X.Y.Z ↗** link that opens the release on GitHub, and the foot of the sidebar
+adds the new version's number and *out*. To update:
+
+1. Download `Staffroom-<version>-macos.zip` from the release's *Assets*.
+2. Quit Staffroom, unzip the download and drag **Staffroom** into
+   **Applications**. Choose **Replace** when the Finder asks.
+3. Open Staffroom. A newly downloaded copy may need *Open Anyway* again,
+   once (see [Install](install.md)).
+
+Your settings (`~/.config/staffroom`), the library index and your lesson
+copies live outside the app, so replacing it keeps them. How Staffroom asks
+GitHub about releases is the same as for a uv install, below.
+
 ## Installed with `uv tool install`
 
 Quit Staffroom, then run this in Terminal and open Staffroom again:
