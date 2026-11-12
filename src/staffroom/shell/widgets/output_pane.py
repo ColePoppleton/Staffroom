@@ -520,9 +520,9 @@ class OutputPane(QWidget):
         empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty.setWordWrap(True)
         stack = QStackedLayout()
+        layout.addLayout(stack, 1)  # in place first, so its current page never shows alone
         stack.addWidget(empty)
         stack.addWidget(content)
-        layout.addLayout(stack, 1)
         self._waiting[spec.key] = stack
         return page
 
@@ -576,7 +576,8 @@ class OutputPane(QWidget):
             layout.addWidget(text_view)
             if spec.copy_button:
                 head.addWidget(self._copy_button(spec.key, text_view))
-        section.setVisible(spec.key not in self._below_hidden)
+        if spec.key in self._below_hidden:
+            section.hide()
         return section
 
     def _details(self, *, fill: bool) -> QWidget:

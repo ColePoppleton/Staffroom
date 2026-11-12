@@ -93,7 +93,8 @@ class CompactTableWidget(QWidget):
         if start is not None:
             self.preset_combo.setCurrentText(start)
         self.preset_combo.currentTextChanged.connect(self.apply_preset)
-        self.preset_combo.setVisible(bool(self.presets))
+        if not self.presets:
+            self.preset_combo.hide()
         layout.addWidget(self.preset_combo)
 
         self.choice: ChoiceWidget | None = None
@@ -117,7 +118,8 @@ class CompactTableWidget(QWidget):
         self.save_button = QPushButton("Save as preset")
         self.save_button.setProperty("role", "link")
         self.save_button.setToolTip("Keep these boundaries as a named preset")
-        self.save_button.setVisible(spec.preset_action is not None)
+        if spec.preset_action is None:
+            self.save_button.hide()
         self.save_button.clicked.connect(self.save_preset)
         self._rebuild()
 
