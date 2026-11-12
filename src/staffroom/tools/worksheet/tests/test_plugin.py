@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Any
 
@@ -101,8 +102,9 @@ def test_cli_make_and_lessons(tmp_path: Path) -> None:
     assert r.exit_code == 0 and "denary-to-binary" in r.output and "huffman" in r.output
     r = runner.invoke(app, ["worksheet", "topics"])
     assert r.exit_code == 0 and "huffman" in r.output
-    r = runner.invoke(app, ["worksheet", "make", "--help"])
-    assert "staff worksheet make binary --lesson denary-to-binary" in r.output
+    r = runner.invoke(app, ["worksheet", "make", "--help"], terminal_width=200)
+    plain = " ".join(re.sub(r"\x1b\[[0-9;]*m", "", r.output).replace("│", " ").split())
+    assert "staff worksheet make binary --lesson denary-to-binary" in plain  # CI colours help
     for bad in (["--topic", "nope"], ["binary", "--lesson", "nope"], ["binary", "-t", "rle"]):
         r = runner.invoke(app, ["worksheet", "make", *bad, *out])
         assert r.exit_code == 1, bad
