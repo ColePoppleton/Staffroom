@@ -12,6 +12,20 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 
+Opening a tool no longer makes the screen flash black or sends Staffroom out of full screen.
+Parts of a tool's page were briefly shown as windows of their own before they were placed.
+
+### Fixed
+- Opening a tool, the Library or Settings shows nothing as a separate window: labels, the
+  output pane's empty states, the Marks preset row and the bar chart were told to show before
+  they sat in the window, so each became a window for a moment (a black flash on macOS, and a
+  switch away from full screen). They are now hidden while they should be hidden and placed
+  before they show; a test opens every page and fails if any stray window appears.
+- The add-on tests no longer depend on how the tests are run. From the unpacked source
+  download the release job tests, the running copy is not a checkout, so the add-on card
+  offered the manual route and two tests failed; that stopped the 0.10.0 GitHub Release from
+  being published. The tests now fix the copy they describe.
+
 ## [0.10.0] - 2026-11-12
 Staffroom now knows Pearson Edexcel GCSE Computer Science as well as OCR and AQA, so spec points,
 grade presets, truth-table gates and the pseudocode tool follow whichever board you choose. You can
