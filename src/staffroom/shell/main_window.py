@@ -125,8 +125,9 @@ class MainWindow(QMainWindow):
         if show_card:
             # The default is shown as written (~/TeachingSessions), not expanded.
             sessions = config.general.sessions_root or paths.DEFAULT_SESSIONS_ROOT
-            self.first_run = FirstRunCard(sessions)
+            self.first_run = FirstRunCard(sessions, config.general.board)
             self.first_run.folder_chosen.connect(self._on_first_run_folder)
+            self.first_run.board_chosen.connect(self._on_first_run_board)
             self.first_run.dismissed.connect(self.finish_first_run)
             self.stack.addWidget(self.first_run)
         layout.addWidget(self.sidebar)
@@ -342,6 +343,10 @@ class MainWindow(QMainWindow):
             worker.progress.connect(self.first_run.show_progress)
         else:
             self.finish_first_run()  # nothing to wait for (same folder, or no index)
+
+    def _on_first_run_board(self, board: str) -> None:
+        """The card's board goes through the Settings combo, which saves it."""
+        self.settings.board.setCurrentIndex(self.settings.board.findData(board))
 
     def finish_first_run(self) -> None:
         """Leave the card for the first workflow tool. Runs once: the index

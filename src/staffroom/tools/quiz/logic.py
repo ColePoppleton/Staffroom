@@ -63,7 +63,10 @@ class Options:
     )
     spec: str = field(
         default="",
-        metadata={"label": "Spec points", "help": "e.g. ocr:1.2 or aqa:3.3.4; prefixes match"},
+        metadata={
+            "label": "Spec points",
+            "help": "e.g. ocr:1.2, aqa:3.3.4 or edexcel:2.1; prefixes match",
+        },
     )
     retrieval: bool = field(
         default=False,

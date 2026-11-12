@@ -101,14 +101,22 @@ term has a precise meaning in the code, this is that meaning.
 **ERL (OCR Exam Reference Language)**
 : The pseudocode OCR uses in J277 exam papers. Pseudocode translates
   between it, AQA's pseudocode and Python for the GCSE subset and lists
-  anything it could not translate instead of dropping it.
+  anything it could not translate instead of dropping it. Pearson Edexcel
+  1CP2 has no pseudocode of its own: see *PLS*.
+
+**PLS (Programming Language Subset)**
+: Pearson's list of the parts of Python 3 that Edexcel 1CP2 papers use.
+  Paper 2 is answered in Python on screen with the PLS as an insert, and
+  Paper 1 algorithms use it too; the specification calls pseudocode an
+  informal description with no fixed syntax. So on Edexcel, Pseudocode's
+  *To* starts on Python.
 
 **AQA pseudocode**
 : AQA's equivalent for 8525: `←` for assignment, `OUTPUT`, `USERINPUT`,
   `ENDWHILE` and the rest.
 
 **GCSE subset**
-: The part of Python both boards expect: variables, arithmetic,
+: The part of Python the GCSE boards expect: variables, arithmetic,
   comparisons, `if`, counted and conditional loops, functions, lists,
   strings, casts, random, basic file methods. Outside it, Pseudocode keeps
   the line as a comment and names it in the could-not-translate list.
@@ -190,12 +198,15 @@ term has a precise meaning in the code, this is that meaning.
   [Outputs](outputs.md).
 
 **Exam board**
-: OCR J277 or AQA 8525, set in Settings › Worksheets (`staff worksheet make
-  --board` overrides it for one run). Chooses the grade preset Marks starts
-  with (the panel, and `staff marks run` without `--preset`) and the gates a
-  GCSE truth-table worksheet may use (OCR: AND, OR, NOT; AQA adds XOR).
-  Quiz spec tags are per question (`ocr:` and `aqa:` can both be on one),
-  so they do not depend on it.
+: OCR J277, AQA 8525 or Pearson Edexcel 1CP2, set in Settings › Worksheets
+  or on the first-run card (`staff worksheet make --board` overrides it for
+  one run). Chooses the grade preset Marks starts with (the panel, and
+  `staff marks run` without `--preset`), the gates a GCSE truth-table
+  worksheet may use (OCR and Edexcel: AND, OR, NOT; AQA adds XOR) and the
+  language Pseudocode's *To* starts on (Edexcel: Python). Quiz spec tags are
+  per question (`ocr:`, `aqa:` and `edexcel:` can all be on one), so which
+  questions a bank holds does not depend on it; the bank's summary names
+  your board's spec points first, or says it has none.
 
 **Level** (Worksheet)
 : *GCSE* or *A level* (`gcse` / `a_level`), for truth tables. GCSE follows the board; A-level

@@ -21,7 +21,6 @@ from staffroom.tools.quiz import logic
 from staffroom.tools.quiz.bank import load_taught_log, peek_bank
 from staffroom.tools.quiz.panel import RUN_LABELS, options_from
 
-BOARD_NAMES = {"ocr": "OCR", "aqa": "AQA"}
 WEEKS = (1, 3, 6)
 
 
@@ -33,19 +32,34 @@ def _and(items: Sequence[str]) -> str:
     return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
 
 
-def boards_phrase(bank: logic.Bank) -> str:
-    """ "OCR and AQA spec points", "OCR spec points" or "no spec points"."""
+def _short(board: str) -> str:
+    return spec.SHORT_NAMES.get(board, board.upper())
+
+
+def boards_phrase(bank: logic.Bank, board: str = "") -> str:
+    """ "OCR, AQA and Edexcel spec points", "OCR spec points" or "no spec points".
+
+    ``board`` is the teacher's exam board (Settings): its points are named
+    first, and a bank tagged only for other boards says it has none of
+    theirs ("OCR and AQA spec points, none Edexcel")."""
     boards: dict[str, None] = {}
     for q in bank.questions:
         for tag in q.spec_tags:
-            board = tag.partition(":")[0].lower()
-            boards.setdefault(BOARD_NAMES.get(board, board.upper()), None)
-    return f"{_and(list(boards))} spec points" if boards else "no spec points"
+            boards.setdefault(tag.partition(":")[0].lower(), None)
+    if not boards:
+        return "no spec points"
+    board = board.lower()
+    ordered = sorted(boards, key=lambda b: b != board)  # the teacher's board first
+    phrase = f"{_and([_short(b) for b in ordered])} spec points"
+    if board in spec.BOARDS and board not in boards:
+        phrase += f", none {_short(board)}"
+    return phrase
 
 
-def bank_notes(bank: logic.Bank) -> tuple[Note, ...]:
-    """The bank's summary line (*13 questions · 6 topics · OCR and AQA spec
-    points · no problems*), then the first problem with its line, if any."""
+def bank_notes(bank: logic.Bank, board: str = "") -> tuple[Note, ...]:
+    """The bank's summary line (*13 questions · 6 topics · OCR, AQA and Edexcel
+    spec points · no problems*), then the first problem with its line, if any.
+    ``board`` orders the boards (see :func:`boards_phrase`)."""
     if not bank.questions:
         first = f" First problem: {bank.errors[0]}." if bank.errors else ""
         return (Note("No questions found: each starts with '## '." + first, ok=False),)
@@ -54,7 +68,7 @@ def bank_notes(bank: logic.Bank) -> tuple[Note, ...]:
     parts = [
         _plural(len(bank.questions), "question"),
         _plural(len(bank.topics), "topic"),
-        boards_phrase(bank),
+        boards_phrase(bank, board),
         "no problems" if not problems else _plural(problems, "problem"),
     ]
     notes = [Note(" · ".join(parts), ok=not problems)]
@@ -165,8 +179,9 @@ def _taught_found(log_path: Path, bank: logic.Bank | None, options: logic.Option
     return Found(notes=tuple(notes))
 
 
-def inspect_inputs(inputs: Mapping[str, Any]) -> Inspection:
-    """The panel's ``inspect``: see the module doc."""
+def inspect_inputs(inputs: Mapping[str, Any], board: str = "") -> Inspection:
+    """The panel's ``inspect``: see the module doc. ``board`` is the exam
+    board from Settings, bound when the panel is built."""
     options = options_from(inputs)
     found: dict[str, Found] = {}
     bank: logic.Bank | None = None
@@ -178,7 +193,7 @@ def inspect_inputs(inputs: Mapping[str, Any]) -> Inspection:
             found["source"] = Found(notes=(Note(str(exc), ok=False),))
         else:
             found["source"] = Found(
-                notes=bank_notes(bank),
+                notes=bank_notes(bank, board),
                 rows=logic.selection_table(bank.questions) if bank.questions else None,
                 rows_label="Preview questions",
             )
