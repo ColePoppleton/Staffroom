@@ -64,6 +64,8 @@ def test_header_states_the_gate_set_for_the_board_and_level(tmp_path: Path) -> N
 
     assert "gates: AND, OR, NOT" in preview("ocr")
     assert "gates: AND, OR, NOT, XOR" in preview("aqa")
+    edexcel = preview("edexcel", difficulty="hard")
+    assert "gates: AND, OR, NOT" in edexcel and "XOR" not in edexcel
     assert "NAND" not in preview("aqa", difficulty="hard")
     hard_a_level = preview("ocr", difficulty="hard", level="a_level")
     assert "A-level" in hard_a_level and "gates: AND, OR, NOT, XOR, NAND, NOR" in hard_a_level
@@ -87,6 +89,10 @@ def test_cli_level_and_board_options(tmp_path: Path) -> None:
     assert r.exit_code == 0, r.output
     assert "A-level" in r.output and "NAND, NOR" in r.output
     assert (tmp_path / "truth_tables_hard_alevel_s42.pdf").exists()  # a GCSE file keeps its name
+    r = runner.invoke(app, [*args, "--board", "edexcel"])
+    assert r.exit_code == 0 and "gates: AND, OR, NOT" in r.output and "XOR" not in r.output
+    r = runner.invoke(app, [*args, "--board", "wjec"])
+    assert r.exit_code == 1 and "ocr|aqa|edexcel" in r.output
     r = runner.invoke(app, [*args, "--level", "degree"])
     assert r.exit_code == 1
     r = runner.invoke(app, [*args, "--laws", "nope"])

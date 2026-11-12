@@ -160,7 +160,7 @@ lesson label is the one line you typed (60 characters at most); the UI asks
 for a lesson, not a class, and cannot check what you wrote.
 
 Nothing leaves the machine. An installed copy (`uv tool install`, a wheel)
-never runs git. Its one network call asks GitHub which release is newest: a
+never runs git. Its one network call of its own asks GitHub which release is newest: a
 single HTTPS request to
 `https://api.github.com/repos/ColePoppleton/Staffroom/releases/latest`, with
 no account, token or anything about you or your files, made when you press
@@ -170,7 +170,14 @@ the second. It never installs anything: you update it yourself with
 `uv tool upgrade staffroom`. Run from its own git checkout (the macOS launcher
 app), Staffroom instead asks that checkout's git remote whether a release is
 out, when it starts and when you press *Check for updates*; that is the only
-network call a checkout makes.
+network call a checkout makes on its own.
+
+The other network action is always yours: an add-on is downloaded only when you
+press *Install* in Settings › Add-ons (or run `staff addons install`). The
+download comes from the Python package index (pypi.org and
+files.pythonhosted.org) and, for a copy installed from GitHub, github.com,
+through uv, the program Staffroom was installed with. Nothing about you or your
+files is sent. See [Add-ons](addons.md).
 
 ## Deleting everything
 

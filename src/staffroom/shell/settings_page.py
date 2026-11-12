@@ -24,6 +24,9 @@ from staffroom.core.library.exclude import IGNORE_FILE
 from staffroom.core.library.service import library_db_path
 from staffroom.core.library.tags import SIDECAR_DIR
 from staffroom.core.panel import FolderPicker
+from staffroom.core.plugin import ToolPlugin
+from staffroom.core.spec import BOARDS
+from staffroom.shell.addons_card import AddOnsCard
 from staffroom.shell.updates_card import InstalledUpdatesCard
 from staffroom.shell.widgets import Card, PathPickerWidget, StringListEditor, make_label
 
@@ -37,11 +40,13 @@ LIBRARY_STORED_STATEMENT = (
 )
 
 
-# What the board really changes (#49): Quiz spec tags are per question and do
-# not depend on it. Keep in step with the Exam board entry in docs/guide/glossary.md.
+# What the board really changes (#49, #62): Quiz spec tags are per question and do
+# not depend on it; the bank's summary only names the board's points first. Keep in
+# step with the Exam board entry in docs/guide/glossary.md.
 WORKSHEETS_NOTE = (
-    "The exam board picks the grade preset Marks starts with and the gates a GCSE "
-    "truth-table worksheet uses. The header and footer are printed on every sheet."
+    "The exam board picks the grade preset Marks starts with, the gates a GCSE "
+    "truth-table worksheet uses and the language Pseudocode translates to first. "
+    "The header and footer are printed on every sheet."
 )
 
 
@@ -54,7 +59,15 @@ class SettingsPage(QWidget):
     # installed copy (#11). The sidebar never says "up to date" unchecked.
     update_available = Signal(object, str)
 
-    def __init__(self, config: Config, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        config: Config,
+        parent: QWidget | None = None,
+        *,
+        plugins: tuple[ToolPlugin, ...] | None = None,
+    ) -> None:
+        """``plugins`` are the tools the Add-ons card names as users of each
+        add-on (default: every tool discovered)."""
         super().__init__(parent)
         self.config = config
         root = QVBoxLayout(self)
@@ -185,8 +198,8 @@ class SettingsPage(QWidget):
         form3.setHorizontalSpacing(16)
         form3.setVerticalSpacing(10)
         self.board = QComboBox()
-        self.board.addItem("OCR J277", "ocr")
-        self.board.addItem("AQA 8525", "aqa")
+        for key, name in BOARDS.items():
+            self.board.addItem(name, key)
         self.board.setCurrentIndex(max(self.board.findData(config.general.board), 0))
         self.board.currentIndexChanged.connect(self._on_board)
         form3.addRow(self._label("Exam board"), self.board)
@@ -214,6 +227,14 @@ class SettingsPage(QWidget):
             self.installed_updates.state_changed.connect(self._on_release_state)
             self.updates_card = self.installed_updates
         layout.addWidget(self.updates_card)
+
+        if plugins is None:
+            from staffroom.core.discovery import discover_plugins
+
+            plugins = discover_plugins()
+        # Optional add-ons (#5); it reuses the install mode found above.
+        self.addons_card = AddOnsCard(plugins, self.installation)
+        layout.addWidget(self.addons_card)
 
         logging_card = Card("Logging")
         log_form = QFormLayout()
@@ -334,8 +355,16 @@ class SettingsPage(QWidget):
         bar = self.scroll_area.verticalScrollBar()
         bar.setValue(min(bar.maximum(), max(0, self.updates_card.y() - 16)))
 
+    def show_addons(self) -> None:
+        """Scroll so the Add-ons card is at the top."""
+        bar = self.scroll_area.verticalScrollBar()
+        bar.setValue(min(bar.maximum(), max(0, self.addons_card.y() - 16)))
+
     def wait_for_workers(self, timeout_ms: int = 10_000) -> bool:
-        """Wait for a release check still running (it gives up in seconds)."""
+        """Wait for a release check still running (it gives up in seconds)
+        and for an add-on change (the window never closes during one)."""
+        if not self.addons_card.wait(timeout_ms):
+            return False
         if self.installed_updates is None:
             return True
         return self.installed_updates.wait(timeout_ms)

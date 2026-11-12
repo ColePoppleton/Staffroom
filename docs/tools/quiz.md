@@ -10,9 +10,10 @@ See [Question banks](../guide/question-banks.md) for the file format.
 
 The panel starts from the bank. Choose it (*From library…* or *Browse…*, or *Quiz*
 on the Library's use bar when the bank is selected there) and its chip says what
-was found in it: *13 questions · 6 topics · OCR and AQA spec points · no
-problems*, or the first problem with its line (`staff quiz check` lists them
-all). *Preview questions* opens every question in a window.
+was found in it: *13 questions · 6 topics · OCR, AQA and Edexcel spec points
+· no problems*, or the first problem with its line (`staff quiz check` lists
+them all). The exam board in Settings is named first; a bank with no points
+for it says so (*OCR spec points, none Edexcel*). *Preview questions* opens every question in a window.
 
 - **Make**: *Do-now sheet* (the default), *Kahoot* or *Forms text*. The run
   button says which (*Make do-now*).
@@ -80,6 +81,7 @@ staff quiz export bank.md --format donow --topics binary,cpu --n 10
 staff quiz retrieval bank.md --log taught.csv --date 2026-10-08
 staff quiz check bank.md
 staff quiz spec ocr
+staff quiz spec edexcel
 ```
 
 !!! note

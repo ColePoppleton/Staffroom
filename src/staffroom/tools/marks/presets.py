@@ -35,6 +35,20 @@ BUILTIN_PRESETS: dict[str, PresetRows] = {
         ("1", 8),
         ("U", 0),
     ),
+    # Rounded from Pearson's June 2025 overall boundaries for 1CP2 (124, 109, 94,
+    # 79, 64, 49, 36, 23, 10 out of 150); they move every series like the others.
+    "Edexcel 1CP2 (GCSE 9-1)": (
+        ("9", 83),
+        ("8", 73),
+        ("7", 63),
+        ("6", 53),
+        ("5", 43),
+        ("4", 33),
+        ("3", 24),
+        ("2", 15),
+        ("1", 7),
+        ("U", 0),
+    ),
     "A-level (A*-E)": (
         ("A*", 80),
         ("A", 70),
@@ -47,7 +61,11 @@ BUILTIN_PRESETS: dict[str, PresetRows] = {
 }
 
 DEFAULT_PRESET = "OCR J277 (GCSE 9-1)"
-BOARD_PRESETS = {"ocr": "OCR J277 (GCSE 9-1)", "aqa": "AQA 8525 (GCSE 9-1)"}
+BOARD_PRESETS = {
+    "ocr": "OCR J277 (GCSE 9-1)",
+    "aqa": "AQA 8525 (GCSE 9-1)",
+    "edexcel": "Edexcel 1CP2 (GCSE 9-1)",
+}
 
 
 def default_preset_for(board: str) -> str:

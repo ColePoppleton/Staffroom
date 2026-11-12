@@ -4,7 +4,7 @@ from typer.testing import CliRunner
 
 from staffroom.cli import app
 from staffroom.core.config import load_config
-from staffroom.core.panel import CodeValue
+from staffroom.core.panel import Choice, CodeValue
 from staffroom.core.plugin import RunContext
 from staffroom.tools.pseudocode import plugin
 from staffroom.tools.pseudocode.logic import Options
@@ -64,3 +64,20 @@ def test_suggest_follows_the_code() -> None:
     # Nothing in the code to go on: the file name decides.
     named = CodeValue(Path("sheet.aqa.txt"), "x = 5\n")
     assert suggest({"source": named, "to": "ocr"}) == {"from": "aqa"}
+
+
+def test_to_starts_on_the_language_the_board_assesses() -> None:
+    from staffroom.core.spec import BOARDS
+    from staffroom.tools.pseudocode.panel import BOARD_TARGETS, panel_spec, to_choice
+
+    assert set(BOARD_TARGETS) == set(BOARDS)
+    assert to_choice("ocr").initial == "ocr" and to_choice("aqa").initial == "aqa"
+    # Pearson Edexcel 1CP2 writes algorithms in Python (its Programming Language Subset).
+    edexcel = to_choice("edexcel")
+    assert edexcel.initial == "python" and "Programming Language Subset" in edexcel.help
+    assert to_choice("wjec").initial == "ocr"  # not a board: as before
+    config = load_config()
+    config.general.board = "edexcel"
+    assert config.save() is None
+    to = next(w for w in panel_spec().inputs if isinstance(w, Choice) and w.key == "to")
+    assert isinstance(to, Choice) and to.initial == "python"

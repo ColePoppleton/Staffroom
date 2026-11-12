@@ -268,16 +268,28 @@ def apply(repo: Path | None = None, *, sync: bool = True, release_branch: str | 
         return st.describe()
     _git(["merge", "--ff-only", st.remote], repo)
     if sync:
-        uv = _find_uv()
+        uv = find_uv()
         if uv:
-            subprocess.run([uv, "sync", "--quiet"], cwd=str(repo), check=True, timeout=600)
+            subprocess.run(
+                [uv, "sync", "--quiet", *_kept_extras()], cwd=str(repo), check=True, timeout=600
+            )
     after = status(repo, fetch=False, release_branch=release_branch)
     log.info("updated %s -> %s", st.commit, after.commit)
     plural = "s" if st.behind != 1 else ""
     return f"Updated {st.commit} → {after.commit} ({st.behind} commit{plural}). Restart to use it."
 
 
-def _find_uv() -> str | None:
+def _kept_extras() -> list[str]:
+    """``--extra web`` for each add-on this copy has (#5): a plain ``uv
+    sync`` removes every extra it is not given, and with them files the Qt
+    wheels share."""
+    from staffroom.core import addons
+
+    return [arg for name in sorted(addons.installed()) for arg in ("--extra", name)]
+
+
+def find_uv() -> str | None:
+    """Where uv's installer and Homebrew put ``uv``."""
     for candidate in (
         Path.home() / ".local" / "bin" / "uv",
         Path("/opt/homebrew/bin/uv"),

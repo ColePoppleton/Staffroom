@@ -96,10 +96,11 @@ log file hold the app-wide log, described in
 | Resources folder | what the Resource Library indexes (read-only to every tool), and the folders under it to keep out of the index |
 | Sessions folder | where Classroom puts lesson copies; local by default |
 | Editor | Thonny, IDLE, system default, or Custom with a *Command* in which `{file}` is the lesson copy |
-| Exam board | OCR J277 or AQA 8525: the grade preset Marks starts with, and the gates a GCSE truth-table worksheet may use |
+| Exam board | OCR J277, AQA 8525 or Pearson Edexcel 1CP2 (also asked on the first-run card): the grade preset Marks starts with, the gates a GCSE truth-table worksheet may use, the language Pseudocode translates to first, and the board Quiz names first in a bank's spec points |
 | Header / footer text | printed on every sheet and key, from every tool (the *Worksheets* card, with the exam board) |
 | Logging | the level of the app log (`INFO` by default), and buttons to reveal the config file and the log |
 | Updates | an installed copy: this version, the newest release and what changed, *Check again*, the tick box *Look for a new release when Staffroom opens* (at most once a day), and the one command to paste (`uv tool upgrade staffroom`) with *Copy*, or the install line once for a copy pinned to a release; from a checkout: check for and apply an update. See [Updating](updating.md) |
+| Add-ons | the optional Web and Media add-ons: what each is for, which tools need it, its size, and *Install* or *Remove*; a tool that needs a missing one is greyed in the sidebar. See [Add-ons](addons.md) |
 
 Everything is saved to `~/.config/staffroom/config.toml` as you change it.
 Words the panels use without explaining (seed, facility, ERL, do-now…) are

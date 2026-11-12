@@ -228,11 +228,14 @@ _OPS: dict[str, Callable[[int, int], int]] = {
     "NOR": lambda a, b: 1 - (a | b),
 }
 
-# What each GCSE board requires. Neither has NAND or NOR; AQA 8525 (3.4.2) has XOR, OCR J277
-# (2.4.1) does not. A-level adds XOR for every board and NAND/NOR, but those only at "hard".
+# What each GCSE board requires. None has NAND or NOR; AQA 8525 (3.4.2) has XOR, OCR J277
+# (2.4.1) does not, and Pearson Edexcel 1CP2 (1.3.1, Issue 1) asks for AND, OR and NOT in
+# truth tables of up to three inputs. A-level adds XOR for every board and NAND/NOR, but
+# those only at "hard".
 GCSE_GATES: dict[str, tuple[str, ...]] = {
     "ocr": ("AND", "OR", "NOT"),
     "aqa": ("AND", "OR", "NOT", "XOR"),
+    "edexcel": ("AND", "OR", "NOT"),
 }
 A_LEVEL_GATES: tuple[str, ...] = ("AND", "OR", "NOT", "XOR")
 BEYOND_GCSE_GATES: tuple[str, ...] = ("NAND", "NOR")
@@ -915,7 +918,7 @@ def generate(
     level: Level = "gcse",
     laws: Laws = "absorption",
 ) -> list[Question]:
-    """``board`` is the teacher's exam board from config (``ocr`` or ``aqa``); it and
+    """``board`` is the teacher's exam board from config (a key of ``spec.BOARDS``); it and
     ``level`` decide the gates a truth table may use, ``laws`` the simplification family.
     A ``count`` outside ``MIN_COUNT``..``MAX_COUNT`` is refused: an empty sheet and key
     help nobody, and a 500-question sheet is a typo."""

@@ -410,3 +410,44 @@ refreshed table under the same key. `tools/classroom` is the reference.
 Do not build it in the tool. Add a dataclass to `core/panel.py`, a widget to
 `shell/widgets/`, a rendering branch in `shell/tool_panel.py` (inputs) or
 `shell/widgets/output_pane.py` (outputs), and a test. Then use it from the spec.
+
+## A tool that needs an add-on
+
+Some Qt modules are too large for everyone's install: the browser engine
+(QtWebEngine) and sound and video (QtMultimedia). They are optional add-ons,
+extras of the package (`staffroom[web]`, `staffroom[media]`) that a teacher
+installs from Settings › Add-ons; `core/addons.py` lists them. The default
+install has neither, and `tests/test_qt_modules.py` fails any file that
+imports one of their modules directly.
+
+There are two ways for a tool to use one.
+
+**The tool cannot work without it.** Declare it on the plugin, beside
+`order` and `group`:
+
+```python
+class WebPagePlugin:
+    name = "webpage"
+    requires = ("web",)
+```
+
+While the add-on is missing, the sidebar lists the tool greyed with *Needs
+the Web add-on*, the Library's use bar leaves it out, and opening it shows a
+card with an *Install the Web add-on* button instead of the panel (the button
+hands over to Settings › Add-ons, which shows the progress). With the add-on
+installed the tool opens as usual. Discovery refuses a name that is not an
+add-on, so a typo fails at `staff list`, not in front of a class. The CLI
+still mounts the tool's commands either way: keep anything that does not need
+the add-on working there.
+
+**The tool works without it, less well.** Leave `requires` out and let the
+kit widget degrade. A widget in `shell/widgets/` that wants an add-on module
+loads it with `import_addon("web", "QtWebEngineWidgets")`, which returns None
+when the add-on is missing (never import it at module level), uses its
+fallback (a `QTextBrowser` for plain HTML), and shows an
+`AddOnBanner("web", "Pages show in a basic viewer.")` over it. The tool panel
+passes the banner's *Install* on to Settings › Add-ons like the card's.
+
+Tests never install anything: `addons.is_installed` can be monkeypatched to
+say an add-on is there, and the root `conftest.py` fails a test that would run
+the real installer.

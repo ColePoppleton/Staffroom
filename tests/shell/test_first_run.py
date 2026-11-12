@@ -173,3 +173,16 @@ def test_the_sessions_path_never_breaks_after_the_home_slash(fresh_window: MainW
     note.setText("Copies go to ~/TeachingSessions/outputs today.")
     assert note.text() == "Copies go to ~/TeachingSessions/outputs today."
     assert "~/⁠TeachingSessions" in QLabel.text(note)
+
+
+def test_card_asks_for_the_exam_board_and_saves_it(fresh_window: MainWindow) -> None:
+    from staffroom.core.spec import BOARDS
+
+    card = fresh_window.first_run
+    assert card is not None
+    offered = [card.board.itemData(i) for i in range(card.board.count())]
+    assert offered == list(BOARDS)  # every board, in the one list's order
+    assert card.board.currentData() == "ocr"  # a new install's default is unchanged
+    card.board.setCurrentIndex(card.board.findData("edexcel"))
+    assert fresh_window.settings.board.currentData() == "edexcel"
+    assert load_config().general.board == "edexcel"

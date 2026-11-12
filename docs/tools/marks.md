@@ -66,8 +66,10 @@ Each is also in the run log under *Details*.
 
 A compact grid of grade and minimum, five to a line: click a number to edit
 it. *Boundaries in* switches between percent of the paper and raw marks.
-Built-in presets for OCR J277, AQA 8525 and A-level are starting points:
-choose one, edit it to the published boundaries and *Save as preset*.
+Built-in presets for OCR J277, AQA 8525, Pearson Edexcel 1CP2 and A-level
+are starting points: choose one, edit it to the published boundaries and
+*Save as preset*. The panel starts on the preset for the exam board in
+Settings.
 
 ## Outputs
 

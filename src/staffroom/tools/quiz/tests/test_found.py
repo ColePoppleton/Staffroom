@@ -34,11 +34,34 @@ def bank() -> logic.Bank:
 def test_the_bank_summary_reads_as_one_line(bank: logic.Bank) -> None:
     notes = bank_notes(bank)
     assert [(n.text, n.ok) for n in notes] == [
-        ("13 questions · 6 topics · OCR and AQA spec points · no problems", True)
+        ("13 questions · 6 topics · OCR, AQA and Edexcel spec points · no problems", True)
     ]
     ocr_only = logic.parse_bank("## Q\ntags: ocr:1.1.1, topic:cpu\nanswer: x\n")
     assert boards_phrase(ocr_only) == "OCR spec points"
     assert boards_phrase(logic.parse_bank("## Q\nanswer: x\n")) == "no spec points"
+
+
+def test_the_summary_names_the_settings_board_first(bank: logic.Bank) -> None:
+    assert boards_phrase(bank, "edexcel") == "Edexcel, OCR and AQA spec points"
+    assert boards_phrase(bank, "aqa") == "AQA, OCR and Edexcel spec points"
+    ocr_only = logic.parse_bank("## Q\ntags: ocr:1.1.1, topic:cpu\nanswer: x\n")
+    # A bank with none of the teacher's board says so, rather than look tagged for it.
+    assert boards_phrase(ocr_only, "edexcel") == "OCR spec points, none Edexcel"
+    assert boards_phrase(ocr_only, "ocr") == "OCR spec points"
+    assert boards_phrase(ocr_only, "wjec") == "OCR spec points"  # not a board: no claim
+    found = inspect_inputs({"source": BANK}, board="edexcel").found["source"]
+    assert found.notes[0].text.startswith("13 questions · 6 topics · Edexcel, OCR and AQA")
+
+
+def test_edexcel_tags_filter_and_prefix_match(bank: logic.Bank) -> None:
+    exact = logic.filter_questions(bank.questions, "", "edexcel:2.1.3")
+    section = logic.filter_questions(bank.questions, "", "edexcel:2.1")
+    topic = logic.filter_questions(bank.questions, "", "edexcel:2")
+    assert len(exact) == 2 and all("edexcel:2.1.3" in q.spec_tags for q in exact)
+    assert len(section) == 2 and len(topic) == 3  # 2.1.3 twice, 2.3.1 once
+    assert {q.number for q in logic.filter_questions(bank.questions, "", "edexcel:4")} == {
+        q.number for q in bank.questions if q.topics == ("networks",)
+    }
 
 
 def test_problems_show_the_first_with_its_line_and_unknown_spec_tags() -> None:
