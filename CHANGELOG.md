@@ -19,6 +19,17 @@ later entries refer to this repository's issues.
   spec points first, and Pseudocode starting on Python, which Edexcel assesses through its
   Programming Language Subset. The example bank's questions carry Edexcel tags too; a PLS
   check for Python is #63.
+- Optional add-ons (#5): `staffroom[web]` (QtWebEngine) and `staffroom[media]`
+  (QtMultimedia), pinned to the slim install's Qt release. Settings › Add-ons installs and
+  removes them in the background, with progress, the installer's log behind *Details*, one
+  sentence when it fails (no network, a school proxy) and a restart prompt; `staff addons`
+  does the same from Terminal. A change is tried in a throwaway environment first, so a
+  failed download or an add-on that does not start leaves the copy as it was. A uv tool
+  re-installs from its own source into its own folders, a checkout runs
+  `uv sync --extra`, a bundle shows the line to paste. A plugin declares
+  `requires = ("web",)`: while the add-on is missing the sidebar greys the tool and opening
+  it offers the install. The kit adds `AddOnBanner` and `import_addon` for widgets with a
+  fallback.
 
 ### Changed
 - The source distribution carries only the package, its tests and the examples: 1.2 MB
@@ -28,6 +39,8 @@ later entries refer to this repository's issues.
   wheel as the checkout (#22).
 - Bugs and Parsons pick a plausible wrong variable by one shared rule, `core/pyscope.py`,
   instead of two copies that could drift apart (#48).
+- `staff update` and *Update now* in a checkout keep the add-ons installed: a plain
+  `uv sync` removed them, and with them files the Qt packages share.
 
 ### Fixed
 - Help texts say what the tools do: Parsons' *Split at* (an `if`/`for`/`def` line is a block
@@ -44,6 +57,12 @@ later entries refer to this repository's issues.
   breaks a path after `~/` (the first-run card printed "~/ TeachingSessions") (#23).
 - `just install` deletes its build in `dist/` once the app is in Applications, so Spotlight
   lists Staffroom once instead of twice.
+- The Library preview no longer freezes the app on a big photo or a long PDF, and a PDF
+  shows its page instead of its first page's text, so a scanned booklet looks like itself:
+  *Page 1 of N* with Previous and Next. Photos are decoded off the GUI thread at the size
+  they are shown and keep their orientation; PDF pages are drawn in Qt's own renderer
+  thread; arrowing through many files runs one decode at a time and shows only the last;
+  the last few previews are kept, so going back is instant (#64).
 - The result strip grows for a rewrapped message in the same layout pass as the resize that
   rewrapped it, so a long failure is never shown squeezed into the old height for a frame
   (its message reports its height for a width, an opt-in on `ElidedLabel`). This also fixes

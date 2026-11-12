@@ -21,10 +21,12 @@ from typing import Annotated, Any
 import typer
 
 from staffroom import __version__
+from staffroom.addons_cli import addons_app
+from staffroom.core import addons
 from staffroom.core.config import Config, load_config
 from staffroom.core.discovery import discover_plugins
 from staffroom.core.log import setup_logging
-from staffroom.core.plugin import ToolError, plugin_hidden
+from staffroom.core.plugin import ToolError, plugin_hidden, plugin_requires
 from staffroom.core.scaffold import scaffold_tool
 from staffroom.library_cli import library_app
 
@@ -79,9 +81,14 @@ def list_tools() -> None:
     width = max(len(p.name) for p in plugins)
     for p in plugins:
         marker = f"  {HIDDEN_MARKER}" if plugin_hidden(p) else ""
+        lacking = addons.missing(plugin_requires(p))
+        if lacking:
+            marker += f"  [{addons.needs_text(lacking).lower()}]"
         typer.echo(f"{p.name:<{width}}  v{p.version:<7} {p.description}{marker}")
     if any(plugin_hidden(p) for p in plugins):
         typer.echo(f"\n{HIDDEN_MARKER}: not shown in the launcher; still runs from the CLI.")
+    if any(addons.missing(plugin_requires(p)) for p in plugins):
+        typer.echo("[needs the … add-on]: install it with staff addons install <name>.")
 
 
 NEW_NEEDS_CHECKOUT = (
@@ -180,6 +187,7 @@ def usage_() -> None:
 
 
 app.add_typer(library_app, name="library")
+app.add_typer(addons_app, name="addons")
 
 
 def _record_cli_run(tool: str) -> None:

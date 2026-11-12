@@ -100,6 +100,7 @@ log file hold the app-wide log, described in
 | Header / footer text | printed on every sheet and key, from every tool (the *Worksheets* card, with the exam board) |
 | Logging | the level of the app log (`INFO` by default), and buttons to reveal the config file and the log |
 | Updates | an installed copy: this version, the newest release and what changed, *Check again*, the tick box *Look for a new release when Staffroom opens* (at most once a day), and the one command to paste (`uv tool upgrade staffroom`) with *Copy*, or the install line once for a copy pinned to a release; from a checkout: check for and apply an update. See [Updating](updating.md) |
+| Add-ons | the optional Web and Media add-ons: what each is for, which tools need it, its size, and *Install* or *Remove*; a tool that needs a missing one is greyed in the sidebar. See [Add-ons](addons.md) |
 
 Everything is saved to `~/.config/staffroom/config.toml` as you change it.
 Words the panels use without explaining (seed, facility, ERL, do-now…) are
