@@ -72,6 +72,19 @@ class AnswerGrid:
 
 
 @dataclass(frozen=True)
+class WorkedExample:
+    """A question solved in full on the sheet, in a shaded box: the question, an
+    optional table (a place-value table, a column addition, the merges of a tree),
+    the working one step a line, and the answer."""
+
+    question: str
+    steps: tuple[str, ...]
+    answer: str
+    table: TableBlock | None = None
+    title: str = "Worked example"
+
+
+@dataclass(frozen=True)
 class PageBreak:
     pass
 
@@ -85,6 +98,7 @@ Block = (
     | HintBox
     | BoxedBlocks
     | AnswerGrid
+    | WorkedExample
     | PageBreak
 )
 

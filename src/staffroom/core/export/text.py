@@ -13,6 +13,7 @@ from staffroom.core.export.model import (
     PageBreak,
     Paragraph,
     TableBlock,
+    WorkedExample,
 )
 
 
@@ -78,6 +79,12 @@ def _block(block: object) -> list[str]:
             grid.append(" ".join(str(p).center(6) for p in chunk))
             grid.append(" ".join("[____]" for _ in chunk))
         return [*grid, ""]
+    if isinstance(block, WorkedExample):
+        lines = [f"[{block.title}] {block.question}"]
+        if block.table is not None:
+            lines += ["    " + ln if ln else ln for ln in _block(block.table)]
+        lines += [f"    {step}" for step in block.steps if step]
+        return [*lines, f"    Answer: {block.answer}", ""]
     if isinstance(block, PageBreak):
         return ["", "- - - - - page break - - - - -", ""]
     return []
