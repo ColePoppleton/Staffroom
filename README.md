@@ -9,7 +9,7 @@ one plain house style. No pupil names, ever.
 
 <table>
 <tr>
-<td><a href="https://colepoppleton.github.io/Staffroom/tools/worksheet/"><img src="docs/output-worksheet.png" width="180" alt="A binary, denary and hexadecimal worksheet, seed 1"></a></td>
+<td><a href="https://colepoppleton.github.io/Staffroom/tools/worksheet/"><img src="docs/output-worksheet.png" width="180" alt="A denary to binary lesson worksheet, seed 1"></a></td>
 <td><a href="https://colepoppleton.github.io/Staffroom/tools/quiz/"><img src="docs/output-quiz.png" width="180" alt="A do-now sheet from the example question bank"></a></td>
 <td><a href="https://colepoppleton.github.io/Staffroom/tools/parsons/"><img src="docs/output-parsons.png" width="180" alt="A Parsons problem made from a short program"></a></td>
 <td><a href="https://colepoppleton.github.io/Staffroom/tools/trace/"><img src="docs/output-trace.png" width="180" alt="A blank trace table made from the same program"></a></td>

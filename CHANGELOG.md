@@ -32,6 +32,18 @@ later entries refer to this repository's issues.
   fallback.
 
 ### Changed
+- Worksheets are one sheet per lesson, not per unit (#75). Pick a unit (*Binary & hex*),
+  then a lesson (*Denary to binary*): the sheet states its aim, solves a worked example in
+  full (place-value table, column addition or truth table), then climbs through Warm-up,
+  Practice and Stretch, with working in the key for every question. Each lesson shows its
+  spec point for OCR J277, AQA 8525 and Pearson Edexcel 1CP2, checked against the published
+  specifications; a lesson not on your board stays choosable, greyed, saying whose it is.
+  Edexcel file sizes are in KiB. Each old topic is now a unit's *Review* lesson and makes
+  exactly the sheet it made before, so old seeds and `--topic` commands keep working;
+  `staff worksheet make <unit> --lesson <lesson>` and `staff worksheet lessons` are new. The
+  kit adds `GroupedChoice` (chips over a list of rows, which can follow Settings) and the
+  house style a `WorkedExample` block; PDF and Word keep a question with its table, and a
+  heading with what follows it, on one page.
 - The source distribution carries only the package, its tests and the examples: 1.2 MB
   instead of 40 MB (no docs images, audits or `.claude/`). Tests about the repository
   around the package are marked `checkout` and skipped there; the Release workflow runs

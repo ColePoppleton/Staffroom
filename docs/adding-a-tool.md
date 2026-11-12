@@ -236,6 +236,16 @@ through `core.csvio.read_table`), must be quick, and is only a hint. A
 "seed"), more=("spec", "title"))` puts short fields on one row and folds what
 few runs need behind *More*. `tools/quiz` is the reference.
 
+A choice of one item from groups (a unit, then a lesson in it) is a
+`GroupedChoice(key, label="Unit", items_label="Lesson", groups=(ItemGroup(...),))`:
+the groups as chips, the chosen group's `GroupedItem`s as rows, each with a
+`tag` at the right (a spec point), a `detail` line, and `dim=True` with a
+`note` for a row drawn faint but still choosable; `divided=True` rules a row
+off from the ones above. Its value is the chosen item's value. When the rows
+depend on Settings, `for_config(config)` returns the choice rebuilt; the
+shell calls it each time the panel is shown. A `PanelSpec.shown_when` can
+read it like a `Choice`. `tools/worksheet` is the reference.
+
 The panel's first `CodeSource`, `ResourcePicker` or (opening) `FilePicker` is its **main
 file input**, and the extensions it declares (`filter_ext=".py"`, several as
 `filter_ext=(".py", ".txt")`, or the `*.ext` patterns in `filters`) put the

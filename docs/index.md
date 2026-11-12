@@ -49,7 +49,7 @@ macOS 14 or later.
 
 ![Parsons problem made from year9.py](output-parsons.png){ .sr-page .sr-page--back }
 ![Trace table made from year9.py](output-trace.png){ .sr-page .sr-page--middle }
-![Binary worksheet, seed 1](output-worksheet.png){ .sr-page .sr-page--front }
+![Worksheet: denary to binary, seed 1](output-worksheet.png){ .sr-page .sr-page--front }
 
 </div>
 
@@ -101,7 +101,7 @@ comes with its answer key as a separate file, in PDF and Word.
 <div class="sr-gallery" markdown>
 
 <div class="sr-card" markdown>
-[![Worksheet: binary, seed 1](output-worksheet.png){ .sr-thumb }](tools/worksheet.md)
+[![Worksheet: denary to binary, seed 1](output-worksheet.png){ .sr-thumb }](tools/worksheet.md)
 
 [Worksheet](tools/worksheet.md){ .sr-card__name }
 Seeded binary, logic, file-size and compression questions; the seed is in
