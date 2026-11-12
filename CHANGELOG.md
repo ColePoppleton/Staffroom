@@ -12,6 +12,7 @@ later entries refer to this repository's issues.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-12
 Staffroom now knows Pearson Edexcel GCSE Computer Science as well as OCR and AQA, so spec points,
 grade presets, truth-table gates and the pseudocode tool follow whichever board you choose. You can
 download Staffroom as an ordinary Mac app, and add the larger web and media add-ons from Settings
