@@ -6,14 +6,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QComboBox
 from pytestqt.qtbot import QtBot
 
 from staffroom.core.config import load_config
 from staffroom.shell.main_window import MainWindow
 from staffroom.shell.tool_panel import ToolPanel
 from staffroom.shell.widgets.choice import ChoiceWidget
-from staffroom.tools.worksheet.logic import GENERATORS
+from staffroom.tools.worksheet.lessons import LESSONS
 
 
 @pytest.fixture
@@ -34,20 +33,19 @@ def _panel(window: MainWindow, tool: str) -> ToolPanel:
     return panel
 
 
-def test_boolean_laws_show_only_for_simplification(window: MainWindow) -> None:
-    form = _panel(window, "worksheet").forms["options"]
-    for topic in GENERATORS:
-        form.set_field("topic", topic)
-        shown = form.shown_fields()
-        assert ("laws" in shown) == (topic == "boolean_simplification"), topic
-        assert ("level" in shown) == (topic == "truth_tables"), topic
+def test_gates_and_laws_show_only_for_the_lessons_that_read_them(window: MainWindow) -> None:
+    panel = _panel(window, "worksheet")
+    lesson = panel.grouped["lesson"]
+    for key, les in LESSONS.items():
+        lesson.set_value(key)
+        assert lesson.value() == key
+        assert panel.groups["level"].isVisibleTo(panel) == ("level" in les.uses), key
+        assert panel.groups["laws"].isVisibleTo(panel) == ("laws" in les.uses), key
 
 
 def test_worksheet_choices_read_as_words(window: MainWindow) -> None:
     form = _panel(window, "worksheet").forms["options"]
-    topic = form.widgets["topic"]
-    assert isinstance(topic, QComboBox)
-    assert topic.currentText() == "Binary, denary and hexadecimal"
+    assert "topic" not in form.widgets  # the lesson is chosen above the form (#75)
     difficulty = form.widgets["difficulty"]
     assert isinstance(difficulty, ChoiceWidget)
     assert [b.text() for b in difficulty.buttons.values()] == ["Easy", "Medium", "Hard"]

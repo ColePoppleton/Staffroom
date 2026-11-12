@@ -49,6 +49,14 @@ def test_worksheet_panel_runs(window: MainWindow, qtbot: QtBot, tmp_path: Path) 
         panel.start_run()
     assert blocker.args == [True]
     pages = panel.results.page_previews["pages"]
-    assert pages.path("sheet") == tmp_path / "out" / "binary_medium_s42.pdf"
+    # The panel opens on the first lesson (#75): one page, with its worked example.
+    stem = "binary_denary_to_binary_medium_s42"
+    assert pages.path("sheet") == tmp_path / "out" / f"{stem}.pdf"
     assert pages.page_count("sheet") == 1 and pages.page_count("key") == 1
-    assert (tmp_path / "out" / "binary_medium_s42_key.docx").exists()
+    assert (tmp_path / "out" / f"{stem}_key.docx").exists()
+    # A Review makes the old sheet under its old name.
+    panel.grouped["lesson"].set_value("binary/review")
+    with qtbot.waitSignal(panel.run_finished, timeout=20000) as blocker:
+        panel.start_run()
+    assert blocker.args == [True]
+    assert pages.path("sheet") == tmp_path / "out" / "binary_medium_s42.pdf"

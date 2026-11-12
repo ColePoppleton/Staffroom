@@ -42,6 +42,8 @@ class Question:
     answer_lines: int = 1
     table: tuple[tuple[str, ...], ...] | None = None  # columns + rows for the sheet
     steps: tuple[Step, ...] = ()  # the key's reasoning, structured, for the property tests
+    kind: str = ""  # the one skill a lesson question practises ("d2b"), for the tests
+    size: int = 0  # how big it is (the number, the bits, the gates): the climb in a lesson
 
 
 Generator = Callable[[int, int, Difficulty], list[Question]]
@@ -54,34 +56,19 @@ MAX_COUNT = 60
 
 @dataclass
 class Options:
-    topic: Literal[
-        "binary",
-        "twos_complement",
-        "binary_addition",
-        "shifts",
-        "truth_tables",
-        "boolean_simplification",
-        "file_size",
-        "rle",
-        "huffman",
-    ] = field(default="binary", metadata={"label": "Topic"})
+    """The settings every sheet shares. The lesson is chosen beside them (``lessons``),
+    and the gate level and law family only for the lessons that read them."""
+
     count: int = field(
         default=10, metadata={"label": "Questions", "min": MIN_COUNT, "max": MAX_COUNT}
     )
     seed: int = field(default=42, metadata={"label": "Seed", "min": 0, "max": 999_999})
-    difficulty: Difficulty = field(default="medium", metadata={"label": "Difficulty"})
-    level: Level = field(
-        default="gcse",
+    difficulty: Difficulty = field(
+        default="medium",
         metadata={
-            "label": "Level",
-            "help": "GCSE follows the board; A level adds XOR, and NAND/NOR at Hard",
-        },
-    )
-    laws: Laws = field(
-        default="absorption",
-        metadata={
-            "label": "Boolean laws",
-            "help": "Identities allows X AND X, NOT NOT X and 0/1 on the sheet",
+            "label": "Difficulty",
+            "help": "Sets the size of the numbers. Every lesson sheet still climbs "
+            "from warm-up to stretch.",
         },
     )
     formats: Literal["both", "docx", "pdf"] = field(default="both", metadata={"label": "Output"})
@@ -715,48 +702,56 @@ def boolean_simplification(
     the question's own letters and ends at the target."""
     rng = random.Random(seed)
     steps_n = {"easy": 1, "medium": 2, "hard": 3}[difficulty]
-    budget = _BUDGET[difficulty]
+    seen: set[str] = set()
+    return [simplify_question(rng, steps_n, laws, seen) for _ in range(count)]
+
+
+# The size budget for a question of so many steps: a one-step question is an easy one.
+_STEP_BUDGET: dict[int, Difficulty] = {1: "easy", 2: "medium", 3: "hard"}
+
+
+def simplify_question(rng: random.Random, steps_n: int, laws: Laws, seen: set[str]) -> Question:
+    """One simplification question of ``steps_n`` steps (1 to 3) from the law family,
+    preferring one not in ``seen`` (which it extends). A Review sheet and a lesson
+    sheet share it; the order it draws from ``rng`` is the one old seeds rely on."""
+    budget = _BUDGET[_STEP_BUDGET[steps_n]]
     family = _laws_for(laws)
     allow_trivial = laws in ("identities", "all")
     targets = _targets()
-    seen: set[str] = set()
-    out: list[Question] = []
-    for _ in range(count):
-        found: tuple[BoolExpr, list[_Candidate]] | None = None
-        for _attempt in range(20):  # prefer a question the sheet does not already have
-            target = rng.choice(targets)
-            chain = _wrap_chain(
-                target, steps_n, family, rng, allow_trivial, budget, frozenset(), min(2, steps_n)
-            )
-            if chain is None:  # this target cannot carry that many steps within the budget
-                continue
-            found = (target, chain)
-            if chain[-1].result.shown not in seen:
-                break
-        if found is None:  # pragma: no cover - every target carries three steps
-            msg = f"no {difficulty} question fits the size budget for laws={laws!r}"
-            raise RuntimeError(msg)
-        target, wraps = found
-        expr = wraps[-1].result
-        seen.add(expr.shown)
-        # Undoing a wrap leaves the expression it was applied to: the previous wrap's
-        # result, or the target for the first wrap.
-        before_each = [target, *(w.result for w in wraps[:-1])]
-        steps = tuple(
-            Step(law=w.law, before=w.new.shown, after=w.old.shown, result=s.shown, via=w.via)
-            for w, s in zip(reversed(wraps), reversed(before_each), strict=True)
+    found: tuple[BoolExpr, list[_Candidate]] | None = None
+    for _attempt in range(20):  # prefer a question the sheet does not already have
+        target = rng.choice(targets)
+        chain = _wrap_chain(
+            target, steps_n, family, rng, allow_trivial, budget, frozenset(), min(2, steps_n)
         )
-        working = "\n".join(f"{i}. {step.text()}" for i, step in enumerate(steps, 1))
-        out.append(
-            Question(
-                f"Simplify: {expr.shown}",
-                target.shown,
-                working,
-                answer_lines=2 + steps_n,
-                steps=steps,
-            )
-        )
-    return out
+        if chain is None:  # this target cannot carry that many steps within the budget
+            continue
+        found = (target, chain)
+        if chain[-1].result.shown not in seen:
+            break
+    if found is None:  # pragma: no cover - every target carries three steps
+        msg = f"no {steps_n}-step question fits the size budget for laws={laws!r}"
+        raise RuntimeError(msg)
+    target, wraps = found
+    expr = wraps[-1].result
+    seen.add(expr.shown)
+    # Undoing a wrap leaves the expression it was applied to: the previous wrap's
+    # result, or the target for the first wrap.
+    before_each = [target, *(w.result for w in wraps[:-1])]
+    steps = tuple(
+        Step(law=w.law, before=w.new.shown, after=w.old.shown, result=s.shown, via=w.via)
+        for w, s in zip(reversed(wraps), reversed(before_each), strict=True)
+    )
+    working = "\n".join(f"{i}. {step.text()}" for i, step in enumerate(steps, 1))
+    return Question(
+        f"Simplify: {expr.shown}",
+        target.shown,
+        working,
+        answer_lines=2 + steps_n,
+        steps=steps,
+        kind="simplify",
+        size=steps_n,
+    )
 
 
 # ---------------------------------------------------------------- 7. file sizes
@@ -937,13 +932,14 @@ def generate(
     return gen(seed, count, difficulty)
 
 
-def header_note(options: Options, board: str) -> str:
-    """What the sheet header must state beyond seed and difficulty for the set to be
-    trusted and regenerated: the gate set for truth tables, the laws for simplification."""
-    if options.topic == "truth_tables":
-        gates = ", ".join(gate_set(board, options.level, options.difficulty))
-        prefix = "A-level · " if options.level == "a_level" else ""
+def header_note(topic: str, board: str, level: Level, laws: Laws, difficulty: Difficulty) -> str:
+    """What an old topic's sheet header must state beyond seed and difficulty for the
+    set to be trusted and regenerated: the gate set for truth tables, the laws for
+    simplification."""
+    if topic == "truth_tables":
+        gates = ", ".join(gate_set(board, level, difficulty))
+        prefix = "A-level · " if level == "a_level" else ""
         return f"{prefix}gates: {gates}"
-    if options.topic == "boolean_simplification":
-        return "laws: " + ", ".join(LAW_FAMILIES[options.laws])
+    if topic == "boolean_simplification":
+        return "laws: " + ", ".join(LAW_FAMILIES[laws])
     return ""

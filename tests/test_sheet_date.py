@@ -11,8 +11,9 @@ import pytest
 
 import staffroom.tools as tools_pkg
 from staffroom.core.export import DATE_ENV, sheet_date
-from staffroom.tools.worksheet.logic import Options, generate
-from staffroom.tools.worksheet.sheet import build_document
+from staffroom.tools.worksheet.lessons import Settings
+from staffroom.tools.worksheet.logic import generate
+from staffroom.tools.worksheet.sheet import build_review
 
 TOOLS = Path(tools_pkg.__file__).parent
 
@@ -38,13 +39,13 @@ def test_a_malformed_date_is_refused_not_ignored() -> None:
 
 def test_a_sheet_builder_prints_the_fixed_date(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(DATE_ENV, "2026-10-09")
-    options = Options(topic="binary", seed=1)
-    questions = generate(options.topic, options.seed, options.count, options.difficulty)
-    doc = build_document(questions, options)
+    questions = generate("binary", 1, 10, "medium")
+    doc = build_review(questions, "binary", 1, "medium", Settings())
     assert doc.date == date(2026, 10, 9)
     assert "09 October 2026" in doc.header_text
     # An explicit date still wins over the environment.
-    assert build_document(questions, options, date(2025, 1, 2)).date == date(2025, 1, 2)
+    later = build_review(questions, "binary", 1, "medium", Settings(), date(2025, 1, 2))
+    assert later.date == date(2025, 1, 2)
 
 
 def _calls_date_today(tree: ast.AST) -> bool:
