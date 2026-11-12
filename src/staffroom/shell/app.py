@@ -124,6 +124,8 @@ def build_window(args: argparse.Namespace) -> MainWindow:
                     form.set_field(name, int(value) if value.isdigit() else value)
             if name in panel.choices:
                 panel.choices[name].set_value(value)
+            if name in panel.grouped:  # an item, e.g. lesson=binary/denary-to-binary
+                panel.grouped[name].set_value(value)
             if name in panel.chip_choices:  # a comma-separated list of chips
                 panel.chip_choices[name].set_value(v.strip() for v in value.split(","))
             if name in panel.text_fields:

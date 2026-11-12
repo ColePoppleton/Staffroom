@@ -141,11 +141,11 @@ page() {
 }
 first_pdf() { ls "$1"/*.pdf | grep -v -i key | head -1; }
 
-uv run staff worksheet make --topic truth_tables --difficulty hard --board ocr --seed 1 \
+uv run staff worksheet make logic --lesson three-gates --difficulty hard --board ocr --seed 1 \
     --format pdf --out "$home/out/worksheet" --no-preview >/dev/null
 page "$(first_pdf "$home/out/worksheet")" worksheet-sample 110
 
-uv run staff worksheet make --topic binary --difficulty medium --board ocr --seed 1 --count 8 \
+uv run staff worksheet make binary --lesson denary-to-binary --board ocr --seed 1 --count 8 \
     --format pdf --out "$home/out/binary" --no-preview >/dev/null
 page "$(first_pdf "$home/out/binary")" output-worksheet
 

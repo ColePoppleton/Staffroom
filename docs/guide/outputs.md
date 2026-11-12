@@ -42,7 +42,7 @@ input, so its stem is built from its options.
 | Tool | Files | Notes |
 | --- | --- | --- |
 | Marks | `<stem>_distribution.csv`, `<stem>_distribution.png`, `<stem>_questions.csv` | aggregates only; the per-script grades on screen are never written |
-| Worksheet | `<topic>_<difficulty>_s<seed>.docx` / `.pdf` and `…_key.docx` / `.pdf` | `binary_medium_s42.pdf`; the seed in the name and in the header regenerates the same set. With *Level* set to *A level* the stem is `<topic>_<difficulty>_alevel_s<seed>`, so it never overwrites the GCSE sheet with the same seed |
+| Worksheet | `<unit>_<lesson>_<difficulty>_s<seed>.docx` / `.pdf` and `…_key.docx` / `.pdf`; a Review sheet keeps the old `<topic>_<difficulty>_s<seed>` | `binary_denary_to_binary_medium_s42.pdf`, `binary_medium_s42.pdf`; the seed in the name and in the header regenerates the same set. With *Gates* set to *A level* a truth-table sheet's stem gains `_alevel` before the seed, so it never overwrites the GCSE sheet with the same seed |
 | Parsons | `<stem>_parsons_s<seed>.docx` / `.pdf` and `…_key` | |
 | Trace | `<stem>_trace.docx` / `.pdf` (blank table) and `<stem>_trace_key` (completed) | |
 | Bugs | `<stem>_bug1.py` … `<stem>_bugN.py`, then `<stem>_bugs.docx` / `.pdf` and `<stem>_bugs_key` | one `.py` per variant, so a variant can be opened in Thonny as it is |

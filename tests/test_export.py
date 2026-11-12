@@ -19,6 +19,7 @@ from staffroom.core.export import (
     PageBreak,
     Paragraph,
     TableBlock,
+    WorkedExample,
     export,
     render,
     to_text,
@@ -135,3 +136,62 @@ def test_export_writes_sheet_and_key_per_format(doc: Document, tmp_path: Path) -
     assert [p.name for p in only] == ["loops2.pdf"]
     with pytest.raises(ValueError, match="unsupported"):
         render(doc, tmp_path / "x.odt")
+
+
+EXAMPLE = WorkedExample(
+    "Convert 77 to binary (8 bits).",
+    ("77 = 64 + 8 + 4 + 1.", "Write 1 under each of those."),
+    "0100 1101",
+    TableBlock(("128", "64", "32", "16", "8", "4", "2", "1"), (tuple("01001101"),), True),
+)
+
+
+def _worked(tmp_path: Path, suffix: str) -> Path:
+    d = Document(title="Binary & hex: Denary to binary", date=date(2026, 10, 9))
+    d.section().add(EXAMPLE).add(Heading("Warm-up · 1 to 31")).add(
+        Numbered(("Convert 5 to binary (8 bits).",), answer_lines=1)
+    )
+    return render(d, tmp_path / f"sheet{suffix}")
+
+
+def test_worked_example_in_text_docx_and_pdf(tmp_path: Path) -> None:
+    """#75: one box holding the question, a table, the steps and the answer."""
+    d = Document(title="T")
+    d.section().add(EXAMPLE)
+    text = to_text(d)
+    assert "[Worked example] Convert 77 to binary (8 bits)." in text
+    assert "    128  64" in text and "    77 = 64 + 8 + 4 + 1." in text
+    assert "    Answer: 0100 1101" in text
+    box = DocxReader(str(_worked(tmp_path, ".docx"))).tables[0]
+    cell = box.cell(0, 0)
+    lines = [p.text for p in cell.paragraphs]
+    assert lines[0] == "Worked example" and "Convert 77 to binary (8 bits)." in lines
+    assert lines[-1] == "Answer:  0100 1101" and "77 = 64 + 8 + 4 + 1." in lines
+    inner = cell.tables[0]  # the place-value table sits inside the box
+    assert [c.text for c in inner.rows[0].cells][:2] == ["128", "64"]
+    assert [c.text for c in inner.rows[1].cells] == list("01001101")
+    pdf = PdfReader(str(_worked(tmp_path, ".pdf")))
+    page = pdf.pages[0].extract_text() or ""
+    assert "Worked example" in page and "Answer: 0100 1101" in page.replace("  ", " ")
+    assert len(pdf.pages) == 1
+
+
+def test_a_question_and_its_table_share_a_page(tmp_path: Path) -> None:
+    """A truth table never starts on the page after its question, in PDF or Word."""
+    d = Document(title="Tables")
+    s = d.section()
+    rows = tuple((a, b, c, "") for a in "01" for b in "01" for c in "01")
+    for n in range(1, 8):
+        s.add(Numbered((f"Complete the truth table for question {n}.",), start=n))
+        s.add(TableBlock(("A", "B", "C", "Q"), rows, monospace=True))
+    reader = PdfReader(str(render(d, tmp_path / "t.pdf")))
+    for page in reader.pages:
+        text = page.extract_text() or ""
+        lines = [ln for ln in text.splitlines() if ln.strip()]
+        body = [ln for ln in lines if not ln.startswith(("Tables", "Page"))]
+        assert not body[-1].startswith("Complete the truth table"), body[-3:]
+    read = DocxReader(str(render(d, tmp_path / "t.docx")))
+    prompts = [p for p in read.paragraphs if p.text.startswith("1.  Complete")]
+    assert prompts and prompts[0].paragraph_format.keep_with_next
+    first_row = read.tables[0].rows[0].cells[0].paragraphs[0]
+    assert first_row.paragraph_format.keep_with_next

@@ -88,7 +88,7 @@ def test_chips_match_the_files_written(
     assert result is not None and len(result.files) == 4
     assert panel.strip.state == "success"
     assert panel.strip.text() == result.outcome
-    assert panel.strip.headline.text() == "10 questions"
+    assert panel.strip.headline.text() == "Denary to binary"  # the lesson (#75)
     assert {c.path for c in panel.strip.files} == set(result.files)
     labels = [c.text() for c in panel.strip.shown_chips]
     assert labels == ["PDF Sheet", "PDF Key", "DOCX Sheet", "DOCX Key"]

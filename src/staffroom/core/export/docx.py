@@ -25,6 +25,7 @@ from staffroom.core.export.model import (
     PageBreak,
     Paragraph,
     TableBlock,
+    WorkedExample,
 )
 
 BODY_FONT = "Calibri"
@@ -53,8 +54,14 @@ def write_docx(doc: Document, path: Path) -> Path:
     for section in doc.sections:
         if section.title:
             d.add_heading(section.title, level=1)
-        for block in section.blocks:
-            _render(d, block)
+        for i, block in enumerate(section.blocks):
+            following = section.blocks[i + 1] if i + 1 < len(section.blocks) else None
+            keep = (
+                isinstance(block, Numbered)
+                and block.answer_lines == 0
+                and isinstance(following, TableBlock)
+            )
+            _render(d, block, keep_with_next=keep)
     path.parent.mkdir(parents=True, exist_ok=True)
     d.save(str(path))
     return path
@@ -114,7 +121,9 @@ def _mono(paragraph: DocxParagraph, text: str, size: int = 10) -> None:
         fonts.set(qn(attr), MONO_FONT)
 
 
-def _render(d: DocxDocument, block: object) -> None:
+def _render(d: DocxDocument, block: object, *, keep_with_next: bool = False) -> None:
+    """``keep_with_next``: the block is a question whose table follows; Word keeps
+    the two on one page."""
     if isinstance(block, Heading):
         d.add_heading(block.text, level=min(max(block.level, 1), 4))
     elif isinstance(block, Paragraph):
@@ -140,6 +149,7 @@ def _render(d: DocxDocument, block: object) -> None:
             first, *rest = item.splitlines() or [""]
             p = d.add_paragraph()
             p.paragraph_format.space_after = Pt(2)
+            p.paragraph_format.keep_with_next = keep_with_next
             num = p.add_run(f"{i}.  ")
             num.bold = True
             if block.code:
@@ -175,6 +185,11 @@ def _render(d: DocxDocument, block: object) -> None:
                     _mono(cells[i].paragraphs[0], value)
                 else:
                     cells[i].paragraphs[0].add_run(value)
+        if len(block.rows) <= 20:  # a short table stays on one page
+            for row in table.rows[:-1]:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        para.paragraph_format.keep_with_next = True
         d.add_paragraph()
     elif isinstance(block, HintBox):
         table = d.add_table(rows=1, cols=1)
@@ -191,6 +206,8 @@ def _render(d: DocxDocument, block: object) -> None:
         _boxed(d, block)
     elif isinstance(block, AnswerGrid):
         _answer_grid(d, block)
+    elif isinstance(block, WorkedExample):
+        _worked_example(d, block)
     elif isinstance(block, PageBreak):
         d.add_page_break()  # type: ignore[no-untyped-call]
 
@@ -271,3 +288,37 @@ def _cell_borders(cell: _Cell, val: str) -> None:
         element.set(qn("w:sz"), "6")
         element.set(qn("w:space"), "0")
         element.set(qn("w:color"), "667085")
+
+
+def _worked_example(d: DocxDocument, block: WorkedExample) -> None:
+    """One shaded cell: title, question, a table nested in it, steps, answer."""
+    box = d.add_table(rows=1, cols=1)
+    box.style = "Light Shading Accent 1"
+    cell = box.rows[0].cells[0]
+    cell.text = ""
+    title = cell.paragraphs[0].add_run(block.title)
+    title.bold = True
+    title.font.color.rgb = ACCENT
+    cell.add_paragraph(block.question)
+    if block.table is not None:
+        table = cell.add_table(rows=1, cols=len(block.table.columns))
+        table.style = "Table Grid"
+        for i, col in enumerate(block.table.columns):
+            head = table.rows[0].cells[i]
+            head.text = ""
+            head.paragraphs[0].add_run(col).bold = True
+            head.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for row in block.table.rows:
+            cells = table.add_row().cells
+            for i, value in enumerate(row):
+                cells[i].text = ""
+                _mono(cells[i].paragraphs[0], value)
+                cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for step in block.steps:
+        if step:
+            p = cell.add_paragraph(step)
+            p.paragraph_format.space_after = Pt(2)
+    answer = cell.add_paragraph()
+    answer.add_run("Answer:  ").bold = True
+    answer.add_run(block.answer)
+    d.add_paragraph()

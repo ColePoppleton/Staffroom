@@ -210,13 +210,13 @@ def test_worksheet_shows_sheet_and_key_tabs_with_page_counts(
     pane = panel.results
     preview = pane.page_previews["pages"]
     assert preview.isVisible() and preview.part == "sheet"
-    assert pane.page_names["pages"].text() == "binary_medium_s42.pdf"
+    assert pane.page_names["pages"].text() == "binary_denary_to_binary_medium_s42.pdf"
     # The Key tab shows the key file, in the same preview.
     assert pane.tabs is not None
     pane.tabs.setCurrentIndex(1)
     assert preview.isVisible() and preview.part == "key"
     assert preview.canvas.document() is preview.parts["key"].document
-    assert pane.page_names["pages"].text() == "binary_medium_s42_key.pdf"
+    assert pane.page_names["pages"].text() == "binary_denary_to_binary_medium_s42_key.pdf"
     # A sheet thumbnail clicked from the Key tab goes back to the Sheet tab.
     preview.rail.clicked.emit(preview.model.index(0))
     assert pane.tabs.currentIndex() == 0 and preview.part == "sheet"
@@ -232,7 +232,7 @@ def test_open_pdf_hands_the_file_to_its_app(
     panel.results.open_requested.disconnect()
     panel.results.open_requested.connect(panel.open_file)
     panel.results.page_previews["pages"].open_button.click()
-    assert opened == [tmp_path / "out" / "binary_medium_s42.pdf"]
+    assert opened == [tmp_path / "out" / "binary_denary_to_binary_medium_s42.pdf"]
 
 
 def test_docx_only_shows_the_note(window: MainWindow, qtbot: QtBot) -> None:
@@ -242,7 +242,7 @@ def test_docx_only_shows_the_note(window: MainWindow, qtbot: QtBot) -> None:
     preview = panel.results.page_previews["pages"]
     assert not preview.has_pdf() and preview.isVisible()
     assert "pdf or both" in preview.note.text()
-    assert "Worksheet: Binary" in preview.text.toPlainText()
+    assert "Binary & hex: Denary to binary" in preview.text.toPlainText()
     assert visible_tabs(panel) == ["Sheet", "Key"]
 
 

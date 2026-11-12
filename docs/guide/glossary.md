@@ -202,14 +202,26 @@ term has a precise meaning in the code, this is that meaning.
   or on the first-run card (`staff worksheet make --board` overrides it for
   one run). Chooses the grade preset Marks starts with (the panel, and
   `staff marks run` without `--preset`), the gates a GCSE truth-table
-  worksheet may use (OCR and Edexcel: AND, OR, NOT; AQA adds XOR) and the
-  language Pseudocode's *To* starts on (Edexcel: Python). Quiz spec tags are
+  worksheet may use (OCR and Edexcel: AND, OR, NOT; AQA adds XOR), which
+  Worksheet lessons are greyed and the spec point a lesson sheet prints, the
+  units its file sizes use (Edexcel: KiB, 1,024 bytes; OCR and AQA: KB, 1,000)
+  and the language Pseudocode's *To* starts on (Edexcel: Python). Quiz spec tags are
   per question (`ocr:`, `aqa:` and `edexcel:` can all be on one), so which
   questions a bank holds does not depend on it; the bank's summary names
   your board's spec points first, or says it has none.
 
-**Level** (Worksheet)
-: *GCSE* or *A level* (`gcse` / `a_level`), for truth tables. GCSE follows the board; A-level
+**Lesson** (Worksheet)
+: One skill of a unit (*Binary & hex › Denary to binary*): an aim, a worked
+  example, then Warm-up, Practice and Stretch. Chosen in the panel's lesson
+  list or with `staff worksheet make <unit> --lesson <lesson>`.
+
+**Review** (Worksheet)
+: A unit's last lessons: the mixed sheets Worksheet made before it had
+  lessons, unchanged, so an old seed makes the same sheet and key. An old
+  topic name (`--topic shifts`) makes its Review.
+
+**Gates** (Worksheet)
+: *My GCSE board* or *A level* (`--level gcse` / `a_level`), for truth tables. GCSE follows the board; A-level
   adds XOR at every difficulty and NAND / NOR at `hard`, and puts `alevel`
   in the file name so the GCSE sheet with the same seed survives.
 

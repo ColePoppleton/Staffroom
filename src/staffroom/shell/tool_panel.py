@@ -40,6 +40,7 @@ from staffroom.core.panel import (
     EditableTable,
     FilePicker,
     FolderPicker,
+    GroupedChoice,
     OptionsForm,
     PanelSpec,
     ResourcePicker,
@@ -58,6 +59,7 @@ from staffroom.shell.widgets import (
     Divider,
     EditableTableWidget,
     FoundWidget,
+    GroupedChoiceWidget,
     InputGroup,
     LineLink,
     LoadSummaryWidget,
@@ -170,6 +172,7 @@ class ToolPanel(QWidget):
         self.grids: dict[str, EditableTableWidget | CompactTableWidget] = {}
         self.choices: dict[str, ChoiceWidget] = {}
         self.chip_choices: dict[str, ChipChoiceWidget] = {}
+        self.grouped: dict[str, GroupedChoiceWidget] = {}
         self.found: dict[str, FoundWidget] = {}  # under each file input: what the tool found
         self._inspecting = False
         self.previews: dict[str, TablePreviewWidget] = {}
@@ -217,6 +220,8 @@ class ToolPanel(QWidget):
                 form.changed.connect(self._sync_shown)
             for choice in self.choices.values():
                 choice.changed.connect(self._sync_shown)
+            for grouped in self.grouped.values():
+                grouped.changed.connect(self._sync_shown)
             self._sync_shown()
 
         writes_to = self.spec.writes_to
@@ -344,6 +349,13 @@ class ToolPanel(QWidget):
                 choice = ChoiceWidget(spec)
                 group.add(choice)
                 self.choices[spec.key] = choice
+            elif isinstance(spec, GroupedChoice):
+                group = InputGroup(spec.label, spec.help, joined=joined)
+                grouped = GroupedChoiceWidget(
+                    spec.for_config(self.config) if spec.for_config else spec
+                )
+                group.add(grouped)
+                self.grouped[spec.key] = grouped
             elif isinstance(spec, OptionsForm):
                 group = InputGroup(spec.label, joined=joined)
                 form = OptionsFormWidget.for_spec(spec)
@@ -445,6 +457,7 @@ class ToolPanel(QWidget):
             *(w.changed for w in self.code_sources.values()),
             *(w.changed for w in self.choices.values()),
             *(w.changed for w in self.chip_choices.values()),
+            *(w.changed for w in self.grouped.values()),
             *(w.changed for w in self.forms.values()),
             *(w.edit.textChanged for w in self.text_fields.values()),
         ]
@@ -541,6 +554,8 @@ class ToolPanel(QWidget):
             values[key] = choice.value()
         for key, chips in self.chip_choices.items():
             values[key] = chips.value()
+        for key, grouped in self.grouped.items():
+            values[key] = grouped.value()
         # An input that does not apply hands over its empty value (#123).
         return self.spec.passed(values)
 
@@ -564,9 +579,17 @@ class ToolPanel(QWidget):
 
     def showEvent(self, event: QShowEvent) -> None:  # noqa: N802
         super().showEvent(event)
+        self.refresh_from_config()
         if not self._refreshed:
             self._refreshed = True
             self.refresh_tables()
+
+    def refresh_from_config(self) -> None:
+        """Rebuild the choices whose rows follow Settings (a lesson list greys what
+        the exam board lacks), so a change made there shows on return."""
+        for spec in self.spec.inputs:
+            if isinstance(spec, GroupedChoice) and spec.for_config is not None:
+                self.grouped[spec.key].set_spec(spec.for_config(self.config))
 
     def first_file_key(self) -> str | None:
         for spec in self.spec.inputs:

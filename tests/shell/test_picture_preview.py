@@ -202,7 +202,8 @@ def test_going_back_to_a_file_is_instant(qtbot: QtBot, tmp_path: Path) -> None:
     preview.show()
     for path in (first, second):
         preview.show_image(path, path.stat().st_mtime)
-        qtbot.waitUntil(lambda: not preview.busy(), timeout=LOAD_TIMEOUT)
+        # On screen, and the job that drew it has finished tidying up.
+        qtbot.waitUntil(lambda: not preview.busy() and not preview.working(), timeout=LOAD_TIMEOUT)
     preview.show_image(first, first.stat().st_mtime)
     assert not preview.busy() and not preview.working()  # from the cache, no job
     image = preview.view.picture()

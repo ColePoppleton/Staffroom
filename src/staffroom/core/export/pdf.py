@@ -37,6 +37,7 @@ from staffroom.core.export.model import (
     PageBreak,
     Paragraph,
     TableBlock,
+    WorkedExample,
 )
 
 MUTED = colors.HexColor("#667085")
@@ -161,10 +162,64 @@ def write_pdf(doc: Document, path: Path) -> Path:
     for section in doc.sections:
         if section.title:
             story.append(PlatypusParagraph(_esc(section.title), st["h1"]))
-        for block in section.blocks:
-            story += _render(block, st)
+        story += _flow(section.blocks, st)
     template.build(story, onFirstPage=decorate, onLaterPages=decorate)
     return path
+
+
+def _flat(flowables: list[Any]) -> list[Any]:
+    """KeepTogether contents lifted one level: a KeepTogether nested in another
+    pushes each one to a page of its own."""
+    out: list[Any] = []
+    for flowable in flowables:
+        inner = getattr(flowable, "_content", None)
+        out += inner if isinstance(flowable, KeepTogether) and inner else [flowable]
+    return out
+
+
+def _flow(blocks: list[Any], st: dict[str, ParagraphStyle]) -> list[Any]:
+    """The section's flowables, with what must not part kept together: a question
+    and its table (a truth table), and a heading and the first thing under it."""
+    groups: list[tuple[bool, list[Any]]] = []  # (is a heading, flowables)
+    i = 0
+    while i < len(blocks):
+        block = blocks[i]
+        following = blocks[i + 1] if i + 1 < len(blocks) else None
+        if _owns_table(block, following):
+            groups.append(
+                (False, [KeepTogether(_flat(_render(block, st) + _render(following, st)))])
+            )
+            i += 2
+            continue
+        rendered = _render(block, st)
+        if isinstance(block, Heading):
+            groups.append((True, rendered))
+        else:
+            groups += [(False, [f]) for f in rendered]
+        i += 1
+    story: list[Any] = []
+    pending: list[Any] = []  # headings waiting for what comes under them
+    for heading, flowables in groups:
+        if heading:
+            pending += flowables
+        elif pending:
+            story.append(KeepTogether(_flat(pending + flowables)))
+            pending = []
+        else:
+            story += flowables
+    return story + pending
+
+
+def _owns_table(block: object, following: object) -> bool:
+    """A one-item question with no answer lines straight before a table: the table
+    is where it is answered."""
+    return (
+        isinstance(block, Numbered)
+        and len(block.items) == 1
+        and block.answer_lines == 0
+        and isinstance(following, TableBlock)
+        and len(following.rows) <= 20
+    )
 
 
 def _render(block: object, st: dict[str, ParagraphStyle]) -> list[Any]:
@@ -238,6 +293,8 @@ def _render(block: object, st: dict[str, ParagraphStyle]) -> list[Any]:
         return _boxed(block, st)
     if isinstance(block, AnswerGrid):
         return _answer_grid(block, st)
+    if isinstance(block, WorkedExample):
+        return _worked_example(block, st)
     if isinstance(block, PageBreak):
         return [PlatypusPageBreak()]
     return []
@@ -329,3 +386,59 @@ def _answer_grid(block: AnswerGrid, st: dict[str, ParagraphStyle]) -> list[Any]:
         )
         out += [table, Spacer(1, 6)]
     return out
+
+
+def _worked_example(block: WorkedExample, st: dict[str, ParagraphStyle]) -> list[Any]:
+    """One shaded box, kept on one page: the title and question on one line, the
+    table, the steps, the answer."""
+    step = ParagraphStyle("tt-step", parent=st["body"], leading=13, spaceAfter=1)
+    inner: list[Any] = [
+        PlatypusParagraph(
+            f'<font color="#3B5BDB"><b>{_esc(block.title)}</b></font>'
+            f"&nbsp;&nbsp;&nbsp;{_esc(block.question)}",
+            st["body"],
+        ),
+        Spacer(1, 4),
+    ]
+    if block.table is not None:
+        head = [PlatypusParagraph(f"<b>{_esc(c)}</b>", st["cell"]) for c in block.table.columns]
+        rows = [[PlatypusParagraph(_esc(v), st["cellmono"]) for v in r] for r in block.table.rows]
+        # Each column as wide as its widest cell: a place-value table stays compact.
+        widths = [
+            max(
+                pdfmetrics.stringWidth(block.table.columns[i], "Helvetica-Bold", 9.5),
+                *(pdfmetrics.stringWidth(r[i], "Courier", 9.5) for r in block.table.rows),
+            )
+            + 12
+            for i in range(len(block.table.columns))
+        ]
+        table = Table([head, *rows], colWidths=widths, hAlign="LEFT")
+        table.setStyle(
+            TableStyle(
+                [
+                    ("GRID", (0, 0), (-1, -1), 0.4, RULE),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 1),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]
+            )
+        )
+        inner += [table, Spacer(1, 4)]
+    inner += [PlatypusParagraph(_esc(text), step) for text in block.steps if text]
+    inner.append(PlatypusParagraph(f"<b>Answer:</b>&nbsp;&nbsp;{_esc(block.answer)}", st["body"]))
+    box = Table([[inner]], colWidths=[FRAME_WIDTH], hAlign="LEFT")
+    box.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), SOFT),
+                ("BOX", (0, 0), (-1, -1), 0.6, ACCENT),
+                ("LEFTPADDING", (0, 0), (-1, -1), 9),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    return [KeepTogether([box]), Spacer(1, 4)]

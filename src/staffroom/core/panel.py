@@ -22,6 +22,7 @@ CodeSource         :class:`CodeValue` ``(path, text)``: the file shown, or paste
 TextField          ``str``
 TextArea           ``str`` (multi-line)
 Choice             ``str`` (the chosen value)
+GroupedChoice      ``str`` (the chosen item's value)
 ChipChoice         ``tuple[str, ...]`` (the values of the chips that are on)
 OptionsForm        an instance of the given dataclass
 EditableTable      :class:`~staffroom.core.table.Table` (and its ``choice``, if
@@ -319,6 +320,81 @@ class ChipChoice:
 
 
 @dataclass(frozen=True)
+class GroupedItem:
+    """One row of a :class:`GroupedChoice`: the ``value`` handed to the tool, the
+    ``text`` shown, a ``tag`` small at the right (a spec point) and a ``detail``
+    line under it. A ``dim`` row is drawn faint but can still be chosen, with
+    ``note`` (one line: why it is faint) in place of the tag. ``divided`` draws a
+    rule above the row, to set apart the rows after it (a unit's Review)."""
+
+    value: str
+    text: str
+    tag: str = ""
+    detail: str = ""
+    dim: bool = False
+    note: str = ""
+    divided: bool = False
+
+
+@dataclass(frozen=True)
+class ItemGroup:
+    """A chip of a :class:`GroupedChoice` and the rows it shows. A ``dim`` group's
+    chip is drawn faint (none of its rows apply), with ``note`` as its tooltip."""
+
+    value: str
+    text: str
+    items: tuple[GroupedItem, ...]
+    dim: bool = False
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class GroupedChoice:
+    """One item from groups: the groups as exclusive chips under ``label``, the
+    chosen group's items as a list of rows under ``items_label`` (a unit, then a
+    lesson). Value: the chosen item's ``value``; item values are unique across
+    groups, so the value names the group too. Choosing a chip chooses the item
+    last chosen in that group, else its first row that is not dim.
+
+    ``note`` is one line under the rows. Rows that depend on the teacher's
+    settings (which exam board a lesson is on) come from ``for_config``: given
+    the shell's live config it returns this choice rebuilt, and the shell calls
+    it when the panel is built and each time it is shown again, so a change in
+    Settings shows on return. It must be pure and quick."""
+
+    key: str
+    label: str
+    items_label: str
+    groups: tuple[ItemGroup, ...]
+    default: str | None = None
+    help: str = ""
+    note: str = ""
+    for_config: Callable[[Config], GroupedChoice] | None = None
+
+    def __post_init__(self) -> None:
+        values = [i.value for g in self.groups for i in g.items]
+        dupes = sorted({v for v in values if values.count(v) > 1})
+        if not values or dupes:
+            msg = f"GroupedChoice {self.key!r} needs items, each value once (twice: {dupes})"
+            raise ValueError(msg)
+        if self.default is not None and self.default not in values:
+            msg = f"GroupedChoice {self.key!r}: default {self.default!r} is not an item"
+            raise ValueError(msg)
+
+    @property
+    def initial(self) -> str:
+        return self.default if self.default is not None else self.groups[0].items[0].value
+
+    @property
+    def choices(self) -> tuple[tuple[str, str], ...]:
+        """Every item as ``(value, text)``, for conditions that read this choice."""
+        return tuple((i.value, i.text) for g in self.groups for i in g.items)
+
+    def group_of(self, value: str) -> ItemGroup | None:
+        return next((g for g in self.groups if any(i.value == value for i in g.items)), None)
+
+
+@dataclass(frozen=True)
 class OptionsPreset:
     """A named set of field values an :class:`OptionsForm` applies in one go.
 
@@ -359,7 +435,7 @@ class ShownWhen:
 
     In ``PanelSpec.shown_when`` (a whole input) ``on`` names what the
     condition reads across the panel: ``"<form key>.<field>"`` for a field of
-    one of its options forms, or the key of a :class:`Choice`."""
+    one of its options forms, or the key of a :class:`Choice` or :class:`GroupedChoice`."""
 
     on: str
     values: tuple[Any, ...]
@@ -607,6 +683,7 @@ InputWidget = (
     | TextField
     | TextArea
     | Choice
+    | GroupedChoice
     | ChipChoice
     | OptionsForm
     | EditableTable
@@ -623,7 +700,7 @@ def empty_values(widget: InputWidget) -> dict[str, Any]:
         return {widget.key: None}
     if isinstance(widget, TextField | TextArea):
         return {widget.key: ""}
-    if isinstance(widget, Choice):
+    if isinstance(widget, Choice | GroupedChoice):
         return {widget.key: widget.initial}
     if isinstance(widget, ChipChoice):
         return {widget.key: ()}
@@ -1260,7 +1337,9 @@ class PanelSpec:
                 msg = f"panel {self.title!r}: joined {key!r} is the first input; nothing to join"
                 raise ValueError(msg)
 
-    def _condition_source(self, on: str) -> tuple[str, OptionsForm | Choice, str] | None:
+    def _condition_source(
+        self, on: str
+    ) -> tuple[str, OptionsForm | Choice | GroupedChoice, str] | None:
         """What a panel-level condition reads: the input that holds it (the
         form, the choice, or the input a choice sits inside), the form or
         choice itself, and the form field's name ("" for a choice)."""
@@ -1268,7 +1347,7 @@ class PanelSpec:
         for w in self.inputs:
             if dot and isinstance(w, OptionsForm) and w.key == form_key:
                 return w.key, w, name
-            if not dot and isinstance(w, Choice) and w.key == on:
+            if not dot and isinstance(w, Choice | GroupedChoice) and w.key == on:
                 return w.key, w, ""
             if (
                 not dot
@@ -1294,7 +1373,7 @@ class PanelSpec:
             if source is None:
                 msg = (
                     f"{where} reads {cond.on!r}, which is neither '<form key>.<field>' of an "
-                    "OptionsForm nor the key of a Choice"
+                    "OptionsForm nor the key of a Choice or GroupedChoice"
                 )
                 raise ValueError(msg)
             _owner, control, name = source

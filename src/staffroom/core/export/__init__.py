@@ -28,6 +28,7 @@ from staffroom.core.export.model import (
     Paragraph,
     Section,
     TableBlock,
+    WorkedExample,
 )
 from staffroom.core.export.pdf import write_pdf
 from staffroom.core.export.text import to_text
@@ -50,6 +51,7 @@ __all__ = [
     "Paragraph",
     "Section",
     "TableBlock",
+    "WorkedExample",
     "export",
     "house_style_from",
     "render",

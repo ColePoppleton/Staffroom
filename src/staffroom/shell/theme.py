@@ -527,6 +527,25 @@ QLabel#ChipName {{ font-weight: 600; background: transparent; }}
 QLabel#ChipName[on="true"] {{ color: {p.accent}; }}
 QLabel#ChipCount {{ color: {p.text_faint}; font-size: 11px; background: transparent; }}
 QLabel#ChipCount[on="true"] {{ color: {p.accent}; }}
+/* A grouped choice (#75): a unit's chips, then its lessons as rows. A dim chip or
+   row is not on the teacher's board: faint and dashed, still choosable. */
+QPushButton#ToggleChip[dim="true"] {{ border-style: dashed; }}
+QLabel#ChipName[dim="true"][on="false"] {{ color: {p.text_faint}; }}
+QPushButton#ListRow {{
+    background: transparent; border: 1px solid transparent; border-radius: {RADIUS_SM}px;
+    padding: 0px; min-height: 0px; text-align: left;
+}}
+QPushButton#ListRow:hover {{ background: {p.surface_alt}; }}
+QPushButton#ListRow[on="true"] {{ background: {p.accent_soft}; border-color: {p.accent}; }}
+QPushButton#ListRow:focus {{ border-color: {p.accent}; }}
+QLabel#RowText {{ font-weight: 600; background: transparent; color: {p.text}; }}
+QLabel#RowText[dim="true"] {{ color: {p.text_faint}; }}
+QLabel#RowTag {{
+    font-family: {MONO_FAMILY}; font-size: 11px; color: {p.text_muted}; background: transparent;
+}}
+QLabel#RowTag[dim="true"] {{ color: {p.warning}; font-family: {FONT_FAMILY}; font-size: 12px; }}
+QLabel#RowDetail {{ color: {p.text_muted}; font-size: 12px; background: transparent; }}
+QLabel#RowDetail[dim="true"] {{ color: {p.text_faint}; }}
 QFrame#GridCell {{
     background: {p.surface_alt}; border: 1px solid {p.border_strong}; border-radius: {RADIUS_SM}px;
 }}
