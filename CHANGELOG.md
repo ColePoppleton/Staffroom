@@ -29,6 +29,7 @@ mixed sheets are each unit's Review lesson, unchanged.
   kit adds `GroupedChoice` (chips over a list of rows, which can follow Settings) and the
   house style a `WorkedExample` block; PDF and Word keep a question with its table, and a
   heading with what follows it, on one page.
+  The lesson list's rows and note never flash up as windows of their own.
 
 ## [0.10.1] - 2026-11-12
 Opening a tool no longer makes the screen flash black or sends Staffroom out of full screen.

@@ -55,13 +55,16 @@ class ListRow(QPushButton):
         self.name.setObjectName("RowText")
         self.tag = QLabel(tag)
         self.tag.setObjectName("RowTag")
-        self.tag.setVisible(bool(tag))
         self.detail = ElidedLabel(item.detail)
         self.detail.setObjectName("RowDetail")
-        self.detail.setVisible(bool(item.detail))
         grid.addWidget(self.name, 0, 0)
         grid.addWidget(self.tag, 0, 1, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         grid.addWidget(self.detail, 1, 0, 1, 2)
+        # Placed first, then hidden: told to show with no parent, a label is a window.
+        if not tag:
+            self.tag.hide()
+        if not item.detail:
+            self.detail.hide()
         grid.setColumnStretch(0, 1)
         for label in (self.name, self.tag, self.detail):
             label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -107,8 +110,9 @@ class GroupedChoiceWidget(QWidget):
         self.rows_layout.setSpacing(2)
         layout.addWidget(self.rows_box)
         self.note = make_label(spec.note, "faint", wrap=True)
-        self.note.setVisible(bool(spec.note))
         layout.addWidget(self.note)
+        if not spec.note:
+            self.note.hide()
         self.chip_group = QButtonGroup(self)
         self.chip_group.setExclusive(True)
         self.row_group = QButtonGroup(self)
